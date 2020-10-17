@@ -48,10 +48,17 @@ if(BUILD_TESTS)
     PYTHON_SCRIPT ${SAMPLES_DIR}/erc20_deploy_and_transfer.py
   )
 
+  # Add an end-to-end test using a web3.py-based client
+  add_e2e_test(
+    NAME evmtest_python
+    PYTHON_SCRIPT ${SAMPLES_DIR}/evmtest_deploy_and_transfer.py
+  )
+
   # Make python test client framework importable for all end-to-end tests
   set_tests_properties(
     erc20_scenario
     erc20_python
+    evmtest_python
     PROPERTIES
       ENVIRONMENT "${ENV_CONTRACTS_DIR};PYTHONPATH=${CCF_DIR}/tests:$ENV{PYTHONPATH}"
   )

@@ -22,9 +22,7 @@ namespace evm4ccf
       const eevm::Address& a,
       const tables::Accounts::Views& av,
       tables::Storage::TxView& st) :
-      address(a),
-      accounts_views(av),
-      storage(st)
+      address(a), accounts_views(av), storage(st)
     {}
 
     // Implementation of eevm::Account

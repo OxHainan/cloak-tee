@@ -4,6 +4,7 @@ release*/
 doxygen/
 
 .vscode/
+tmp/
 
 tests/env/
 sphinx/env/

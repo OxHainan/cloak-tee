@@ -51,8 +51,7 @@ namespace evm4ccf
     EthereumState(
       const tables::Accounts::Views& acc_views,
       tables::Storage::TxView* views) :
-      accounts(acc_views),
-      tx_storage(*views)
+      accounts(acc_views), tx_storage(*views)
     {}
 
     void remove(const eevm::Address& addr) override

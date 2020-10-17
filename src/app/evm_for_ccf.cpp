@@ -185,9 +185,10 @@ namespace evm4ccf
     // SNIPPET_START: initialization
     EVMForCCFFrontend(NetworkTables& nwt, AbstractNotifier& notifier) :
       UserRpcFrontend(*nwt.tables),
-      accounts{tables.create<tables::Accounts::Balances>("eth.account.balance"),
-               tables.create<tables::Accounts::Codes>("eth.account.code"),
-               tables.create<tables::Accounts::Nonces>("eth.account.nonce")},
+      accounts{
+        tables.create<tables::Accounts::Balances>("eth.account.balance"),
+        tables.create<tables::Accounts::Codes>("eth.account.code"),
+        tables.create<tables::Accounts::Nonces>("eth.account.nonce")},
       storage(tables.create<tables::Storage>("eth.storage")),
       tx_results(tables.create<tables::Results>("eth.txresults"))
     // SNIPPET_END: initialization

@@ -89,6 +89,7 @@ def test_transfers(network, args):
     primary, term = network.find_primary()
 
     with primary.user_client(format="json") as ccf_client:
+        LOG.info(f"ccf_client: {ccf_client.name}")
         w3 = web3.Web3(provider.CCFProvider(ccf_client))
 
         erc20_contract = ERC20Contract(
