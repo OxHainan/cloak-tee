@@ -5,8 +5,8 @@ import json
 import random
 import os
 import time
-
-import web3
+import types
+import cloak_web3_extension as cloak_ext
 
 from loguru import logger as LOG
 
@@ -15,6 +15,7 @@ class Caller:
     def __init__(self, account, w3):
         self.account = account
         self.w3 = w3
+        self.w3.eth.sendPrivacyPolicy = types.MethodType(cloak_ext.sendPrivacyPolicy, self.w3.eth)
         self.default_transaction = {
             "from": self.account.address,
             "gas": 0,
@@ -31,6 +32,12 @@ class Caller:
         txn = self._build_transaction(fn, **kwargs)
         tx_hash = self.w3.eth.sendTransaction(txn)
         return self.w3.eth.waitForTransactionReceipt(tx_hash)
+
+    def sendPrivacyPolicy(self, fn, **kwargs):
+        txn = self._build_transaction(fn, **kwargs)
+        signed = self.account.signTransaction(txn)
+        tx_hash = self.w3.eth.sendPrivacyPolicy(signed.rawTransaction, "this is a fake privacy model")
+        return tx_hash
 
     def send_signed(self, fn, **kwargs):
         txn = self._build_transaction(fn, **kwargs)
@@ -52,4 +59,3 @@ def read_contract_from_file(file_path, contract_element):
         contract_bin = j["bin"]
 
     return contract_abi, contract_bin
-

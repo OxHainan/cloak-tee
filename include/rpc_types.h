@@ -6,9 +6,13 @@
 #include <eEVM/bigint.h>
 #include <eEVM/transaction.h>
 #include <eEVM/util.h>
-#include <enclave/appinterface.h>
-#include <kv/kv.h>
-#include <node/rpc/jsonrpc.h>
+#include <enclave/app_interface.h>
+#include <kv/tx.h>
+#include <kv/tx_view.h>
+#include <kv/store.h>
+#include <kv/map.h>
+#include <node/rpc/serdes.h>
+#include "jsonrpc.h"
 
 // STL
 #include <array>
@@ -96,6 +100,11 @@ namespace evm4ccf
     {
       MessageCall call_data = {};
     };
+
+    struct SendPrivacyPolicy
+    {
+      ByteData call_data = {};
+    };
   } // namespace rpcparams
 
   namespace rpcresults
@@ -131,9 +140,9 @@ namespace evm4ccf
     using In = jsonrpc::ProcedureCall<TParams>;
     using Out = jsonrpc::Response<TResult>;
 
-    static constexpr auto name = Tag::name;
+    static constexpr auto name = TTag::name;
 
-    static In make(jsonrpc::SeqNo n = 0)
+    static In make(ccf::SeqNo n = 0)
     {
       In in;
       in.id = n;
@@ -187,6 +196,27 @@ namespace evm4ccf
       rpcparams::GetTransactionCount,
       size_t>;
 
+    struct GetTransactionCountTest 
+    {
+      static constexpr auto name = GetTransactionCountTag::name;
+      struct In 
+      {
+        eevm::Address address = {};
+        BlockID block_id = DefaultBlockID;   
+      };
+      struct Out
+      {
+        size_t result;
+      };
+    };
+
+    DECLARE_JSON_TYPE(GetTransactionCountTest::In);
+    // TODO: adding 'address' and complete add_schema_components functin
+    // in eEVM/bigint.h
+    DECLARE_JSON_REQUIRED_FIELDS(GetTransactionCountTest::In, block_id);
+    DECLARE_JSON_TYPE(GetTransactionCountTest::Out);
+    DECLARE_JSON_REQUIRED_FIELDS(GetTransactionCountTest::Out, result);
+
     struct GetTransactionReceiptTag
     {
       static constexpr auto name = "eth_getTransactionReceipt";
@@ -209,7 +239,18 @@ namespace evm4ccf
     };
     using SendTransaction =
       RpcBuilder<SendTransactionTag, rpcparams::SendTransaction, TxHash>;
+
+    struct SendPrivacyPolicyTag
+    {
+      static constexpr auto name = "cloak_sendPrivacyPolicy";
+    };
+    using SendPrivacyPolicy = 
+      RpcBuilder<SendPrivacyPolicyTag, rpcparams::SendPrivacyPolicy, TxHash>;
+    
+
+
   } // namespace ethrpc
 } // namespace evm4ccf
 
 #include "rpc_types_serialization.inl"
+

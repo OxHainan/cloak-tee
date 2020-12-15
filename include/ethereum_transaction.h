@@ -5,7 +5,7 @@
 #include "rpc_types.h"
 
 // CCF
-#include "tls/keypair.h"
+#include "tls/key_pair.h"
 
 #include <eEVM/rlp.h>
 #include <eEVM/util.h>
@@ -109,6 +109,29 @@ namespace evm4ccf
         encoded.end(), std::begin(address_bytes), std::end(address_bytes));
     }
     return encoded;
+  }
+
+    /**
+     * Get the public key in ASN.1 format
+     */
+  inline std::vector<uint8_t> public_key_asn1(mbedtls_pk_context* raw_ctx)
+  {
+    static constexpr auto buf_size = 256u;
+    uint8_t buf[buf_size];
+
+    uint8_t* p = buf + buf_size;
+
+    const auto written = mbedtls_pk_write_pubkey(&p, buf, raw_ctx);
+
+    if (written < 0)
+    {
+      throw std::logic_error(
+        "mbedtls_pk_write_pubkey: " + tls::error_string(written));
+    }
+
+    // ASN.1 key is written to end of buffer
+    uint8_t* first = buf + buf_size - written;
+    return {first, buf + buf_size};
   }
 
   inline eevm::Address get_address_from_public_key_asn1(
@@ -294,7 +317,7 @@ namespace evm4ccf
       const auto tbs = to_be_signed();
       auto pubk =
         tls::PublicKey_k1Bitcoin::recover_key(rs, {tbs.data(), tbs.size()});
-      tc.from = get_address_from_public_key_asn1(pubk.public_key_asn1());
+      tc.from = get_address_from_public_key_asn1(public_key_asn1(pubk.get_raw_context()));
     }
   };
 

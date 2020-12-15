@@ -226,6 +226,19 @@ namespace evm4ccf
       require_array(j);
       s.call_data = j[0];
     }
+  
+    //
+    inline void to_json(nlohmann::json& j, const SendPrivacyPolicy& s)
+    {
+      j = nlohmann::json::array();
+      j.push_back(s.call_data);
+    }
+
+    inline void from_json(const nlohmann::json& j, SendPrivacyPolicy& s)
+    {
+      require_array(j);
+      s.call_data = j[0];
+    }
 
     //
     inline void to_json(nlohmann::json& j, const SendRawTransaction& s)

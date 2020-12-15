@@ -1,13 +1,10 @@
-# Copyright (c) Microsoft Corporation. All rights reserved.
-# Licensed under the MIT License.
 import json
 import os
 import web3
 
 from utils import *
-import e2e_args
-import infra.ccf
 import provider
+import ccf_network_config as config
 
 from loguru import logger as LOG
 
@@ -65,103 +62,93 @@ def read_erc20_contract_from_file():
     return read_contract_from_file(file_path, "ERC20.sol:ERC20Token")
 
 
-def test_deploy(network, args):
+def test_deploy(ccf_client):
     erc20_abi, erc20_bin = read_erc20_contract_from_file()
-    primary, term = network.find_primary()
 
-    with primary.user_client(format="json") as ccf_client:
-        w3 = web3.Web3(provider.CCFProvider(ccf_client))
+    w3 = web3.Web3(provider.CCFProvider(ccf_client))
 
-        owner = Caller(web3.Account.create(), w3)
+    owner = Caller(web3.Account.create(), w3)
 
-        LOG.info("Contract deployment")
-        erc20_spec = w3.eth.contract(abi=erc20_abi, bytecode=erc20_bin)
-        deploy_receipt = owner.send_signed(erc20_spec.constructor(10000))
+    LOG.info("Contract deployment")
+    erc20_spec = w3.eth.contract(abi=erc20_abi, bytecode=erc20_bin)
+    deploy_receipt = owner.send_signed(erc20_spec.constructor(10000))
 
-        network.erc20_contract_address = deploy_receipt.contractAddress
-        network.owner_account = owner.account
+    ccf_client.erc20_contract_address = deploy_receipt.contractAddress
+    ccf_client.owner_account = owner.account
 
-    return network
+    return ccf_client
 
 
-def test_transfers(network, args):
+def test_transfers(ccf_client):
     erc20_abi, erc20_bin = read_erc20_contract_from_file()
-    primary, term = network.find_primary()
 
-    with primary.user_client(format="json") as ccf_client:
-        LOG.info(f"ccf_client: {ccf_client.name}")
-        w3 = web3.Web3(provider.CCFProvider(ccf_client))
+    LOG.info(f"ccf_client: {ccf_client.name}")
+    w3 = web3.Web3(provider.CCFProvider(ccf_client))
 
-        erc20_contract = ERC20Contract(
-            w3.eth.contract(abi=erc20_abi, address=network.erc20_contract_address)
+    erc20_contract = ERC20Contract(
+        w3.eth.contract(abi=erc20_abi, address=ccf_client.erc20_contract_address)
+    )
+
+    owner = Caller(ccf_client.owner_account, w3)
+    alice = Caller(web3.Account.create(), w3)
+    bob = Caller(web3.Account.create(), w3)
+
+    LOG.info("Get balance of owner")
+    owner_balance = erc20_contract.get_token_balance(owner)
+    LOG.info(f"Owner balance: {owner_balance}")
+
+    first_amount = owner_balance // 5
+    LOG.info(
+        "Transferring {} tokens from {} to {}".format(
+            first_amount, owner.account.address, alice.account.address
+        ),
+        True,
+    )
+    assert erc20_contract.transfer_and_check(owner, alice, first_amount)
+
+    second_amount = owner_balance - first_amount
+    LOG.info(
+        "Transferring {} tokens from {} to {}".format(
+            second_amount, owner.account.address, bob.account.address
         )
+    )
+    assert erc20_contract.transfer_and_check(owner, bob, second_amount)
 
-        owner = Caller(network.owner_account, w3)
-        alice = Caller(web3.Account.create(), w3)
-        bob = Caller(web3.Account.create(), w3)
-
-        LOG.info("Get balance of owner")
-        owner_balance = erc20_contract.get_token_balance(owner)
-        LOG.info(f"Owner balance: {owner_balance}")
-
-        first_amount = owner_balance // 5
-        LOG.info(
-            "Transferring {} tokens from {} to {}".format(
-                first_amount, owner.account.address, alice.account.address
-            ),
-            True,
+    third_amount = second_amount // 3
+    LOG.info(
+        "Transferring {} tokens from {} to {}".format(
+            third_amount, bob.account.address, alice.account.address
         )
-        assert erc20_contract.transfer_and_check(owner, alice, first_amount)
+    )
+    assert erc20_contract.transfer_and_check(bob, alice, third_amount,)
 
-        second_amount = owner_balance - first_amount
-        LOG.info(
-            "Transferring {} tokens from {} to {}".format(
-                second_amount, owner.account.address, bob.account.address
+    LOG.info("Balances:")
+    erc20_contract.print_balances([owner, alice, bob])
+
+    # Send many transfers, pausing between batches so that notifications should be received
+    for batch in range(3):
+        for i in range(20):
+            sender, receiver = random.sample([alice, bob], 2)
+            amount = random.randint(1, 10)
+            erc20_contract.transfer_and_check(
+                sender, receiver, amount,
             )
-        )
-        assert erc20_contract.transfer_and_check(owner, bob, second_amount)
+        time.sleep(2)
 
-        third_amount = second_amount // 3
-        LOG.info(
-            "Transferring {} tokens from {} to {}".format(
-                third_amount, bob.account.address, alice.account.address
-            )
-        )
-        assert erc20_contract.transfer_and_check(bob, alice, third_amount,)
+    LOG.info("Final balances:")
+    erc20_contract.print_balances([owner, alice, bob])
 
-        LOG.info("Balances:")
-        erc20_contract.print_balances([owner, alice, bob])
-
-        # Send many transfers, pausing between batches so that notifications should be received
-        for batch in range(3):
-            for i in range(20):
-                sender, receiver = random.sample([alice, bob], 2)
-                amount = random.randint(1, 10)
-                erc20_contract.transfer_and_check(
-                    sender, receiver, amount,
-                )
-            time.sleep(2)
-
-        LOG.info("Final balances:")
-        erc20_contract.print_balances([owner, alice, bob])
-
-    return network
-
-
-def run(args):
-    hosts = ["localhost", "localhost"]
-
-    with infra.ccf.network(
-        hosts, args.build_dir, args.debug_nodes, args.perf_nodes, pdb=args.pdb
-    ) as network:
-        network.start_and_join(args)
-
-        network = test_deploy(network, args)
-        network = test_transfers(network, args)
+    return ccf_client
 
 
 if __name__ == "__main__":
-    args = e2e_args.cli_args()
-    args.package = "libevm4ccf"
+    ccf_client = ccf.clients.CCFClient(
+        config.host, 
+        config.port, 
+        config.ca, 
+        config.cert, 
+        config.key
+    )
 
-    run(args)
+    test_deploy(ccf_client)
+    test_transfers(ccf_client)

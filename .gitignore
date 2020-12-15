@@ -3,7 +3,7 @@ debug*/
 release*/
 doxygen/
 
-.vscode/
+.VSCode*
 tmp/
 
 tests/env/

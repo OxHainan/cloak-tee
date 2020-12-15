@@ -21,19 +21,17 @@
 # SETTINGS #
 ############
 
-IMAGE=liam/evm4ccf
+IMAGE=avalon-evm4ccf-dev
 
 ###############
 # PREPARATION #
 ###############
 # determine directory containing this script
 
-sysname=`uname  -a`
+sysname=`uname`
 if [[ $sysname =~ "Darwin" ]];then
-    echo "build on mac"
     BASEDIR="$(cd "$(dirname "$0")"; pwd)"
 else
-    echo "build on linux"
     BASEDIR="$(dirname "$(readlink -f "$0")")"
 fi
 
@@ -58,7 +56,7 @@ docker history --format "table {{printf \"%.150s\" .CreatedBy}}\t{{.Size}}" --no
 # --workdir: Working directory inside the container
 # -v: Bind mount a volume from the host
 
-WORKDIR="/home/evm4ccf"
+WORKDIR="/project/evm4ccf"
 if [ $# -eq 0 ]; then
 	# no arguments supplied
 	echo "Running docker interactively..."
@@ -71,8 +69,8 @@ fi
 
 
 sudo docker run \
+	--rm
 	-it \
-    --rm \
 	$FLAGS \
 	$IMAGE \
 	"$@"

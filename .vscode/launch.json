@@ -1,0 +1,44 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Tx Samples",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "env": {
+                "EVM4CCF_HOME": "/project/evm4ccf",
+                "CONTRACTS_DIR": "/project/evm4ccf/tests/contracts/"
+            },
+            "cwd": "${workspaceFolder}/build",
+        },
+        {
+            "name": "Python: Remote Attach",
+            "type": "python",
+            "request": "attach",
+            "connect": {
+                "host": "localhost",
+                "port": 10010
+            },
+            "pathMappings": [
+                {
+                    "localRoot": "${workspaceFolder}",
+                    "remoteRoot": "."
+                }
+            ]
+        },
+        {
+            "name": "GDB Attach",
+            "type": "cppdbg",
+            "request": "attach",
+            "program": "/usr/bin/python",
+            "processId": "${command:pickProcess}",
+            "MIMode": "gdb"
+        }
+
+    ]
+}

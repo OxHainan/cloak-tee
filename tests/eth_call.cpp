@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 #include "ds/logger.h"
-#include "enclave/appinterface.h"
+#include "enclave/app_interface.h"
 #include "shared.h"
 
 #include <doctest/doctest.h>
@@ -18,7 +18,7 @@ TEST_CASE("Call0" * doctest::test_suite("call"))
   auto cert = setup_tables(tables);
   Ethereum frontend = ccfapp::get_rpc_handler(nwt, stubn);
 
-  jsonrpc::SeqNo sn = 0;
+  ccf::SeqNo sn = 0;
 
   eevm::Address created;
 
@@ -82,7 +82,7 @@ TEST_CASE("Call1" * doctest::test_suite("call"))
   auto cert = setup_tables(tables);
   Ethereum frontend = ccfapp::get_rpc_handler(nwt, stubn);
 
-  jsonrpc::SeqNo sn = 0;
+  ccf::SeqNo sn = 0;
 
   eevm::Address created;
 
@@ -125,7 +125,7 @@ TEST_CASE("Call2" * doctest::test_suite("call"))
   Store& tables = *nwt.tables;
   auto cert = setup_tables(tables);
   Ethereum frontend = ccfapp::get_rpc_handler(nwt, stubn);
-  jsonrpc::SeqNo sn = 0;
+  ccf::SeqNo sn = 0;
 
   eevm::Address created;
   Balance balance = 0xffff0000;

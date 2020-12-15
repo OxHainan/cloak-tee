@@ -7,6 +7,7 @@
 
 // CCF
 #include "crypto/hash.h"
+#include "ds/logger.h"
 
 // eEVM
 #include <eEVM/bigint.h>
@@ -56,6 +57,7 @@ namespace evm4ccf
 
     void remove(const eevm::Address& addr) override
     {
+      LOG_INFO_FMT("addr to be removed is currently {}", addr);
       throw std::logic_error("not implemented");
     }
 
@@ -141,6 +143,7 @@ namespace evm4ccf
 
     uint256_t get_block_hash(uint8_t offset) override
     {
+      LOG_INFO_FMT("offset is currently {}", offset);
       return 0;
     }
   };

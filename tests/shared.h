@@ -6,17 +6,20 @@
 #include "node/networkstate.h"
 #include "rpc_types.h"
 
-#include <enclave/appinterface.h>
-#include <kv/kv.h>
+#include <enclave/app_interface.h>
+#include <kv/tx.h>
+#include <kv/tx_view.h>
+#include <kv/store.h>
+#include <kv/map.h>
 #include <nlohmann/json.hpp>
 
-constexpr jsonrpc::Pack s_packType = jsonrpc::Pack::MsgPack;
+constexpr serdes::Pack s_packType = serdes::Pack::MsgPack;
 using Ethereum = std::shared_ptr<enclave::RpcHandler>;
 
 template <typename T>
 auto pack(const T& v)
 {
-  return jsonrpc::pack(v, s_packType);
+  return serdes::pack(v, s_packType);
 }
 
 nlohmann::json unpack(const std::vector<uint8_t>& data);
@@ -111,7 +114,7 @@ struct DeployedContract
 class TestAccount
 {
   Ethereum frontend;
-  jsonrpc::SeqNo sn;
+  ccf::SeqNo sn;
   std::unique_ptr<tls::KeyPair_k1Bitcoin> privk;
 
 public:

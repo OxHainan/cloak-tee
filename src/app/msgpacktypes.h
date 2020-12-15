@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 #pragma once
 
-#include <msgpack-c/msgpack.hpp>
+#include <msgpack/msgpack.hpp>
 
 // To instantiate the kv map types above, all keys and values must be
 // convertible to msgpack

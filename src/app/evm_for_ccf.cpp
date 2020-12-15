@@ -6,11 +6,13 @@
 #include "ethereum_state.h"
 #include "ethereum_transaction.h"
 #include "tables.h"
+#include "jsonrpc.h"
 
 // CCF
 #include "ds/hash.h"
-#include "node/rpc/nodeinterface.h"
-#include "node/rpc/userfrontend.h"
+#include "enclave/app_interface.h"
+#include "node/rpc/user_frontend.h"
+#include "node/quote.h"
 #include "rpc_types.h"
 
 // eEVM
@@ -21,7 +23,7 @@
 #include <eEVM/util.h>
 
 // STL/3rd-party
-#include <msgpack-c/msgpack.hpp>
+#include <msgpack/msgpack.hpp>
 
 namespace evm4ccf
 {
@@ -33,95 +35,162 @@ namespace evm4ccf
   //
   // RPC handler class
   //
-  class EVMForCCFFrontend : public UserRpcFrontend
+  class EVMHandlers : public UserEndpointRegistry
   {
     tables::Accounts accounts;
-    tables::Storage& storage;
-    tables::Results& tx_results;
+    tables::Storage storage;
+    tables::Results tx_results;
 
-    EthereumState make_state(Store::Tx& tx)
+
+    EthereumState make_state(kv::Tx& tx)
     {
       return EthereumState(accounts.get_views(tx), tx.get_view(storage));
     }
 
     void install_standard_rpcs()
     {
-      auto call = [this](RequestArgs& args) {
-        CallerId caller_id = args.caller_id;
-        Store::Tx& tx = args.tx;
-        ethrpc::Call::Params cp = args.params;
+      auto call = [this](ccf::EndpointContext& args) {
+        kv::Tx& tx = args.tx;
+        const auto body_j =
+          nlohmann::json::parse(args.rpc_ctx->get_request_body());
+        auto cl = body_j.get<rpcparams::Call>();
 
-        if (!cp.call_data.to.has_value())
+        if (!cl.call_data.to.has_value())
         {
-          return jsonrpc::error(
-            jsonrpc::StandardErrorCodes::INVALID_PARAMS, "Missing 'to' field");
+          args.rpc_ctx->set_response_status(HTTP_STATUS_BAD_REQUEST);
+          args.rpc_ctx->set_response_header(
+            http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+          auto error = nlohmann::json("Missing 'to' field");
+          args.rpc_ctx->set_response_body(
+            jsonrpc::error_response(0, error).dump()
+          );
+          return;
         }
 
         auto es = make_state(tx);
 
-        const auto e = run_in_evm(cp.call_data, es).first;
+        const auto e = run_in_evm(cl.call_data, es).first;
 
         if (e.er == ExitReason::returned || e.er == ExitReason::halted)
         {
           // Call should have no effect so we don't commit it.
           // Just return the result.
-          return jsonrpc::success(to_hex_string(e.output));
+          args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
+          args.rpc_ctx->set_response_header(
+            http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+          auto result = nlohmann::json(to_hex_string(e.output));
+          args.rpc_ctx->set_response_body(
+            jsonrpc::result_response(0, result).dump()
+            );
+          return;
         }
         else
         {
-          return jsonrpc::error(
-            jsonrpc::StandardErrorCodes::INTERNAL_ERROR, e.exmsg);
+          args.rpc_ctx->set_response_status(HTTP_STATUS_INTERNAL_SERVER_ERROR);
+          args.rpc_ctx->set_response_header(
+            http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+          auto error = nlohmann::json(e.exmsg);
+          args.rpc_ctx->set_response_body(
+            jsonrpc::error_response(0, error).dump()
+          );
+          return;
         }
       };
 
-      auto get_balance = [this](Store::Tx& tx, const nlohmann::json& params) {
-        rpcparams::AddressWithBlock ab = params;
-        if (ab.block_id != "latest")
+      auto get_balance = [this](ccf::EndpointContext& args) {
+        kv::Tx& tx = args.tx;
+        const auto body_j = nlohmann::json::parse(args.rpc_ctx->get_request_body());
+        auto gb = body_j.get<rpcparams::AddressWithBlock>();
+        if (gb.block_id != "latest")
         {
-          return jsonrpc::error(
-            jsonrpc::StandardErrorCodes::INVALID_PARAMS,
-            "Can only request latest block");
+          args.rpc_ctx->set_response_status(HTTP_STATUS_BAD_REQUEST);
+          args.rpc_ctx->set_response_header(
+            http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+          auto error = nlohmann::json("Can only request latest block");
+          args.rpc_ctx->set_response_body(
+            jsonrpc::error_response(0, error).dump()
+          );
+          return;
         }
 
         auto es = make_state(tx);
 
-        const auto account_state = es.get(ab.address);
-        return jsonrpc::success(to_hex_string(account_state.acc.get_balance()));
+        const auto account_state = es.get(gb.address);
+
+        // Return success HTTP response with the result json
+        args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
+        args.rpc_ctx->set_response_header(
+          http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+        auto result = nlohmann::json(to_hex_string(account_state.acc.get_balance()));
+        args.rpc_ctx->set_response_body(
+          jsonrpc::result_response(0, result).dump()
+          );
       };
 
-      auto get_code = [this](Store::Tx& tx, const nlohmann::json& params) {
-        rpcparams::AddressWithBlock ab = params;
-        if (ab.block_id != "latest")
+      auto get_code = [this](ccf::EndpointContext& args) {
+        kv::Tx& tx = args.tx;
+        const auto body_j = nlohmann::json::parse(args.rpc_ctx->get_request_body());
+        auto gc = body_j.get<rpcparams::AddressWithBlock>();
+        if (gc.block_id != "latest")
         {
-          return jsonrpc::error(
-            jsonrpc::StandardErrorCodes::INVALID_PARAMS,
-            "Can only request latest block");
+          args.rpc_ctx->set_response_status(HTTP_STATUS_BAD_REQUEST);
+          args.rpc_ctx->set_response_header(
+            http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+          auto error = nlohmann::json("Can only request latest block");
+          args.rpc_ctx->set_response_body(
+            jsonrpc::error_response(0, error).dump()
+          );
+          return;
         }
 
         auto es = make_state(tx);
 
-        const auto account_state = es.get(ab.address);
-        return jsonrpc::success(to_hex_string(account_state.acc.get_code()));
+        const auto account_state = es.get(gc.address);
+
+        // Return success HTTP response with the result json
+        args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
+        args.rpc_ctx->set_response_header(
+          http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+        auto result = nlohmann::json(to_hex_string(account_state.acc.get_code()));
+        args.rpc_ctx->set_response_body(
+          jsonrpc::result_response(0, result).dump()
+          );
       };
 
-      auto get_transaction_count =
-        [this](Store::Tx& tx, const nlohmann::json& params) {
-          rpcparams::GetTransactionCount gtcp = params;
-          if (gtcp.block_id != "latest")
+      auto get_transaction_count = [this](ccf::EndpointContext& args) {
+          const auto body_j = 
+            nlohmann::json::parse(args.rpc_ctx->get_request_body());
+          auto gtc = body_j.get<rpcparams::GetTransactionCount>();
+          if (gtc.block_id != "latest")
           {
-            return jsonrpc::error(
-              jsonrpc::StandardErrorCodes::INVALID_PARAMS,
-              "Can only request latest block");
+            args.rpc_ctx->set_response_status(HTTP_STATUS_BAD_REQUEST);
+            args.rpc_ctx->set_response_header(
+              http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+            auto error = nlohmann::json("Can only request latest block");
+            args.rpc_ctx->set_response_body(
+              jsonrpc::error_response(0, error).dump()
+            );
+            return;
           }
 
-          auto es = make_state(tx);
-          auto account_state = es.get(gtcp.address);
+          auto es = make_state(args.tx);
+          auto account_state = es.get(gtc.address);
 
-          return jsonrpc::success(to_hex_string(account_state.acc.get_nonce()));
+          // Return success HTTP response with the result json
+          args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
+          args.rpc_ctx->set_response_header(
+            http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+          auto result = nlohmann::json(to_hex_string(account_state.acc.get_nonce()));
+          args.rpc_ctx->set_response_body(
+            jsonrpc::result_response(0, result).dump()
+            );
+          return;
         };
 
-      auto send_raw_transaction = [this](RequestArgs& args) {
-        rpcparams::SendRawTransaction srtp = args.params;
+      auto send_raw_transaction = [this](ccf::EndpointContext& args) {
+        const auto body_j =
+          nlohmann::json::parse(args.rpc_ctx->get_request_body());
+        auto srtp = body_j.get<rpcparams::SendRawTransaction>();
 
         eevm::rlp::ByteString in = eevm::to_bytes(srtp.raw_transaction);
 
@@ -130,18 +199,95 @@ namespace evm4ccf
         rpcparams::MessageCall tc;
         eth_tx.to_transaction_call(tc);
 
-        return execute_transaction(args.caller_id, tc, args.tx);
+        auto tx_result = execute_transaction(args.caller_id, tc, args.tx);
+
+        if (!tx_result.first) {
+          args.rpc_ctx->set_response_status(HTTP_STATUS_INTERNAL_SERVER_ERROR);
+          args.rpc_ctx->set_response_header(
+            http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+          args.rpc_ctx->set_response_body(
+            jsonrpc::error_response(0, tx_result.second).dump()
+          );
+          return;
+        }
+
+        // Return success HTTP response with the result json
+        args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
+        args.rpc_ctx->set_response_header(
+          http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+        args.rpc_ctx->set_response_body(
+          jsonrpc::result_response(0, tx_result.second).dump()
+          );
+        return;
       };
 
-      auto send_transaction = [this](RequestArgs& args) {
-        rpcparams::SendTransaction stp = args.params;
+      auto send_transaction = [this](ccf::EndpointContext& args) {
+        const auto body_j =
+          nlohmann::json::parse(args.rpc_ctx->get_request_body());
+        auto stp = body_j.get<rpcparams::SendTransaction>();
 
-        return execute_transaction(args.caller_id, stp.call_data, args.tx);
+        auto tx_result = execute_transaction(args.caller_id, stp.call_data, args.tx);
+
+        if (!tx_result.first) {
+          args.rpc_ctx->set_response_status(HTTP_STATUS_INTERNAL_SERVER_ERROR);
+          args.rpc_ctx->set_response_header(
+            http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+          args.rpc_ctx->set_response_body(
+            jsonrpc::error_response(0, tx_result.second).dump()
+          );
+          return;
+        }
+
+        // Return success HTTP response with the result json
+        args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
+        args.rpc_ctx->set_response_header(
+          http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+        args.rpc_ctx->set_response_body(
+          jsonrpc::result_response(0, tx_result.second).dump()
+          );
+        return;
+      };
+
+      auto send_privacy_policy = [this](ccf::EndpointContext& args) {
+        const auto body_j =
+          nlohmann::json::parse(args.rpc_ctx->get_request_body());
+        auto sppp = body_j.get<rpcparams::SendPrivacyPolicy>();
+
+        eevm::rlp::ByteString in = eevm::to_bytes(sppp.call_data);
+
+        EthereumTransactionWithSignature eth_tx(in);
+
+        rpcparams::MessageCall tc;
+        eth_tx.to_transaction_call(tc);
+
+        auto tx_result = execute_transaction(args.caller_id, tc, args.tx);
+
+        if (!tx_result.first) {
+          args.rpc_ctx->set_response_status(HTTP_STATUS_INTERNAL_SERVER_ERROR);
+          args.rpc_ctx->set_response_header(
+            http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+          args.rpc_ctx->set_response_body(
+            jsonrpc::error_response(0, tx_result.second).dump()
+          );
+          return;
+        }
+
+        // Return success HTTP response with the result json
+        args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
+        args.rpc_ctx->set_response_header(
+          http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+        args.rpc_ctx->set_response_body(
+          jsonrpc::result_response(0, tx_result.second).dump()
+          );
+        return;
+
       };
 
       auto get_transaction_receipt =
-        [this](Store::Tx& tx, const nlohmann::json& params) {
-          rpcparams::GetTransactionReceipt gtrp = params;
+        [this](ccf::EndpointContext& args) {
+          kv::Tx& tx = args.tx;
+          const auto body_j = nlohmann::json::parse(args.rpc_ctx->get_request_body());
+          auto gtrp = body_j.get<rpcparams::GetTransactionReceipt>();
 
           const TxHash& tx_hash = gtrp.tx_hash;
 
@@ -168,31 +314,81 @@ namespace evm4ccf
             response->status = 1;
           }
 
-          return jsonrpc::success(response);
+          // Return success HTTP response with the result json
+          args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
+          args.rpc_ctx->set_response_header(
+            http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+          args.rpc_ctx->set_response_body(
+            jsonrpc::result_response(0, response).dump()
+            );
+          return;
         };
 
-      install(ethrpc::Call::name, call, Read);
-      install(ethrpc::GetBalance::name, get_balance, Read);
-      install(ethrpc::GetCode::name, get_code, Read);
-      install(ethrpc::GetTransactionCount::name, get_transaction_count, Read);
-      install(
-        ethrpc::GetTransactionReceipt::name, get_transaction_receipt, Read);
-      install(ethrpc::SendRawTransaction::name, send_raw_transaction, Write);
-      install(ethrpc::SendTransaction::name, send_transaction, Write);
+      auto get_transaction_count_test =
+        [this](kv::Tx& tx, const nlohmann::json& params) {
+          auto gtcp = params.get<ethrpc::GetTransactionCountTest::In>();
+
+          if (gtcp.block_id != "latest")
+          {
+            return ccf::make_error(
+              HTTP_STATUS_BAD_REQUEST,
+              "Can only request latest block");
+          }
+
+          auto es = make_state(tx);
+          auto account_state = es.get(gtcp.address);
+
+          return ccf::make_success(ethrpc::GetTransactionCountTest::Out{account_state.acc.get_nonce()});
+        };
+
+      // Because CCF OpenAPI json module do not support uint256, thus do not use  
+      // ccf::json_adapter(call) or add_auto_schema(...)
+      make_endpoint(ethrpc::Call::name, HTTP_GET, call)
+        .install();
+
+      make_endpoint(ethrpc::GetBalance::name, HTTP_GET, get_balance)
+        .install();
+
+      make_endpoint(ethrpc::GetCode::name, HTTP_GET, get_code)
+        .install();
+
+      make_endpoint(ethrpc::GetTransactionCount::name, HTTP_GET, get_transaction_count)
+        .install();
+
+      make_endpoint(ethrpc::GetTransactionReceipt::name, HTTP_GET, get_transaction_receipt)
+        .install();
+
+      make_endpoint(ethrpc::SendRawTransaction::name, HTTP_POST, send_raw_transaction)
+        .install();
+
+      make_endpoint(ethrpc::SendTransaction::name, HTTP_POST, send_transaction)
+        .install();
+
+      make_endpoint(ethrpc::SendPrivacyPolicy::name, HTTP_POST, send_privacy_policy)
+        .install();
+
+      make_endpoint("eth_getTransactionCount_Test", HTTP_GET, ccf::json_adapter(get_transaction_count_test))
+        .set_auto_schema<ethrpc::GetTransactionCountTest>()
+        .install();
+
     }
 
   public:
+
     // SNIPPET_START: initialization
-    EVMForCCFFrontend(NetworkTables& nwt, AbstractNotifier& notifier) :
-      UserRpcFrontend(*nwt.tables),
+
+    EVMHandlers(ccf::NetworkTables& nwt, ccfapp::AbstractNodeContext& context):
+      UserEndpointRegistry(nwt),
       accounts{
-        tables.create<tables::Accounts::Balances>("eth.account.balance"),
-        tables.create<tables::Accounts::Codes>("eth.account.code"),
-        tables.create<tables::Accounts::Nonces>("eth.account.nonce")},
-      storage(tables.create<tables::Storage>("eth.storage")),
-      tx_results(tables.create<tables::Results>("eth.txresults"))
+        tables::Accounts::Balances("eth.account.balance"),
+        tables::Accounts::Codes("eth.account.code"),
+        tables::Accounts::Nonces("eth.account.nonce"),
+      },
+      storage("eth.storage"),
+      tx_results("eth.txresults")
     // SNIPPET_END: initialization
     {
+      context.get_historical_state();
       install_standard_rpcs();
     }
 
@@ -262,8 +458,9 @@ namespace evm4ccf
     pair<bool, nlohmann::json> execute_transaction(
       CallerId caller_id,
       const rpcparams::MessageCall& call_data,
-      Store::Tx& tx)
+      kv::Tx& tx)
     {
+      LOG_INFO_FMT("Caller_id is {}", caller_id);
       auto es = make_state(tx);
 
       VectorLogHandler vlh;
@@ -272,8 +469,7 @@ namespace evm4ccf
 
       if (exec_result.er == ExitReason::threw)
       {
-        return jsonrpc::error(
-          jsonrpc::StandardErrorCodes::INTERNAL_ERROR, exec_result.exmsg);
+        return std::make_pair(HTTP_STATUS_INTERNAL_SERVER_ERROR, exec_result.exmsg);
       }
 
       auto results_view = tx.get_view(tx_results);
@@ -287,7 +483,7 @@ namespace evm4ccf
 
       results_view->put(tx_hash, tx_result);
 
-      return jsonrpc::success(eevm::to_hex_string_fixed(tx_hash));
+      return std::make_pair(true, eevm::to_hex_string_fixed(tx_hash));
     }
 
     static std::tuple<ExecResult, TxHash, Address> execute_transaction(
@@ -326,16 +522,40 @@ namespace evm4ccf
       return std::make_tuple(
         exec_result, tx_hash, account_state.acc.get_address());
     }
-  }; // namespace evm4ccf
+
+  }; // class EVMHandlers
+
+  class EVM : public ccf::UserRpcFrontend
+  {
+  private:
+    EVMHandlers evm_handlers;
+
+  public:
+    EVM(ccf::NetworkTables& network, ccfapp::AbstractNodeContext& context) :
+      ccf::UserRpcFrontend(*network.tables, evm_handlers),
+      evm_handlers(network, context)
+    {}
+
+    void open() override
+    {
+      ccf::UserRpcFrontend::open();
+      evm_handlers.openapi_info.title = "CCF Homestead EVM App";
+      evm_handlers.openapi_info.description =
+        "This CCF Homestead EVM app implements a simple EVM";
+    }
+  }; // class EVM
+
 } // namespace evm4ccf
+
+
 
 namespace ccfapp
 {
   // SNIPPET_START: rpc_handler
-  std::shared_ptr<enclave::RpcHandler> get_rpc_handler(
-    ccf::NetworkTables& nwt, ccf::AbstractNotifier& notifier)
+  std::shared_ptr<ccf::UserRpcFrontend> get_rpc_handler(
+    ccf::NetworkTables& nwt, ccfapp::AbstractNodeContext& context)
   {
-    return std::make_shared<evm4ccf::EVMForCCFFrontend>(nwt, notifier);
+    return evm4ccf::make_shared<evm4ccf::EVM>(nwt, context);
   }
   // SNIPPET_END: rpc_handler
 } // namespace ccfapp

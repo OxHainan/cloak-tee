@@ -1,16 +1,13 @@
-# Copyright (c) Microsoft Corporation. All rights reserved.
-# Licensed under the MIT License.
 import json
 import os
 import web3
 
 from utils import *
-import e2e_args
-import infra.ccf
+import ccf.clients
 import provider
+import ccf_network_config as config
 
 from loguru import logger as LOG
-
 
 class EvmTestContract:
     def __init__(self, contract):
@@ -42,77 +39,70 @@ def read_math_library_from_file():
     return read_contract_from_file(file_path, "EvmTest.sol:Math")
 
 
-def test_deploy(network, args):
+def test_deploy(ccf_client):
     math_abi, math_bin = read_math_library_from_file()
     evmtest_abi, evmtest_bin = read_evmtest_contract_from_file()
-    primary, term = network.find_primary()
 
-    with primary.user_client(format="json") as ccf_client:
-        w3 = web3.Web3(provider.CCFProvider(ccf_client))
+    w3 = web3.Web3(provider.CCFProvider(ccf_client))
 
-        owner = Caller(web3.Account.create(), w3)
+    owner = Caller(web3.Account.create(), w3)
 
-        LOG.info("Library deployment")
-        math_spec = w3.eth.contract(abi=math_abi, bytecode=math_bin)
-        deploy_receipt = owner.send_signed(math_spec.constructor())
-        network.math_library_address = deploy_receipt.contractAddress
-        LOG.info("math_library_address: " + network.math_library_address)
+    LOG.info("Library deployment")
+    math_spec = w3.eth.contract(abi=math_abi, bytecode=math_bin)
 
-        _ph = w3.toHex(w3.sha3(text="EvmTest.sol:Math"))
+    # deploy_receipt = owner.sendPrivacyPolicy(math_spec.constructor())
 
-        LOG.info("math_library_placeholder: " + "__$"+_ph[2:36] + "$__")
+    deploy_receipt = owner.send_signed(math_spec.constructor())
+    ccf_client.math_library_address = deploy_receipt.contractAddress
+    LOG.info("math_library_address: " + ccf_client.math_library_address)
 
-        LOG.info("Contract deployment")
+    _ph = w3.toHex(w3.sha3(text="EvmTest.sol:Math"))
 
-        evmtest_bin = evmtest_bin.replace(
-            "__$"+_ph[2:36] + "$__", network.math_library_address[2:])
+    LOG.info("math_library_placeholder: " + "__$"+_ph[2:36] + "$__")
 
-        evmtest_spec = w3.eth.contract(abi=evmtest_abi, bytecode=evmtest_bin)
-        deploy_receipt = owner.send_signed(
-            evmtest_spec.constructor(10000, [11, 12, 13]))
+    LOG.info("Contract deployment")
 
-        network.evmtest_contract_address = deploy_receipt.contractAddress
-        network.owner_account = owner.account
+    evmtest_bin = evmtest_bin.replace(
+        "__$"+_ph[2:36] + "$__", ccf_client.math_library_address[2:])
 
-    return network
+    evmtest_spec = w3.eth.contract(abi=evmtest_abi, bytecode=evmtest_bin)
+    deploy_receipt = owner.send_signed(
+        evmtest_spec.constructor(10000, [11, 12, 13]))
+
+    ccf_client.evmtest_contract_address = deploy_receipt.contractAddress
+    ccf_client.owner_account = owner.account
+
+    return ccf_client
 
 
-def test_get_sum(network, args):
+def test_get_sum(ccf_client):
     evmtest_abi, evmtest_bin = read_evmtest_contract_from_file()
-    primary, term = network.find_primary()
 
-    with primary.user_client(format="json") as ccf_client:
-        LOG.info(f"ccf_client: {ccf_client.name}")
-        w3 = web3.Web3(provider.CCFProvider(ccf_client))
+    LOG.info(f"ccf_client: {ccf_client.name}")
+    w3 = web3.Web3(provider.CCFProvider(ccf_client))
 
-        evmtest_contract = EvmTestContract(
-            w3.eth.contract(abi=evmtest_abi,
-                            address=network.evmtest_contract_address)
-        )
+    evmtest_contract = EvmTestContract(
+        w3.eth.contract(abi=evmtest_abi,
+                        address=ccf_client.evmtest_contract_address)
+    )
 
-        owner = Caller(network.owner_account, w3)
+    owner = Caller(ccf_client.owner_account, w3)
 
-        LOG.info("Call getSum of EvmTest")
-        LOG.info(evmtest_contract.get_sum(owner, 11, 22))
-        assert evmtest_contract.get_sum(owner, 11, 22) == 33
+    LOG.info("Call getSum of EvmTest")
+    LOG.info(evmtest_contract.get_sum(owner, 11, 22))
+    assert evmtest_contract.get_sum(owner, 11, 22) == 33
 
-    return network
-
-
-def run(args):
-    hosts = ["localhost", "localhost"]
-
-    with infra.ccf.network(
-        hosts, args.build_dir, args.debug_nodes, args.perf_nodes, pdb=args.pdb
-    ) as network:
-        network.start_and_join(args)
-
-        network = test_deploy(network, args)
-        network = test_get_sum(network, args)
 
 
 if __name__ == "__main__":
-    args = e2e_args.cli_args()
-    args.package = "libevm4ccf"
 
-    run(args)
+    ccf_client = ccf.clients.CCFClient(
+        config.host, 
+        config.port, 
+        config.ca, 
+        config.cert, 
+        config.key
+        )
+    
+    test_deploy(ccf_client)
+    test_get_sum(ccf_client)

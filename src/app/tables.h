@@ -7,7 +7,7 @@
 
 // CCF
 #include "ds/hash.h"
-#include "enclave/appinterface.h"
+#include "enclave/app_interface.h"
 
 // eEVM
 #include <eEVM/account.h>
@@ -53,14 +53,14 @@ namespace evm4ccf
   {
     struct Accounts
     {
-      using Balances = ccf::Store::Map<eevm::Address, uint256_t>;
-      Balances& balances;
+      using Balances = kv::Map<eevm::Address, uint256_t>;
+      Balances balances;
 
-      using Codes = ccf::Store::Map<eevm::Address, eevm::Code>;
-      Codes& codes;
+      using Codes = kv::Map<eevm::Address, eevm::Code>;
+      Codes codes;
 
-      using Nonces = ccf::Store::Map<eevm::Address, eevm::Account::Nonce>;
-      Nonces& nonces;
+      using Nonces = kv::Map<eevm::Address, eevm::Account::Nonce>;
+      Nonces nonces;
 
       struct Views
       {
@@ -69,15 +69,15 @@ namespace evm4ccf
         Nonces::TxView* nonces;
       };
 
-      Views get_views(ccf::Store::Tx& tx)
+      Views get_views(kv::Tx& tx)
       {
         return {tx.get_view(balances), tx.get_view(codes), tx.get_view(nonces)};
       }
     };
 
     using StorageKey = std::pair<eevm::Address, uint256_t>;
-    using Storage = ccf::Store::Map<StorageKey, uint256_t>;
+    using Storage = kv::Map<StorageKey, uint256_t>;
 
-    using Results = ccf::Store::Map<TxHash, TxResult>;
+    using Results = kv::Map<TxHash, TxResult>;
   } // namespace tables
 } // namespace evm4ccf

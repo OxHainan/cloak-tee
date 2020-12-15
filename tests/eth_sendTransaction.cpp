@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 #include "ds/logger.h"
-#include "enclave/appinterface.h"
+#include "enclave/app_interface.h"
 #include "shared.h"
 
 #include <doctest/doctest.h>
@@ -176,7 +176,7 @@ TEST_CASE("SendTransaction0" * doctest::test_suite("transactions"))
   Store& tables = *nwt.tables;
   auto cert = setup_tables(tables);
   Ethereum frontend = ccfapp::get_rpc_handler(nwt, stubn);
-  jsonrpc::SeqNo sn = 0;
+  ccf::SeqNo sn = 0;
 
   const auto compiled = read_bytecode("Call2");
 

@@ -137,7 +137,7 @@ nlohmann::json do_rpc(
   auto response = j.dump();
   INFO("Response: " << response);
 
-  if (j.find(std::string(jsonrpc::ERR)) != j.end())
+  if (j.find(std::string(serdes::ERR)) != j.end())
   {
     REQUIRE_FALSE(success);
   }
