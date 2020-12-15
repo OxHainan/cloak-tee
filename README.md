@@ -1,12 +1,6 @@
-| | Link |
-|- |- |
-| Community Chat | [![Gitter](https://badges.gitter.im/MSRC-CCF/EVM-for-CCF.svg)](https://gitter.im/MSRC-CCF/EVM-for-CCF?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge) |
-| Continuous Integration | [![Build Status](https://dev.azure.com/MSRC-CCF/CCF/_apis/build/status/EVM-for-CCF%20GitHub%20CI?branchName=master)](https://dev.azure.com/MSRC-CCF/CCF/_build/latest?definitionId=5&branchName=master) |
-| Documentation | [![Documentation](https://dev.azure.com/MSRC-CCF/CCF/_apis/build/status/CCF%20GitHub%20Pages?branchName=master)](https://microsoft.github.io/EVM-for-CCF/introduction.html) |
-
 # EVM for CCF
 
-This repository contains a sample application for the Confidential Consortium Framework ([CCF](https://github.com/Microsoft/CCF)) running an Ethereum Virtual Machine ([EVM](https://github.com/Microsoft/eEVM/)). This demonstrates how to build CCF from an external project, while also showcasing CCF's deterministic commits, dynamic confidentiality, and high performance.
+This repository is based on [EVM-for-CCF](https://github.com/microsoft/EVM-for-CCF). It contains a sample application for the Confidential Consortium Framework ([CCF](https://github.com/Microsoft/CCF)) running an Ethereum Virtual Machine ([EVM](https://github.com/Microsoft/eEVM/)).
 
 The app exposes API endpoints based on the [Ethereum JSON RPC](https://github.com/ethereum/wiki/wiki/JSON-RPC) specification (eg - `eth_sendRawTransaction`, `eth_getTransactionReceipt`), so some standard Ethereum tooling can be reused by merely modifying the transport layer to communicate with CCF.
 
@@ -15,50 +9,44 @@ The app exposes API endpoints based on the [Ethereum JSON RPC](https://github.co
 | File/folder       | Description                                |
 |-------------------|--------------------------------------------|
 | `src`             | Source code for the EVM4CCF app            |
-| `tests`           | Unit tests for the app's key functionality |
 | `samples`         | End-to-end tests, driving an EVM4CCF instance with standard web3.py tools|
 
 ## Prerequisites
 
-This sample requires an SGX-enabled VM with CCF's dependencies. Installation of these requirements is described in [CCF's documentation](https://microsoft.github.io/CCF/quickstart/requirements.html#environment-setup).
+This sample requires an developing environment of CCF's application. Installation of these requirements is described in [CCF's documentation](https://microsoft.github.io/CCF/ccf-0.15.2/quickstart/build_setup.html).
 
 ## Setup
 
 ```
-git clone --recurse-submodules https://github.com/microsoft/EVM-for-CCF.git
-cd EVM-for-CCF
+git clone --recurse-submodules https://github.com/PlyTools/cloak-evm.git
+cd cloak-evm
 mkdir build
 cd build
-cmake .. -GNinja
+cmake .. -GNinja -DTARGET=virtual -DCMAKE_BUILD_TYPE=Debug -L
 ninja
 ```
 
 ## Running the sample
 
-To run the full test suite:
+To run the test case:
 
 ```
 cd build
-./tests.sh -VV
+/opt/ccf-0.15.2/bin/sandbox.sh -v -p libevm4ccf.virtual.so
+
+export EVM4CCF_HOME=<the path to evm4ccf>
+export CONTRACTS_DIR=${EVM4CCF_HOME}//tests/contracts
+python3 "${EVM4CCF_HOME}/samples/evmtest_deploy_and_transfer.py"
 ```
 
 To launch a local instance for manual testing:
 
 ```
 cd build
-./tests.sh -N
-source env/bin/activate
-export PYTHONPATH=../CCF/tests
-python ../CCF/tests/start_network.py -g ../CCF/src/runtime_config/gov.lua -p libevm4ccf
-
-  ...
-  Started CCF network with the following nodes:
-    Node [ 0] = 127.163.125.22:40718
-    Node [ 1] = 127.40.220.213:32917
-    Node [ 2] = 127.42.144.73:40275
+/opt/ccf-0.15.2/bin/sandbox.sh -v -p libevm4ccf.virtual.so -d 0
 ```
 
-User transactions can then be submitted as described in the [CCF documentation](https://microsoft.github.io/CCF/users/issue_commands.html), or via [web3.py](https://web3py.readthedocs.io/) with the `CCFProvider` class defined in `samples/provider.py`.
+User transactions can then be submitted as described in the [CCF documentation](https://microsoft.github.io/CCF/ccf-0.15.2/users/issue_commands.html#issuing-commands), or via [web3.py](https://web3py.readthedocs.io/) with the `CCFProvider` class defined in `samples/provider.py`.
 
 ## Key concepts
 
