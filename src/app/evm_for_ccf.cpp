@@ -97,6 +97,17 @@ namespace evm4ccf
         }
       };
 
+      auto get_chainId = [](ccf::EndpointContext& args) {
+          auto result =  nlohmann::json(to_hex_string(evm4ccf::current_chain_id));
+          args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
+          args.rpc_ctx->set_response_header(
+            http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+          args.rpc_ctx->set_response_body(
+            jsonrpc::result_response(0, result).dump()
+          );
+          return;
+      };
+
       auto get_balance = [this](ccf::EndpointContext& args) {
         kv::Tx& tx = args.tx;
         const auto body_j = nlohmann::json::parse(args.rpc_ctx->get_request_body());
@@ -283,6 +294,26 @@ namespace evm4ccf
 
       };
 
+      auto get_workOrderSubmit = [](ccf::EndpointContext& args) {
+        const auto body_j = 
+          nlohmann::json::parse(args.rpc_ctx->get_request_body());
+        auto sppp = body_j.get<rpcparams::WorkOrderSubmit>();
+
+        rpcresults::ReceiptWorkOrderResponse response = nullopt;
+        response->responseTimeoutMSecs = sppp.workOrder.responseTimeoutMSecs;
+        response->workOrderId = sppp.workOrder.workOrderId;
+        // response->status = 1;
+        // Return success HTTP response with the result json
+          args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
+          args.rpc_ctx->set_response_header(
+            http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+          args.rpc_ctx->set_response_body(
+            jsonrpc::result_response(0, response).dump()
+            );
+          return;
+          
+      };
+
       auto get_transaction_receipt =
         [this](ccf::EndpointContext& args) {
           kv::Tx& tx = args.tx;
@@ -349,6 +380,9 @@ namespace evm4ccf
       make_endpoint(ethrpc::GetBalance::name, HTTP_GET, get_balance)
         .install();
 
+      make_endpoint(ethrpc::GetChainId::name, HTTP_GET, get_chainId)
+        .install();
+
       make_endpoint(ethrpc::GetCode::name, HTTP_GET, get_code)
         .install();
 
@@ -358,6 +392,9 @@ namespace evm4ccf
       make_endpoint(ethrpc::GetTransactionReceipt::name, HTTP_GET, get_transaction_receipt)
         .install();
 
+      make_endpoint(ethrpc::WorkOrderSubmit::name, HTTP_GET, get_workOrderSubmit)
+        .install();
+        
       make_endpoint(ethrpc::SendRawTransaction::name, HTTP_POST, send_raw_transaction)
         .install();
 

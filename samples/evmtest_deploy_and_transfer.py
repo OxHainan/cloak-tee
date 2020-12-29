@@ -6,7 +6,7 @@ from utils import *
 import ccf.clients
 import provider
 import ccf_network_config as config
-
+import json
 from loguru import logger as LOG
 
 class EvmTestContract:
@@ -70,6 +70,7 @@ def test_deploy(ccf_client):
         evmtest_spec.constructor(10000, [11, 12, 13]))
 
     ccf_client.evmtest_contract_address = deploy_receipt.contractAddress
+    print(deploy_receipt.contractAddress)
     ccf_client.owner_account = owner.account
 
     return ccf_client
@@ -92,7 +93,29 @@ def test_get_sum(ccf_client):
     LOG.info(evmtest_contract.get_sum(owner, 11, 22))
     assert evmtest_contract.get_sum(owner, 11, 22) == 33
 
-
+def get_balance(ccf_client):
+    w3 = web3.Web3(provider.CCFProvider(ccf_client))
+    owner = Caller(web3.Account.create(), w3)
+    alice = Caller(web3.Account.create(), w3)
+    balance = w3.eth.getBalance(owner.account.address)
+    balance1 = w3.eth.getBalance(alice.account.address)
+    print(balance)
+    print(balance1)
+    params = {}
+    params['to'] = alice.account.address
+    params['from'] = owner.account.address
+    params['gas'] = 0
+    params['value'] = w3.toWei(18, "ether")
+    txhash = w3.eth.sendTransaction(params)
+    balance1 = w3.eth.getBalance(alice.account.address)
+    count = w3.eth.getTransactionCount('0x03901A8132E3Ac1a32e9eE9fC520A53152DF0A40')
+    receipt = w3.eth.getTransactionReceipt(txhash.hex())
+    # text = json.loads(receipt)
+    # print(receipt)
+    print(count)
+    print(balance)
+    chaind = w3.eth.chainId
+    print(chaind)
 
 if __name__ == "__main__":
 
@@ -103,6 +126,6 @@ if __name__ == "__main__":
         config.cert, 
         config.key
         )
-    
-    test_deploy(ccf_client)
-    test_get_sum(ccf_client)
+    get_balance(ccf_client)
+    # test_deploy(ccf_client)
+    # test_get_sum(ccf_client)

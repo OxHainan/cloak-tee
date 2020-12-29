@@ -1,7 +1,7 @@
 import json
 import os
 import web3
-
+import ccf
 from utils import *
 import provider
 import ccf_network_config as config
@@ -71,7 +71,7 @@ def test_deploy(ccf_client):
 
     LOG.info("Contract deployment")
     erc20_spec = w3.eth.contract(abi=erc20_abi, bytecode=erc20_bin)
-    deploy_receipt = owner.send_signed(erc20_spec.constructor(10000))
+    deploy_receipt = owner.send_signed(erc20_spec.constructor(100000))
 
     ccf_client.erc20_contract_address = deploy_receipt.contractAddress
     ccf_client.owner_account = owner.account
@@ -140,6 +140,24 @@ def test_transfers(ccf_client):
 
     return ccf_client
 
+def test(ccf_client):
+    erc20_abi, erc20_bin = read_erc20_contract_from_file()
+
+    LOG.info(f"ccf_client: {ccf_client.name}")
+    w3 = web3.Web3(provider.CCFProvider(ccf_client))
+    owner = Caller(ccf_client.owner_account, w3)
+    alice = Caller(web3.Account.create(), w3)
+    bob = Caller(web3.Account.create(), w3)
+    erc20_contract = ERC20Contract(
+        w3.eth.contract(abi=erc20_abi, address=ccf_client.erc20_contract_address)
+    )
+    
+    txHash = erc20_contract.transfer_tokens(owner, alice, 50)
+    total = erc20_contract.get_token_balance(alice)
+    receipt = w3.eth.getTransactionReceipt(txHash.transactionHash)
+    print(total)
+    print(receipt)
+    # print(json.dumps(txHash, sort_keys=True, indent=4, separators=(', ', ': '), ensure_ascii=False))
 
 if __name__ == "__main__":
     ccf_client = ccf.clients.CCFClient(
@@ -151,4 +169,5 @@ if __name__ == "__main__":
     )
 
     test_deploy(ccf_client)
-    test_transfers(ccf_client)
+    # test_transfers(ccf_client)
+    test(ccf_client)

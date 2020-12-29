@@ -214,6 +214,17 @@ namespace evm4ccf
       s.tx_hash = eevm::to_uint256(j[0]);
     }
 
+    inline void to_json(nlohmann::json& j, const WorkOrderSubmit& s) {
+      j = nlohmann::json::object();
+      j["responseTimeoutMSecs"] = eevm::to_hex_string(s.workOrder.responseTimeoutMSecs);
+      j["workOrderId"] = eevm::to_checksum_address(s.workOrder.workOrderId);
+    }
+
+    inline void from_json(const nlohmann::json& j,  WorkOrderSubmit& s) {
+      require_object(j);
+      s.workOrder.workOrderId = eevm::to_uint256(j["workOrderId"]);
+      s.workOrder.responseTimeoutMSecs = eevm::to_uint64(j["responseTimeoutMSecs"]);
+    }
     //
     inline void to_json(nlohmann::json& j, const SendTransaction& s)
     {
@@ -320,6 +331,26 @@ namespace evm4ccf
         s->logs = j["logs"].get<decltype(s->logs)>();
         array_from_hex_string(s->logs_bloom, j["logsBloom"]);
         s->status = eevm::to_uint256(j["status"]);
+      }
+    }
+
+    inline void to_json(nlohmann::json& j, const ReceiptWorkOrderResponse& s) {
+      if(!s.has_value()) {
+        j = nullptr;
+      } else {
+        j = nlohmann::json::object();
+        j["responseTimeoutMSecs"] = eevm::to_hex_string(s->responseTimeoutMSecs);
+        j["workOrderId"] = eevm::to_checksum_address(s->workOrderId);
+      }
+    }
+
+    inline void from_json(const nlohmann::json& j,  ReceiptWorkOrderResponse& s) {
+      if(j.is_null()) {
+        s = {};
+      } else {
+        require_object(j);
+        s->workOrderId = eevm::to_uint256(j["workOrderId"]);
+        s->responseTimeoutMSecs = eevm::to_uint64(j["responseTimeoutMSecs"]);
       }
     }
   } // namespace rpcresults

@@ -47,6 +47,15 @@ namespace evm4ccf
     BlockHash block_hash = {};
   };
 
+  struct WorkOrder 
+  {
+    uint64_t responseTimeoutMSecs = {};
+    ByteData payloadFormat = {};
+    ByteData resultUri = {};
+    ByteData notifyUri = {};
+    uint256_t workOrderId = {};
+  };
+
   inline bool operator==(const BlockHeader& l, const BlockHeader& r)
   {
     return l.number == r.number && l.difficulty == r.difficulty &&
@@ -105,6 +114,11 @@ namespace evm4ccf
     {
       ByteData call_data = {};
     };
+
+    struct WorkOrderSubmit 
+    {
+      WorkOrder workOrder = {};
+    };
   } // namespace rpcparams
 
   namespace rpcresults
@@ -126,8 +140,17 @@ namespace evm4ccf
       uint256_t status = {};
     };
 
+    struct WorkOrderReceipt
+    {
+      uint64_t responseTimeoutMSecs = {};
+      ByteData payloadFormat = {};
+      ByteData resultUri = {};
+      ByteData notifyUri = {};
+      eevm::Address workOrderId = {};
+    };
     // "A transaction receipt object, or null when no receipt was found"
     using ReceiptResponse = std::optional<TxReceipt>;
+    using ReceiptWorkOrderResponse = std::optional<WorkOrderReceipt>;
   } // namespace rpcresults
 
   template <class TTag, typename TParams, typename TResult>
@@ -170,8 +193,25 @@ namespace evm4ccf
     {
       static constexpr auto name = "eth_accounts";
     };
+    
     using GetAccounts =
       RpcBuilder<GetAccountsTag, void, std::vector<eevm::Address>>;
+    
+    struct GetChainIdTag 
+    { 
+      static constexpr auto name = "eth_chainId";
+    };
+
+    using GetChainId = 
+      RpcBuilder<GetChainIdTag, void, size_t>;
+
+    struct GetEstimateGasTag
+    {
+      static constexpr auto name = "eth_estimateGas";     
+    };
+    
+    using GetEstimateGas = 
+      RpcBuilder<GetEstimateGasTag, void, size_t>;
 
     struct GetBalanceTag
     {
@@ -248,6 +288,14 @@ namespace evm4ccf
       RpcBuilder<SendPrivacyPolicyTag, rpcparams::SendPrivacyPolicy, TxHash>;
     
 
+    struct WorkOrderSubmitTag
+    {
+      static constexpr auto name = "cloak_workOrderSubmit";
+    };
+    using WorkOrderSubmit = 
+      RpcBuilder<WorkOrderSubmitTag, rpcparams::WorkOrderSubmit, 
+      rpcresults::ReceiptWorkOrderResponse
+      >;
 
   } // namespace ethrpc
 } // namespace evm4ccf

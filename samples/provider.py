@@ -6,7 +6,7 @@ import web3
 import ccf.clients
 from loguru import logger as LOG
 import http
-
+import json
 class CCFProvider(web3.providers.BaseProvider):
     def __init__(self, ccf_client, logging=False):
         self.middlewares = []
@@ -16,6 +16,7 @@ class CCFProvider(web3.providers.BaseProvider):
 
         response = self.ccf_client.get("/app/api")
         self.supported_methods = response.body.json()["paths"]
+        # print(json.dumps(self.supported_methods, sort_keys=True, indent=4, separators=(', ', ': '), ensure_ascii=False))
 
     def disable_logging(self):
         pass
@@ -33,7 +34,7 @@ class CCFProvider(web3.providers.BaseProvider):
             params[0] = params[0].hex()
             
         response = self.ccf_client.call("/app"+http_path, params, http_verb)
-
+     
         if response.status_code != http.HTTPStatus.OK:
             LOG.warning("CCF fail to process HTTP request: "+str(response))
 

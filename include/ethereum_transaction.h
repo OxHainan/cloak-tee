@@ -68,15 +68,16 @@ namespace evm4ccf
       return v - pre_155_v_start;
     }
 
-    constexpr auto min_valid_v = 37u;
-    if (v < min_valid_v)
-    {
-      throw std::logic_error(fmt::format(
-        "Expected v to encode a valid chain ID (must be at least {}), but is "
-        "{}",
-        min_valid_v,
-        v));
-    }
+    // 20201229 测试chainId时此部分代码报错
+    // constexpr auto min_valid_v = 37u;
+    // if (v < min_valid_v)
+    // {
+    //   throw std::logic_error(fmt::format(
+    //     "Expected v to encode a valid chain ID (must be at least {}), but is "
+    //     "{}",
+    //     min_valid_v,
+    //     v));
+    // }
 
     const size_t rec_id = (v - post_155_v_start) % 2;
 
