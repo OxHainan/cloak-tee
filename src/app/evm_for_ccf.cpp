@@ -107,6 +107,35 @@ namespace evm4ccf
           );
           return;
       };
+      auto get_gasPrice = [](ccf::EndpointContext& args) {
+          auto result =  nlohmann::json(to_hex_string(0));
+          args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
+          args.rpc_ctx->set_response_header(
+            http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+          args.rpc_ctx->set_response_body(
+            jsonrpc::result_response(0, result).dump()
+          );
+          return;
+      };
+      auto get_estimateGas = [this](ccf::EndpointContext& args) {
+        kv::Tx& tx = args.tx;
+
+        const auto body_j =
+          nlohmann::json::parse(args.rpc_ctx->get_request_body());
+        auto stp = body_j.get<rpcparams::EstimateGas>();
+        auto es = make_state(tx);
+
+        auto tx_result = estimateGas(stp.call_data, es);
+        auto result =  nlohmann::json(to_hex_string(0));
+
+          args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
+          args.rpc_ctx->set_response_header(
+            http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+          args.rpc_ctx->set_response_body(
+            jsonrpc::result_response(0, result).dump()
+          );
+          return;
+      };
 
       auto get_balance = [this](ccf::EndpointContext& args) {
         kv::Tx& tx = args.tx;
@@ -382,10 +411,12 @@ namespace evm4ccf
 
       make_endpoint(ethrpc::GetChainId::name, HTTP_GET, get_chainId)
         .install();
-
+      make_endpoint(ethrpc::GetGasPrice::name, HTTP_GET, get_gasPrice)
+        .install();
       make_endpoint(ethrpc::GetCode::name, HTTP_GET, get_code)
         .install();
-
+      make_endpoint(ethrpc::GetEstimateGas::name, HTTP_GET, get_estimateGas)
+        .install();
       make_endpoint(ethrpc::GetTransactionCount::name, HTTP_GET, get_transaction_count)
         .install();
 
@@ -521,6 +552,16 @@ namespace evm4ccf
       results_view->put(tx_hash, tx_result);
 
       return std::make_pair(true, eevm::to_hex_string_fixed(tx_hash));
+    }
+
+    static ExecResult estimateGas(const rpcparams::MessageCall& call_data,EthereumState& es)
+    {
+      const auto [exec_result, _] = run_in_evm(call_data, es);
+      // if (exec_result.er == ExitReason::threw)
+      // {
+        return exec_result;
+      // }
+
     }
 
     static std::tuple<ExecResult, TxHash, Address> execute_transaction(

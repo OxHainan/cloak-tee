@@ -21,7 +21,7 @@
 namespace evm4ccf
 {
   using Balance = uint256_t;
-
+  using Result  = uint64_t;
   using BlockID = std::string;
   constexpr auto DefaultBlockID = "latest";
 
@@ -110,6 +110,11 @@ namespace evm4ccf
       MessageCall call_data = {};
     };
 
+    struct EstimateGas
+    {
+      MessageCall call_data = {};
+    };
+    
     struct SendPrivacyPolicy
     {
       ByteData call_data = {};
@@ -205,13 +210,21 @@ namespace evm4ccf
     using GetChainId = 
       RpcBuilder<GetChainIdTag, void, size_t>;
 
+    struct GetGasPriceTag 
+    { 
+      static constexpr auto name = "eth_gasPrice";
+    };
+
+    using GetGasPrice = 
+      RpcBuilder<GetGasPriceTag, void, size_t>;
+
     struct GetEstimateGasTag
     {
       static constexpr auto name = "eth_estimateGas";     
     };
     
     using GetEstimateGas = 
-      RpcBuilder<GetEstimateGasTag, void, size_t>;
+      RpcBuilder<GetEstimateGasTag, rpcparams::EstimateGas, Result>;
 
     struct GetBalanceTag
     {
