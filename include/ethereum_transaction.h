@@ -177,7 +177,7 @@ namespace evm4ccf
       value = tc.value;
       data = eevm::to_bytes(tc.data);
     }
-
+    
     EthereumTransaction(const eevm::rlp::ByteString& encoded)
     {
       auto tup = eevm::rlp::decode<

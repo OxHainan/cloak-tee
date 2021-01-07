@@ -24,6 +24,18 @@ namespace evm4ccf
         strtoul(stripped.substr(i * 2, 2).c_str(), nullptr, 16));
     }
   }
+  
+
+  template <typename T>
+    inline void from_to_str(
+      const nlohmann::json& j, const std::string& s, T& v
+    ) {
+      const auto it = j.find(s);
+      if(it == j.end() || it->is_null() ||
+        (it->is_string() && it->get<std::string>().empty())) 
+        return;
+      v = *it;
+    }
 
   template <typename T>
   inline void from_optional_hex_str(
@@ -61,7 +73,20 @@ namespace evm4ccf
     }
   }
 
-  //
+  template <typename T>
+  inline void from_array_to_object(
+      const nlohmann::json& j, const std::string& s, T&v
+  ) {
+    const auto it = j.find(s);
+    if(!it->is_null() && it != j.end()) {
+      require_array(*it);
+      auto tem = it->get<T>();
+      for(int i=0; i<tem.size(); i++) {
+        v.push_back(tem[i]);
+      }
+    }
+  }
+
   inline void to_json(nlohmann::json& j, const BlockHeader& s)
   {
     j = nlohmann::json::object();
@@ -87,10 +112,51 @@ namespace evm4ccf
     s.miner = eevm::to_uint256(j["miner"]);
     s.block_hash = eevm::to_uint256(j["hash"]);
   }
+  namespace policy
+  {
+    
+
+    inline void from_json(const nlohmann::json& j, Params &s) {
+      require_object(j);
+      from_to_str(j, "name", s.name);
+      from_to_str(j, "owner", s.owner);
+      from_to_str(j, "type", s.type);
+      return s;
+    }
+
+    inline void from_json(const nlohmann::json& j ,stateParams & s) {
+      require_object(j);
+      from_to_str(j, "name", s.name);
+      from_array_to_object(j, "keys", s.keys);
+      return s;
+    }
+
+    inline void from_json(const nlohmann::json& j ,Function & s) {
+      require_object(j);
+      from_to_str(j, "name", s.name);
+      from_to_str(j, "type", s.type);
+      from_array_to_object(j, "inputs", s.inputs);
+      from_array_to_object(j, "read", s.read);
+      from_array_to_object(j, "mutate", s.mutate);
+      from_array_to_object(j, "outputs", s.outputs);
+
+      return s;
+    }
+
+
+  }
 
   namespace rpcparams
   {
     //
+    inline void from_json(const nlohmann::json& j, Policy& s)
+    {
+      require_object(j);
+      from_to_str(j, "contract", s.contract);
+      // s.functions = j["functions"].get<Policy::Function>();
+      from_array_to_object(j, "states", s.states);
+      from_array_to_object(j, "functions", s.functions);
+    }
     inline void to_json(nlohmann::json& j, const MessageCall& s)
     {
       j = nlohmann::json::object();
@@ -251,17 +317,17 @@ namespace evm4ccf
     }
 
     //
-    inline void to_json(nlohmann::json& j, const SendPrivacyPolicy& s)
-    {
-      j = nlohmann::json::array();
-      j.push_back(s.call_data);
-    }
+    // inline void to_json(nlohmann::json& j, const SendPrivacyPolicy& s)
+    // {
+    //   j = nlohmann::json::array();
+    //   j.push_back(s.call_data);
+    // }
 
-    inline void from_json(const nlohmann::json& j, SendPrivacyPolicy& s)
-    {
-      require_array(j);
-      s.call_data = j[0];
-    }
+    // inline void from_json(const nlohmann::json& j, SendPrivacyPolicy& s)
+    // {
+    //   require_array(j);
+    //   s.call_data = j[0];
+    // }
 
     //
     inline void to_json(nlohmann::json& j, const SendRawTransaction& s)
@@ -274,6 +340,33 @@ namespace evm4ccf
     {
       require_array(j);
       s.raw_transaction = j[0];
+    }
+
+    
+    inline void to_json(nlohmann::json& j, const SendPrivacyPolicy& s)
+    {
+      j = nlohmann::json::object();
+      j["from"] = eevm::to_checksum_address(s.from);
+      j["codeHash"] = s.codeHash;
+      j["verifierAddr"] = eevm::to_checksum_address(s.verifierAddr);
+      j["policy"] = s.policy;
+    }
+
+    inline void from_json(const nlohmann::json& j, SendPrivacyPolicy& s)
+    {
+      require_object(j);
+
+      s.from = eevm::to_uint256(j["from"]);
+      auto codeHash_it = j.find("codeHash");
+      if(codeHash_it != j.end()) {
+        s.codeHash = *codeHash_it;
+      }
+      s.verifierAddr = eevm::to_uint256(j["verifierAddr"]);
+      // auto policy_it = j["policy"].get<rpcparams::Policy>();
+      auto policy_it = j.find("policy");
+      if(policy_it != j.end()) {
+        s.policy = *policy_it;
+      }
     }
   } // namespace rpcparams
 

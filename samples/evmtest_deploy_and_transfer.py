@@ -114,7 +114,7 @@ def get_balance(ccf_client):
     # print(receipt)
     print(count)
     print(balance)
-    chaind = w3.eth.chainId
+    chaind = w3.eth.estimateGas(params)
     print(chaind)
 
 if __name__ == "__main__":

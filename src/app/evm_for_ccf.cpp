@@ -7,7 +7,7 @@
 #include "ethereum_transaction.h"
 #include "tables.h"
 #include "jsonrpc.h"
-
+#include "utils.h"
 // CCF
 #include "ds/hash.h"
 #include "enclave/app_interface.h"
@@ -288,36 +288,39 @@ namespace evm4ccf
         return;
       };
 
-      auto send_privacy_policy = [this](ccf::EndpointContext& args) {
+      auto send_privacy_policy = [](ccf::EndpointContext& args) {
         const auto body_j =
           nlohmann::json::parse(args.rpc_ctx->get_request_body());
         auto sppp = body_j.get<rpcparams::SendPrivacyPolicy>();
+        auto p = nlohmann::json::parse(Utils::HexToBin(sppp.policy));
+        auto s = p.get<rpcparams::Policy>();
+        // eevm::rlp::ByteString in = eevm::to_bytes(s.functions);
+        // nlohmann::json json = nlohmann::json::from_bson(in);
+        // eevm::rlp::ByteString in = eevm::to_bytes(sppp.call_data);
 
-        eevm::rlp::ByteString in = eevm::to_bytes(sppp.call_data);
+        // EthereumTransactionWithSignature eth_tx(in);
 
-        EthereumTransactionWithSignature eth_tx(in);
+        // rpcparams::MessageCall tc;
+        // eth_tx.to_transaction_call(tc);
 
-        rpcparams::MessageCall tc;
-        eth_tx.to_transaction_call(tc);
+        // auto tx_result = execute_transaction(args.caller_id, tc, args.tx);
 
-        auto tx_result = execute_transaction(args.caller_id, tc, args.tx);
-
-        if (!tx_result.first) {
-          args.rpc_ctx->set_response_status(HTTP_STATUS_INTERNAL_SERVER_ERROR);
-          args.rpc_ctx->set_response_header(
-            http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
-          args.rpc_ctx->set_response_body(
-            jsonrpc::error_response(0, tx_result.second).dump()
-          );
-          return;
-        }
+        // if (!tx_result.first) {
+        //   args.rpc_ctx->set_response_status(HTTP_STATUS_INTERNAL_SERVER_ERROR);
+        //   args.rpc_ctx->set_response_header(
+        //     http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+        //   args.rpc_ctx->set_response_body(
+        //     jsonrpc::error_response(0, tx_result.second).dump()
+        //   );
+        //   return;
+        // }
 
         // Return success HTTP response with the result json
         args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
         args.rpc_ctx->set_response_header(
           http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
         args.rpc_ctx->set_response_body(
-          jsonrpc::result_response(0, tx_result.second).dump()
+          jsonrpc::result_response(0, s.functions[0].read[0].name).dump()
           );
         return;
 

@@ -63,6 +63,36 @@ namespace evm4ccf
       l.timestamp == r.timestamp && l.miner == r.miner &&
       l.block_hash == r.block_hash;
   }
+  namespace policy {
+    struct Params {
+      ByteData name = {};
+      ByteData type = {};
+      ByteData owner = {};
+    };
+
+    struct stateParams {
+      ByteData name = {};
+      std::vector<ByteData> keys = {};
+    };
+
+    struct Function {
+    public:
+      ByteData type;
+      ByteData name;
+      std::vector<Params> inputs;
+      std::vector<stateParams> read;
+      std::vector<stateParams> mutate;
+      std::vector<Params> outputs;
+
+      // Function(const eevm::rlp::ByteString& encoded) {
+      //   auto tup = eevm::rlp::decode<
+      //     eevm::rlp::ByteString,
+      //     eevm::rlp::ByteString,
+
+
+      // }
+    };
+  }
 
   namespace rpcparams
   {
@@ -75,6 +105,25 @@ namespace evm4ccf
       uint256_t value = 0;
       ByteData data = {};
       std::optional<ContractParticipants> private_for = std::nullopt;
+    };
+
+    struct Policy
+    {
+    public:
+      ByteData contract = {};
+      std::vector<policy::Params> states;
+      // ByteData states = {};
+      std::vector<policy::Function> functions;
+      // ByteData functions = {};
+      // Policy(const eevm::rlp::ByteString& encoded) {
+      //   auto tup = eevm::rlp::decode<
+      //     eevm::rlp::ByteString,
+      //     eevm::rlp::ByteString,
+      //     eevm::rlp::ByteString>(encoded);
+      //   contract = std::get<0>(tup);
+      //   states = std::get<1>(tup);
+      //   functions = std::get<2>(tup);
+      // }
     };
 
     struct AddressWithBlock
@@ -117,7 +166,10 @@ namespace evm4ccf
     
     struct SendPrivacyPolicy
     {
-      ByteData call_data = {};
+      eevm::Address from = {};
+      ByteData codeHash = {};
+      eevm::Address verifierAddr = {};
+      ByteData policy = {};
     };
 
     struct WorkOrderSubmit 
@@ -308,7 +360,8 @@ namespace evm4ccf
     using WorkOrderSubmit = 
       RpcBuilder<WorkOrderSubmitTag, rpcparams::WorkOrderSubmit, 
       rpcresults::ReceiptWorkOrderResponse
-      >;
+    >;
+
 
   } // namespace ethrpc
 } // namespace evm4ccf
