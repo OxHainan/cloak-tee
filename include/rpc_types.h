@@ -13,9 +13,10 @@
 #include <kv/map.h>
 #include <node/rpc/serdes.h>
 #include "jsonrpc.h"
-
+#include "../src/app/utils.h"
 // STL
 #include <array>
+#include "unordered_map"
 #include <vector>
 
 namespace evm4ccf
@@ -32,9 +33,19 @@ namespace evm4ccf
   using EthHash = uint256_t;
   using TxHash = EthHash;
   using BlockHash = EthHash;
+  using ByteString = std::vector<uint8_t>;
 
   using ContractParticipants = std::set<eevm::Address>;
-
+    static enum Type  {
+      UINT256,
+      UINT256_ARRAY,
+      BOOL
+    };
+    static std::unordered_map<ByteData, int> contractType = {
+      {"uint256", UINT256},
+      {"uint256[]", UINT256_ARRAY},
+      {"bool", BOOL}
+    };
   // TODO(eddy|#refactoring): Reconcile this with eevm::Block
   struct BlockHeader
   {
@@ -63,11 +74,63 @@ namespace evm4ccf
       l.timestamp == r.timestamp && l.miner == r.miner &&
       l.block_hash == r.block_hash;
   }
+  inline std::string packed_to_hex_string_fixed(
+      const uint256_t& v, size_t min_hex_chars = 64)
+  {
+      return fmt::format("{:0>{}}", intx::hex(v), min_hex_chars);    
+  }
+
+  inline std::string packed_to_hex_string_fixed_left(
+      const std::string& _v, size_t min_hex_chars = 64)
+  {
+      auto v = eevm::strip(_v);
+      return fmt::format("{:{}}", v, v.size()) + std::string(min_hex_chars- v.size(),'0');    
+  }
+
   namespace policy {
+    
+    struct MultiPartyParams
+    {
+      ByteData name = {};
+      ByteData input = {};
+      ByteData value = {};
+      ByteData policyHash = {};
+
+      eevm::KeccakHash getHash() const {
+        return Utils::to_KeccakHash(policyHash);
+      }
+    };
+
     struct Params {
+    public:
       ByteData name = {};
       ByteData type = {};
       ByteData owner = {};
+      std::optional<ByteData> value = std::nullopt;
+
+      ByteData getValue() const {
+        if(!value.has_value())
+          return "";
+        return value.value();
+      }
+  
+      ByteData convert_to_contract() const {
+        ByteData res;
+        switch (contractType[type])
+        {
+        case UINT256:
+          res = packed_to_hex_string_fixed(eevm::to_uint256(getValue()));
+          break;
+        case BOOL:
+          res = packed_to_hex_string_fixed(eevm::to_uint256(getValue()));
+          break;
+        default:
+          break;
+          res = "";
+        }
+          
+        return res;
+      }
     };
 
     struct stateParams {
@@ -84,13 +147,37 @@ namespace evm4ccf
       std::vector<stateParams> mutate;
       std::vector<Params> outputs;
 
-      // Function(const eevm::rlp::ByteString& encoded) {
-      //   auto tup = eevm::rlp::decode<
-      //     eevm::rlp::ByteString,
-      //     eevm::rlp::ByteString,
+      ByteData convert_funtion_name() const {
+        auto sha3 = eevm::keccak_256(name);
+        return eevm::to_hex_string(sha3.begin(), sha3.begin()+4);
+      }
 
+      ByteData packed_to_data() const {
+        ByteData data = convert_funtion_name();
+        for(int i=0; i<inputs.size();i++) {
+          data += inputs[i].convert_to_contract();
+        }
+        return data;
+      }
 
-      // }
+      bool padding(const MultiPartyParams &p) {
+          if(complete()) return false;
+          for(int i=0; i<inputs.size(); i++) {
+            if(inputs[i].name == p.input) {
+              inputs[i].value = p.value;
+              num++;
+              return true;
+            }
+          }
+          return false;
+      }
+
+      bool complete() const {
+        return num == inputs.size();
+      }
+
+      private:
+        size_t num = 0;
     };
   }
 
@@ -112,18 +199,20 @@ namespace evm4ccf
     public:
       ByteData contract = {};
       std::vector<policy::Params> states;
-      // ByteData states = {};
       std::vector<policy::Function> functions;
-      // ByteData functions = {};
-      // Policy(const eevm::rlp::ByteString& encoded) {
-      //   auto tup = eevm::rlp::decode<
-      //     eevm::rlp::ByteString,
-      //     eevm::rlp::ByteString,
-      //     eevm::rlp::ByteString>(encoded);
-      //   contract = std::get<0>(tup);
-      //   states = std::get<1>(tup);
-      //   functions = std::get<2>(tup);
-      // }
+      
+      std::tuple<bool, ByteData> paddingToPolicy(const policy::MultiPartyParams &p) {
+        int i=0;
+        for(; i<functions.size(); i++) {
+          if(functions[i].name == p.name) break;
+        }
+          auto status = functions[i].padding(p);
+          if(status && functions[i].complete()) {
+            return std::make_tuple(status, functions[i].packed_to_data());
+          }
+          return std::make_tuple(status, "");
+      }
+      
     };
 
     struct AddressWithBlock
@@ -172,6 +261,13 @@ namespace evm4ccf
       ByteData policy = {};
     };
 
+    struct SendMultiPartyTransaction
+    {
+      eevm::Address from = {};
+      eevm::Address to = {};
+      ByteData params = {};
+    };
+
     struct WorkOrderSubmit 
     {
       WorkOrder workOrder = {};
@@ -205,9 +301,17 @@ namespace evm4ccf
       ByteData notifyUri = {};
       eevm::Address workOrderId = {};
     };
+
+    struct MultiPartyReceipt
+    {
+      bool state = {};
+      ByteData progress = {};
+    };
+
     // "A transaction receipt object, or null when no receipt was found"
     using ReceiptResponse = std::optional<TxReceipt>;
     using ReceiptWorkOrderResponse = std::optional<WorkOrderReceipt>;
+    using MultiPartyReceiptResponse = std::optional<MultiPartyReceipt>;
   } // namespace rpcresults
 
   template <class TTag, typename TParams, typename TResult>
@@ -352,6 +456,16 @@ namespace evm4ccf
     using SendPrivacyPolicy = 
       RpcBuilder<SendPrivacyPolicyTag, rpcparams::SendPrivacyPolicy, TxHash>;
     
+
+    struct SendMultiPartyTransactionTag
+    {
+      static constexpr auto name = "cloak_sendMultiPartyTransaction";
+    };
+    using SendMultiPartyTransaction = 
+      RpcBuilder<SendMultiPartyTransactionTag, 
+        rpcparams::SendMultiPartyTransaction, 
+        rpcresults::MultiPartyReceiptResponse
+      >;
 
     struct WorkOrderSubmitTag
     {

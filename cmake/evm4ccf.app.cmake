@@ -26,6 +26,7 @@ set(EVM_CPP_FILES
   ${EVM_DIR}/src/transaction.cpp
   ${EVM_DIR}/src/util.cpp
   ${EVM_DIR}/src/processor.cpp
+  ${EVM_DIR}/src/processor.cpp
   )
 
 # add_library(enclave_evm STATIC
@@ -44,11 +45,15 @@ set(EVM_CPP_FILES
 # # )
 # set_property(TARGET enclave_evm PROPERTY POSITION_INDEPENDENT_CODE ON)
 
+set(EVM4CCF_FILE
+  ${CMAKE_CURRENT_LIST_DIR}/../src/app/evm_for_ccf.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/../src/app/workerqueue.cpp
 
+)
 # Build app
 add_ccf_app(evm4ccf
   SRCS
-    ${CMAKE_CURRENT_LIST_DIR}/../src/app/evm_for_ccf.cpp
+    ${EVM4CCF_FILE}
     ${EVM_CPP_FILES}
   INCLUDE_DIRS
     ${CMAKE_CURRENT_LIST_DIR}/../include
@@ -60,7 +65,6 @@ add_ccf_app(evm4ccf
     intx::intx
     keccak_host
 )
-
 
 # Generate an ephemeral signing key
 add_custom_command(
@@ -78,4 +82,53 @@ sign_app_library(evm4ccf.enclave
   ${CMAKE_CURRENT_BINARY_DIR}/signing_key.pem
 )
 
+add_executable(main  ${CMAKE_CURRENT_LIST_DIR}/../src/app/main.cpp)
+target_compile_options(main PRIVATE -stdlib=libc++)
 
+target_link_libraries(main
+  PRIVATE
+  # -stdlib=libc++
+      -lc++
+      -lc++abi
+    intx::intx
+    evm4ccf.virtual
+    # keccak_enclave
+    keccak_host
+)
+
+target_include_directories(
+  main
+  SYSTEM PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/../include
+  ${EVM_DIR}/include
+  ${CCF_DIR}/3rdparty
+  ${OE_LIBCXX_INCLUDE_DIR}
+  ${OE_LIBC_INCLUDE_DIR}
+  ${OE_INCLUDE_DIR}
+  ${EVM_DIR}/3rdparty
+  ${EVM_DIR}/3rdparty/intx
+)
+
+# add_library(main STATIC
+#   ${EVM_CPP_FILES}
+#   ${EVM4CCF_FILE}
+# )
+  
+# target_include_directories(main SYSTEM PRIVATE
+#   ${OE_LIBCXX_INCLUDE_DIR}
+#   ${OE_LIBC_INCLUDE_DIR}
+#   ${EVM_DIR}/include
+#   ${EVM_DIR}/3rdparty
+#   ${CMAKE_CURRENT_LIST_DIR}/../include
+#   ${CMAKE_CURRENT_LIST_DIR}/../src
+
+#   ${EVM4CCF_FILE}
+#   ${EVM_CPP_FILES}
+#   )
+# target_link_libraries(main PRIVATE
+#   intx::intx
+#   evm4ccf.virtual
+#   )
+# target_compile_options(main PRIVATE
+#   -U__linux__
+# )

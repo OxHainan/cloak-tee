@@ -8,6 +8,7 @@
 #include "tables.h"
 #include "jsonrpc.h"
 #include "utils.h"
+#include "workerqueue.h"
 // CCF
 #include "ds/hash.h"
 #include "enclave/app_interface.h"
@@ -40,8 +41,7 @@ namespace evm4ccf
     tables::Accounts accounts;
     tables::Storage storage;
     tables::Results tx_results;
-
-
+    WorkerQueue workerQueue;
     EthereumState make_state(kv::Tx& tx)
     {
       return EthereumState(accounts.get_views(tx), tx.get_view(storage));
@@ -288,15 +288,12 @@ namespace evm4ccf
         return;
       };
 
-      auto send_privacy_policy = [](ccf::EndpointContext& args) {
+      auto send_privacy_policy = [this](ccf::EndpointContext& args) {
         const auto body_j =
           nlohmann::json::parse(args.rpc_ctx->get_request_body());
         auto sppp = body_j.get<rpcparams::SendPrivacyPolicy>();
-        auto p = nlohmann::json::parse(Utils::HexToBin(sppp.policy));
-        auto s = p.get<rpcparams::Policy>();
-        // eevm::rlp::ByteString in = eevm::to_bytes(s.functions);
-        // nlohmann::json json = nlohmann::json::from_bson(in);
-        // eevm::rlp::ByteString in = eevm::to_bytes(sppp.call_data);
+        PrivacyPolicyTransaction ppt(sppp);
+        workerQueue.add(ppt);
 
         // EthereumTransactionWithSignature eth_tx(in);
 
@@ -314,16 +311,33 @@ namespace evm4ccf
         //   );
         //   return;
         // }
-
+        // auto policyHash = Utils::hash(sppp.policy);
         // Return success HTTP response with the result json
         args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
         args.rpc_ctx->set_response_header(
           http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
         args.rpc_ctx->set_response_body(
-          jsonrpc::result_response(0, s.functions[0].read[0].name).dump()
+          jsonrpc::result_response(0, ppt.to_hex_hash()).dump()
           );
         return;
 
+      };
+
+      auto send_multiPartyTransaction = [](ccf::EndpointContext& args) {
+        const auto body_j =
+          nlohmann::json::parse(args.rpc_ctx->get_request_body());
+        auto smp = body_j.get<rpcparams::SendMultiPartyTransaction>();
+
+        rpcresults::MultiPartyReceiptResponse  response = nullopt;
+        response->state = true;
+        response->progress = "pending";
+        args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
+          args.rpc_ctx->set_response_header(
+            http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+          args.rpc_ctx->set_response_body(
+            jsonrpc::result_response(0, response).dump()
+            );
+        return;
       };
 
       auto get_workOrderSubmit = [](ccf::EndpointContext& args) {
@@ -438,6 +452,9 @@ namespace evm4ccf
       make_endpoint(ethrpc::SendPrivacyPolicy::name, HTTP_POST, send_privacy_policy)
         .install();
 
+      make_endpoint(ethrpc::SendMultiPartyTransaction::name, HTTP_POST, send_multiPartyTransaction)
+        .install();
+      
       make_endpoint("eth_getTransactionCount_Test", HTTP_GET, ccf::json_adapter(get_transaction_count_test))
         .set_auto_schema<ethrpc::GetTransactionCountTest>()
         .install();
@@ -456,7 +473,8 @@ namespace evm4ccf
         tables::Accounts::Nonces("eth.account.nonce"),
       },
       storage("eth.storage"),
-      tx_results("eth.txresults")
+      tx_results("eth.txresults"),
+      workerQueue()
     // SNIPPET_END: initialization
     {
       context.get_historical_state();

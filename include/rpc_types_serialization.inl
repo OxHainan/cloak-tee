@@ -121,14 +121,29 @@ namespace evm4ccf
       from_to_str(j, "name", s.name);
       from_to_str(j, "owner", s.owner);
       from_to_str(j, "type", s.type);
-      return s;
     }
 
     inline void from_json(const nlohmann::json& j ,stateParams & s) {
       require_object(j);
       from_to_str(j, "name", s.name);
       from_array_to_object(j, "keys", s.keys);
-      return s;
+    }
+
+    inline void from_json(const nlohmann::json& j ,MultiPartyParams & s) {
+      require_object(j);
+      from_to_str(j, "name", s.name);
+      from_to_str(j, "value", s.value);
+      from_to_str(j, "input", s.input);
+      from_to_str(j, "policyHash", s.policyHash);
+    }
+
+    inline void to_json(nlohmann::json& j, const MultiPartyParams& s)
+    {
+      j = nlohmann::json::object();
+      j["name"] = s.name;
+      j["input"] = s.input;
+      j["value"] = s.value;
+      j["policyHash"] = s.policyHash;
     }
 
     inline void from_json(const nlohmann::json& j ,Function & s) {
@@ -317,18 +332,22 @@ namespace evm4ccf
     }
 
     //
-    // inline void to_json(nlohmann::json& j, const SendPrivacyPolicy& s)
-    // {
-    //   j = nlohmann::json::array();
-    //   j.push_back(s.call_data);
-    // }
-
-    // inline void from_json(const nlohmann::json& j, SendPrivacyPolicy& s)
-    // {
-    //   require_array(j);
-    //   s.call_data = j[0];
-    // }
-
+    inline void to_json(nlohmann::json& j, const SendMultiPartyTransaction& s)
+    {
+      j = nlohmann::json::object();
+      j["from"] = eevm::to_checksum_address(s.from);
+      j["to"] = eevm::to_checksum_address(s.to);
+      j["params"] = s.params; 
+    }
+  
+    inline void from_json(const nlohmann::json& j, SendMultiPartyTransaction& s)
+    {
+      require_object(j);
+      s.from = eevm::to_uint256(j["from"]);
+      s.to = eevm::to_uint256(j["to"]);
+      from_to_str(j, "params", s.params);
+    }
+    
     //
     inline void to_json(nlohmann::json& j, const SendRawTransaction& s)
     {
@@ -357,16 +376,9 @@ namespace evm4ccf
       require_object(j);
 
       s.from = eevm::to_uint256(j["from"]);
-      auto codeHash_it = j.find("codeHash");
-      if(codeHash_it != j.end()) {
-        s.codeHash = *codeHash_it;
-      }
+      from_to_str(j, "codeHash", s.codeHash);
+      from_to_str(j, "policy", s.policy);
       s.verifierAddr = eevm::to_uint256(j["verifierAddr"]);
-      // auto policy_it = j["policy"].get<rpcparams::Policy>();
-      auto policy_it = j.find("policy");
-      if(policy_it != j.end()) {
-        s.policy = *policy_it;
-      }
     }
   } // namespace rpcparams
 
@@ -458,5 +470,32 @@ namespace evm4ccf
         s->responseTimeoutMSecs = eevm::to_uint64(j["responseTimeoutMSecs"]);
       }
     }
+    inline bool to_bool(const std::string &s) {
+        if(s == "true") return true;
+        return false;
+    }
+    inline std::string from_bool(const bool & s) {
+      return s == true ? "true" : "false";
+    }
+    inline void to_json(nlohmann::json& j, const MultiPartyReceiptResponse& s) {
+      if(s.has_value()) {
+        j = nullptr;
+      } else {
+        j = nlohmann::json::object();
+        j["progress"] = s->progress;
+        j["state"] = from_bool(s->state);
+      }
+    }
+
+    inline void from_json(const nlohmann::json& j,  MultiPartyReceiptResponse& s) {
+      if(j.is_null()) {
+        s = std::nullopt;
+      } else {
+        require_object(j);
+        s->state = to_bool(j["state"]);
+        from_to_str(j, "progress", s->progress);
+      }
+    }
+
   } // namespace rpcresults
 } // namespace evm4ccf

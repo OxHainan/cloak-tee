@@ -1,12 +1,14 @@
+#pragma once
 #include "iostream"
 #include <string>
-
+// eEVM
+#include <eEVM/address.h>
+#include <eEVM/bigint.h>
+#include <eEVM/processor.h>
+#include <eEVM/rlp.h>
+#include <eEVM/util.h>
 namespace Utils 
 {
-    std::string strip(const std::string& s)
-    {
-        return (s.size() >= 2 && s[1] == 'x') ? s.substr(2) : s;
-    }
     inline std::string BinaryToHex(
         const std::string &strBin,
         bool bIsUpper = false
@@ -37,7 +39,7 @@ namespace Utils
         {
             return "";
         }
-        auto strHex = strip(_strHex);
+        auto strHex = eevm::strip(_strHex);
 
         std::string strBin;
         strBin.resize(strHex.size() / 2);
@@ -65,5 +67,33 @@ namespace Utils
         }
 
         return strBin;
+    }
+
+    // auto hash(const std::string &s) {
+    //     auto h = eevm::keccak_256(eevm::to_bytes(s));
+    //     return eevm::from_big_endian(h.data());
+    // }
+    // auto calcutaion_sha256(const std::string &s) {
+    //     return eevm::keccak_256(eevm::to_bytes(s));
+    // }
+    template<typename T>
+    inline void parse(const std::string &s, T &v) {
+        auto j = nlohmann::json::parse(HexToBin(s));
+        v = j.get<T>();
+    } 
+    template<typename T>
+    inline T parse(const std::string &s) {
+        auto j = nlohmann::json::parse(HexToBin(s));
+        return j.get<T>();
+    } 
+
+    inline eevm::KeccakHash to_KeccakHash(const std::string& _s) {
+        auto s = eevm::strip(_s);
+        eevm::KeccakHash h;
+        if(s.empty()) return h;
+        for(size_t i = 0, x = 0; i<32; i++, x+=2) {
+            h.at(i) = strtol(s.substr(x, 2).c_str(),0,16);
+        }
+        return h;
     }
 }
