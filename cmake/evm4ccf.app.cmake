@@ -108,27 +108,3 @@ target_include_directories(
   ${EVM_DIR}/3rdparty
   ${EVM_DIR}/3rdparty/intx
 )
-
-# add_library(main STATIC
-#   ${EVM_CPP_FILES}
-#   ${EVM4CCF_FILE}
-# )
-  
-# target_include_directories(main SYSTEM PRIVATE
-#   ${OE_LIBCXX_INCLUDE_DIR}
-#   ${OE_LIBC_INCLUDE_DIR}
-#   ${EVM_DIR}/include
-#   ${EVM_DIR}/3rdparty
-#   ${CMAKE_CURRENT_LIST_DIR}/../include
-#   ${CMAKE_CURRENT_LIST_DIR}/../src
-
-#   ${EVM4CCF_FILE}
-#   ${EVM_CPP_FILES}
-#   )
-# target_link_libraries(main PRIVATE
-#   intx::intx
-#   evm4ccf.virtual
-#   )
-# target_compile_options(main PRIVATE
-#   -U__linux__
-# )
