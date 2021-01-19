@@ -26,7 +26,6 @@ set(EVM_CPP_FILES
   ${EVM_DIR}/src/transaction.cpp
   ${EVM_DIR}/src/util.cpp
   ${EVM_DIR}/src/processor.cpp
-  ${EVM_DIR}/src/processor.cpp
   )
 
 # add_library(enclave_evm STATIC
@@ -87,7 +86,7 @@ target_compile_options(main PRIVATE -stdlib=libc++)
 
 target_link_libraries(main
   PRIVATE
-  # -stdlib=libc++
+  -stdlib=libc++
       -lc++
       -lc++abi
     intx::intx
