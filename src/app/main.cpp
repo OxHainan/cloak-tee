@@ -5,12 +5,12 @@
 #include "jsonrpc.h"
 #include "utils.h"
 #include "workerqueue.h"
-#include "abicoder.h"
+#include "../abi/abicoder.h"
 using namespace ccf;
 using namespace evm4ccf;
 using namespace std;
 using namespace eevm;
-
+using namespace abicoder;
 template <typename T>
 nlohmann::json json_with(
   const nlohmann::json& j, const std::string& field, T&& v)
@@ -78,81 +78,31 @@ int main() {
     auto [result1, status1] = wq->addMultiParty(mpt1);
     cout << result1 << " " << status1 << endl;
 
-       CoderAddress address = CoderAddress("owner");
-    Coder* coder = &address;
-    // auto addr1 = coder->encode("de0B295669a9FD93d5F28D9Ec85E40f4cb697BAe");
-    // auto addr2 = coder->encode("0xde0B295669a9FD93d5F28D9Ec85E40f4cb697Baa");
-    // // array<uint8_t, 64u> res;
-    // UINT8ARRAY res(64);
-    // insert(res, addr1);
-    // insert(res, addr2,32);
-    // cout << to_hex_string(res) << endl;
+    CoderNumber uint256S(2,1);
+    CoderNumber uint256S1(2,1);
 
-    // for (size_t i = 0; i < res.size(); i++)
-    // {
-    //     printChar(res.at(i));
-    // }
-    CoderNumber number(2,1);
-    auto boolean = number.encode(true);
-    cout << to_hex_string(boolean) << endl;
-    // for (size_t i = 0; i < boolean.size(); i++)
-    // {
-    //     printChar(boolean.at(i));
-    // }
-    CoderBoolean coderbool("bool");
-    coder = &coderbool;
-    coderbool.setValue("1");
-    cout << to_hex_string(coder->encode()) << endl;
-    // auto encode = encodeDynamicBytes("0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BkJHDKJSAHDKJAHSDKLAHDKASLDHFKSDHFKSALaasadllkasdjlaksj0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BkJHDKJSAHDKJAHSDKLAHDKASLDHFKSDHFKSALaasadllkasdjlaksj0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BkJHDKJSAHDKJAHSDKLAHDKASLDHFKSDHFKSALaasadllkasdjlaksj0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BkJHDKJSAHDKJAHSDKLAHDKASLDHFKSDHFKSALaasadllkasdjlaksj0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BkJHDKJSAHDKJAHSDKLAHDKASLDHFKSDHFKSALaasadllkasdjlaksj0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BkJHDKJSAHDKJAHSDKLAHDKASLDHFKSDHFKSALaasadllkasdjlaksj0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BkJHDKJSAHDKJAHSDKLAHDKASLDHFKSDHFKSALaasadllkasdjlaksj");
-    // cout << encode.size() << endl;
-    CoderString stringcoder("string");
-    stringcoder.setValue("Hello, world!");
-    coder = &stringcoder;
-    cout << to_hex_string(coder->encode()) << endl;
-    
-
-    CoderFixedBytes bytes1(1);
-    bytes1.setValue("0xabcdef3545612aabb");
-    coder = &bytes1;
-    try
-    {
-      cout << to_hex_string(coder->encode()) << endl;
-    }
-    catch(const int e)
-    {
-      cout << e << endl;
-    }
-    
-    CoderDynamicBytes bytes("bytes1");
-    bytes.setValue("69");
-    coder = &bytes;
-    cout << to_hex_string(coder->encode()) << endl;
-
-    CoderArray array1(&bytes1,"uint256", 2, true);
-
+    CoderArray array1(&uint256S1, "uint", 2);
+    CoderFixedBytes bytes(5);
+    CoderString Dbytes("bytes");
     vector<void*> coders;
-    // coders.push_back(&bytes1);
-    coders.push_back(&stringcoder);
-    // coders.push_back(&coderbool);
-    
-    // coders.push_back(&address);
-    
-    vector<ByteData> value;
-    // value.push_back("69");
-    
-    // value.push_back("Hello, world!");
-    // value.push_back("1");
-    // value.push_back("0xabcdef3545612aabb");
-    auto pc = pack(coders);
-    // array.encode();
-      cout << to_hex_string(pc) << endl;
-    vector<ByteData> value2;
-    value2.push_back("69");
-    value2.push_back("6");
-    array1.setValue(value2);
-    auto arr = array1.encode();
+    coders.push_back(&uint256S);
+    coders.push_back(&array1);
+    coders.push_back(&bytes);
+    coders.push_back(&Dbytes);
 
-    cout << to_hex_string(arr) << endl;
-
+    uint256S.setValue("0x123");
+    bytes.setValue("1234567890");
+    Dbytes.setValue("Hello, world!");
+    vector<ByteData> arrs;
+    arrs.push_back("0x456");
+    arrs.push_back("0x789");
+    array1.setValue(arrs);
+    auto out1 = abicoder::pack(coders);
+    // for(int i=0; i<out1.size(); i++) {
+    //   cout << to_hex_string(out1[i].data) << endl;
+      
+    // }
+    cout << to_hex_string(out1) << endl;
+   
     return 0;
 }
