@@ -129,23 +129,32 @@ namespace evm4ccf
       from_array_to_object(j, "keys", s.keys);
     }
 
-    inline void from_json(const nlohmann::json& j ,MultiPartyParams & s) {
+    inline void from_json(const nlohmann::json& j ,MultiInput & s) {
       require_object(j);
       from_to_str(j, "name", s.name);
       from_to_str(j, "value", s.value);
-      from_to_str(j, "input", s.input);
-      from_to_str(j, "policyHash", s.policyHash);
+    }
+
+    inline void to_json(nlohmann::json& j, const MultiInput& s)
+    {
+      j = nlohmann::json::object();
+      j["name"] = s.name;
+      j["value"] = s.value;
+    }
+
+    inline void from_json(const nlohmann::json& j ,MultiPartyParams & s) {
+      require_object(j);
+      from_to_str(j, "function", s.function);
+      from_array_to_object(j, "inputs", s.inputs);
     }
 
     inline void to_json(nlohmann::json& j, const MultiPartyParams& s)
     {
       j = nlohmann::json::object();
-      j["name"] = s.name;
-      j["input"] = s.input;
-      j["value"] = s.value;
-      j["policyHash"] = s.policyHash;
+      j["function"] = s.function;
+      j["inputs"] = s.inputs;
     }
-
+    
     inline void from_json(const nlohmann::json& j ,Function & s) {
       require_object(j);
       from_to_str(j, "name", s.name);
@@ -366,6 +375,7 @@ namespace evm4ccf
     {
       j = nlohmann::json::object();
       j["from"] = eevm::to_checksum_address(s.from);
+      j["to"] = eevm::to_checksum_address(s.to);
       j["codeHash"] = s.codeHash;
       j["verifierAddr"] = eevm::to_checksum_address(s.verifierAddr);
       j["policy"] = s.policy;
@@ -376,6 +386,7 @@ namespace evm4ccf
       require_object(j);
 
       s.from = eevm::to_uint256(j["from"]);
+      s.to = eevm::to_uint256(j["to"]);
       from_to_str(j, "codeHash", s.codeHash);
       from_to_str(j, "policy", s.policy);
       s.verifierAddr = eevm::to_uint256(j["verifierAddr"]);

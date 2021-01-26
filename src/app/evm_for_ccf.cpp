@@ -288,12 +288,12 @@ namespace evm4ccf
         return;
       };
 
-      auto send_privacy_policy = [this](ccf::EndpointContext& args) {
+      auto send_privacy_policy = [](ccf::EndpointContext& args) {
         const auto body_j =
           nlohmann::json::parse(args.rpc_ctx->get_request_body());
         auto sppp = body_j.get<rpcparams::SendPrivacyPolicy>();
-        PrivacyPolicyTransaction ppt(sppp);
-        workerQueue.add(ppt);
+        // PrivacyPolicyTransaction ppt(sppp);
+        // workerQueue.add(ppt);
 
         // EthereumTransactionWithSignature eth_tx(in);
 
@@ -317,7 +317,7 @@ namespace evm4ccf
         args.rpc_ctx->set_response_header(
           http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
         args.rpc_ctx->set_response_body(
-          jsonrpc::result_response(0, ppt.to_hex_hash()).dump()
+          jsonrpc::result_response(0, "").dump()
           );
         return;
 

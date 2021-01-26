@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "string"
 #include <array>
+#include "errors.h"
 #include "../app/utils.h"
 #include <sstream>
 #include <eEVM/address.h>
@@ -232,9 +233,7 @@ public:
 
     UINT8ARRAY encode() {
         auto s = eevm::strip(value);
-        auto len = ceil(s.size() / 2.0);
-        if(len != length) throw -1;
-
+        if(s.size() != length) throw errors::make_length_error(name, length, s.size());
         UINT8ARRAY result = fixed_to_bytes(s); 
         return result;           
     }

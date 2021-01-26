@@ -89,17 +89,30 @@ namespace evm4ccf
 
   namespace policy {
     
-    struct MultiPartyParams
-    {
+    struct MultiInput {
       ByteData name = {};
-      ByteData input = {};
       ByteData value = {};
-      ByteData policyHash = {};
+    };
 
-      eevm::KeccakHash getHash() const {
-        return Utils::to_KeccakHash(policyHash);
+    struct MultiPartyParams {
+      ByteData function = {};
+      std::vector<MultiInput> inputs = {};
+
+      ByteData name() const {
+        return function;
       }
     };
+
+    
+    // struct MultiPartyParams
+    // {
+    //   ByteData name = {};
+    //   ByteData value = {};
+
+    //   eevm::KeccakHash getHash() const {
+    //     return Utils::to_KeccakHash(policyHash);
+    //   }
+    // };
 
     struct Params {
     public:
@@ -160,16 +173,16 @@ namespace evm4ccf
         return data;
       }
 
-      bool padding(const MultiPartyParams &p) {
+      bool padding(const MultiInput &p) {
           if(complete()) return false;
           for(int i=0; i<inputs.size(); i++) {
-            if(inputs[i].name == p.input) {
+            if(inputs[i].name == p.name) {
               inputs[i].value = p.value;
               num++;
               return true;
             }
           }
-          return false;
+        return false;
       }
 
       bool complete() const {
@@ -201,17 +214,24 @@ namespace evm4ccf
       std::vector<policy::Params> states;
       std::vector<policy::Function> functions;
       
-      std::tuple<bool, ByteData> paddingToPolicy(const policy::MultiPartyParams &p) {
-        int i=0;
-        for(; i<functions.size(); i++) {
-          if(functions[i].name == p.name) break;
+      policy::Function get_funtions(const ByteData &name) const {
+        for(int i=0; i<functions.size(); i++) {
+          if(functions[i].name == name) return functions[i];
         }
-          auto status = functions[i].padding(p);
-          if(status && functions[i].complete()) {
-            return std::make_tuple(status, functions[i].packed_to_data());
-          }
-          return std::make_tuple(status, "");
+        throw std::logic_error(fmt::format("doesn`t find this {} function in this policy modules", name));
       }
+
+      // std::tuple<bool, ByteData> paddingToPolicy(const policy::MultiPartyParams &p) {
+      //   int i=0;
+      //   for(; i<functions.size(); i++) {
+      //     if(functions[i].name == p.name) break;
+      //   }
+      //     auto status = functions[i].padding(p);
+      //     if(status && functions[i].complete()) {
+      //       return std::make_tuple(status, functions[i].packed_to_data());
+      //     }
+      //     return std::make_tuple(status, "");
+      // }
       
     };
 
@@ -256,6 +276,7 @@ namespace evm4ccf
     struct SendPrivacyPolicy
     {
       eevm::Address from = {};
+      eevm::Address to = {};
       ByteData codeHash = {};
       eevm::Address verifierAddr = {};
       ByteData policy = {};
