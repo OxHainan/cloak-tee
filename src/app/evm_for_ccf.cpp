@@ -8,7 +8,7 @@
 #include "tables.h"
 #include "jsonrpc.h"
 #include "utils.h"
-#include "workerqueue.h"
+#include "../queue/workerqueue.hpp"
 // CCF
 #include "ds/hash.h"
 #include "enclave/app_interface.h"

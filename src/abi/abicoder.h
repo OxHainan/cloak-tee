@@ -15,6 +15,8 @@
 #include <eEVM/util.h>
 #include "math.h"
 #include "optional"
+#include "parsing.h"
+#include "unordered_map"
 using namespace std;
 
 using ByteData = std::string;
@@ -24,7 +26,14 @@ namespace abicoder {
 inline double alignSize(size_t size) {
     return 32 * (ceil(size / 32.0));
 }
-
+static void print_bytes( const UINT8ARRAY &in_bytes )
+{
+    for (size_t i = 0; i < in_bytes.size(); i++)
+    {
+       printf("%02X", in_bytes[i]);
+    }
+    printf("\n");
+}
 void insert(UINT8ARRAY &coder,const UINT8ARRAY &input, size_t offset = 0);
 
 // template <size_t N>
@@ -56,6 +65,7 @@ public:
     virtual UINT8ARRAY encode() = 0;
     virtual void setValue(const ByteData & _value) = 0;
     virtual bool getDynamic() const = 0;
+    virtual ~Coder() {}
 };
 
 
@@ -120,7 +130,12 @@ public:
     bool getDynamic() const {
         return Dynamic;
     }
+
+    ~CoderNumber() {
+        cout << "CoderNumber 析构" << endl;
+    }
 };
+
 
 class CoderAddress : public Coder {
 public:
@@ -130,12 +145,16 @@ public:
     }
     UINT8ARRAY encode() {
         UINT8ARRAY result = to_bytes(value, 12u);
+        cout << result.size() << endl;
+        print_bytes(result);
         return result;       
     }
     bool getDynamic() const {
         return Dynamic;
     }
-
+    ~CoderAddress() {
+        cout << "CoderAddress 析构" << endl;
+    }
 private:
     ByteData name;
     ByteData coderType = "address";
@@ -147,25 +166,27 @@ private:
 class CoderBoolean : public Coder {
 public:
     CoderBoolean(ByteData _name) :name(_name) {
-        uint256Coder =  UintNumber(32, true);
+        uint256CoderBool =  UintNumber(32, true);
     }
     void setValue(const ByteData &_value) {
         value = _value;
     }
     UINT8ARRAY encode() {
-        return uint256Coder.encode(value == "1" ? true : false);
+        return uint256CoderBool.encode(value == "1" ? true : false);
     }
 
     bool getDynamic() const {
         return Dynamic;
     }
-
+    ~CoderBoolean() {
+        cout << "CoderBoolean 析构" << endl;
+    }
 private:
     ByteData name;
     ByteData coderType = "bool";
     ByteData value;
     bool     Dynamic = false;
-    UintNumber uint256Coder;
+    UintNumber uint256CoderBool;
 };
 
 
@@ -186,7 +207,9 @@ public:
     bool getDynamic() const {
         return Dynamic;
     }
-
+    ~CoderString() {
+        cout << "CoderString 析构" << endl;
+    }
 private:
     ByteData name;
     ByteData coderType = "string";
@@ -211,7 +234,9 @@ public:
     bool getDynamic() const {
         return Dynamic;
     }
-
+    ~CoderDynamicBytes() {
+        cout << "CoderDynamicBytes 析构" << endl;
+    }
 private:
     ByteData name;
     ByteData coderType = "bytes";
@@ -241,7 +266,9 @@ public:
     bool getDynamic() const {
         return Dynamic;
     }
-
+    ~CoderFixedBytes() {
+        cout << "CoderFixedBytes 析构" << endl;
+    }
 private:
     ByteData name;
     bool     Dynamic = false;
@@ -255,9 +282,7 @@ struct PackParams
     UINT8ARRAY data;
 };
 
-UINT8ARRAY uint256Coder(size_t size) {
-    return UintNumber().encode(to_string(size));
-}
+UINT8ARRAY uint256Coder(size_t size);
 
 UINT8ARRAY basic_pack(const vector<PackParams>& parts);
 UINT8ARRAY pack(const std::vector<void*>& coders);
@@ -266,19 +291,28 @@ UINT8ARRAY pack(const std::vector<void*>& coders, const vector<ByteData> &value)
 
 class CoderArray : Coder{
 public:
-    CoderArray(void* _coder, ByteData _type, int _length, bool dynamic = true) : length(_length) {
+    // CoderArray( ByteData _type, int _length, bool dynamic = true) : length(_length) {
+    //     // 此长度并非数组的长度，而是type中括号标识的程度
+    //     // type = _type + "[" + (length >=0 ? to_string(length) : "") + "]";
+    //     type = _type;
+    //     Dynamic =  dynamic;
+    //     // coder = _coder;
+    // }
+
+    CoderArray(ByteData _name, ByteData _type, int _length, bool dynamic = true) : length(_length), name(_name) {
         // 此长度并非数组的长度，而是type中括号标识的程度
-        type = _type + "[" + (length >=0 ? to_string(length) : "") + "]";
-        Dynamic =  dynamic;
-        coder = _coder;
+        type = _type;
+        Dynamic =  dynamic;      
     }
 
     void setValue(const vector<ByteData> &_value){
         value = _value;
     }
+
     void setValue(const ByteData &_value){ 
         value.push_back(_value);
     }
+
     UINT8ARRAY encode();
 
     bool getDynamic() const {
@@ -289,8 +323,28 @@ private:
     size_t length;
     bool   Dynamic = false;
     ByteData type;
-    void* coder;
+    ByteData name;
+    vector<void*> coders;
     vector<ByteData> value;
 };
 
+enum Type  {
+      ADDRESS,
+      UINT,
+      INT,
+      BYTES,
+      STRING,
+      BOOL
+};
+static std::unordered_map<ByteData, int> contractType = {
+      {"string", STRING},
+      {"bytes", BYTES},
+      {"bool", BOOL},
+      {"address", ADDRESS},
+      {"uint", UINT},
+      {"int", INT},
+};
+void paramCoder(vector<void*> &coders, const ByteData &name, const ByteData &_type,const vector<ByteData> & value);
+void paramCoder(vector<void*> &coders, const ByteData &name, const ByteData &type,const ByteData & value, int length);
+void paramCoder(vector<void*> &coders, const ByteData &name, const ByteData &_type,const ByteData & value);
 }

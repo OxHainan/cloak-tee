@@ -2,9 +2,10 @@
 #include "iostream"
 #include "string"
 #include "vector"
-#include "utils.h"
+#include "../app/utils.h"
 #include "map"
 #include "rpc_types.h"
+
 namespace evm4ccf
 {   
     using namespace eevm;
@@ -15,14 +16,21 @@ namespace evm4ccf
     using h256 = eevm::KeccakHash;
     using ByteString = std::vector<uint8_t>;
     using uint256 = uint256_t;
-    
+    // using WorkerQueue = evm4ccf::WorkerQueue;
     enum Status {
         PENDING,
         PACKAGE,
         DROPPED,
         FAILED
     };
-    
+
+    static std::map<Status,ByteData> statusMap = {
+        {PENDING, "pending"},
+        {PACKAGE, "package"},
+        {DROPPED, "dropped"},
+        {FAILED, "failed"}
+    };
+
     struct MultiPartyTransaction
     {
     public:
@@ -47,15 +55,15 @@ namespace evm4ccf
             ByteString          data;
     };
 
-    struct CloakTransaction {
+     struct CloakTransaction {
     public:
         Address             from;
         Address             to;
         Address             verifierAddr;
         ByteData            codeHash;
-        policy::Function    function;
+        struct policy::Function    function;
         std::vector<policy::Params> states;
-        Status              status;
+        Status              status = PENDING;
         std::map<Address, MultiPartyTransaction> multiParty ;
 
         void insert(MultiPartyTransaction &mpt) {
@@ -64,10 +72,22 @@ namespace evm4ccf
             {
                 function.padding(mpt.parmas.inputs[i]);
             }
+            cout << function.complete() << endl;
+            if(function.complete()){
+                auto data = function.packed_to_data();
+                cout << to_hex_string(data) << endl;
+            }        
         }
 
-        Status getStatus() const {
-            return status;
+        ByteData getStatus() const {
+            return statusMap[status];
+        }
+
+        h256 hash() const {
+            return eevm::keccak_256(eevm::to_bytes(codeHash));
+        }
+        ~CloakTransaction() {
+            cout << "CloakTransaction 析构" << endl;
         }
     private:
         ByteString   data;
@@ -92,6 +112,7 @@ namespace evm4ccf
         }
 
         void to_privacyPolicyModules_call(CloakTransaction &tc, const ByteData &name) const {
+
             tc.from = from;
             tc.to = to;
             tc.verifierAddr = verifierAddr;
@@ -99,17 +120,6 @@ namespace evm4ccf
             tc.states = policy.states;
             tc.function = policy.get_funtions(name);
         }
-        // PrivacyPolicyTransaction(Address _from, Address _verifierAddr, ByteData _codeHash, Policy p){
-        //     from = _from;
-        //     verifierAddr = _verifierAddr;
-        //     codeHash = _codeHash;
-        //     policy = p;
-        // }
-
-        // std::tuple<bool, ByteData> insertMultiParty(MultiPartyTransaction &mpt) {
-        //     multiParty.insert(std::make_pair(mpt.from, mpt));
-            // return policy.paddingToPolicy(mpt.parmas);
-        // }
 
         h256 hash() const {
             return eevm::keccak_256(data);
@@ -118,8 +128,6 @@ namespace evm4ccf
         std::string to_hex_hash() const {
             return to_hex_string(hash());
         }
-        
-
 
         private:
             ByteString          data;

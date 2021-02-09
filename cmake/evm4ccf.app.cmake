@@ -46,7 +46,7 @@ set(EVM_CPP_FILES
 
 set(EVM4CCF_FILE
   ${CMAKE_CURRENT_LIST_DIR}/../src/app/evm_for_ccf.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/../src/app/workerqueue.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/../src/queue/workerqueue.cpp
   ${CMAKE_CURRENT_LIST_DIR}/../src/abi/abicoder.cpp
 
 )
@@ -82,7 +82,7 @@ sign_app_library(evm4ccf.enclave
   ${CMAKE_CURRENT_BINARY_DIR}/signing_key.pem
 )
 
-add_executable(main  ${CMAKE_CURRENT_LIST_DIR}/../src/app/main.cpp)
+add_executable(main  ${CMAKE_CURRENT_LIST_DIR}/../src/abi/test.cpp)
 target_compile_options(main PRIVATE -stdlib=libc++)
 
 target_link_libraries(main

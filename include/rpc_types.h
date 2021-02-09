@@ -19,6 +19,8 @@
 #include "unordered_map"
 #include <vector>
 
+#include "../src/abi/abicoder.h"
+#include "../src/abi/parsing.h"
 namespace evm4ccf
 {
   using Balance = uint256_t;
@@ -36,16 +38,16 @@ namespace evm4ccf
   using ByteString = std::vector<uint8_t>;
 
   using ContractParticipants = std::set<eevm::Address>;
-    static enum Type  {
-      UINT256,
-      UINT256_ARRAY,
-      BOOL
-    };
-    static std::unordered_map<ByteData, int> contractType = {
-      {"uint256", UINT256},
-      {"uint256[]", UINT256_ARRAY},
-      {"bool", BOOL}
-    };
+    // static enum Type  {
+    //   UINT256,
+    //   UINT256_ARRAY,
+    //   BOOL
+    // };
+    // static std::unordered_map<ByteData, int> contractType = {
+    //   {"uint256", UINT256},
+    //   {"uint256[]", UINT256_ARRAY},
+    //   {"bool", BOOL}
+    // };
   // TODO(eddy|#refactoring): Reconcile this with eevm::Block
   struct BlockHeader
   {
@@ -126,31 +128,32 @@ namespace evm4ccf
           return "";
         return value.value();
       }
-  
-      ByteData convert_to_contract() const {
-        ByteData res;
-        switch (contractType[type])
-        {
-        case UINT256:
-          res = packed_to_hex_string_fixed(eevm::to_uint256(getValue()));
-          break;
-        case BOOL:
-          res = packed_to_hex_string_fixed(eevm::to_uint256(getValue()));
-          break;
-        default:
-          break;
-          res = "";
-        }
-          
-        return res;
-      }
+
+      void pack(vector<void*> &coders) {
+          abicoder::paramCoder(coders, name, type, getValue());        
+      } 
     };
 
     struct stateParams {
       ByteData name = {};
       std::vector<ByteData> keys = {};
     };
-
+    enum Type  {
+      ADDRESS,
+      UINT,
+      INT,
+      BYTES,
+      STRING,
+      BOOL
+};
+static std::unordered_map<ByteData, int> contractType = {
+      {"string", STRING},
+      {"bytes", BYTES},
+      {"bool", BOOL},
+      {"address", ADDRESS},
+      {"uint", UINT},
+      {"int", INT},
+};
     struct Function {
     public:
       ByteData type;
@@ -160,25 +163,31 @@ namespace evm4ccf
       std::vector<stateParams> mutate;
       std::vector<Params> outputs;
 
-      ByteData convert_funtion_name() const {
+      UINT8ARRAY convert_funtion_name() const {
         auto sha3 = eevm::keccak_256(name);
-        return eevm::to_hex_string(sha3.begin(), sha3.begin()+4);
+        return UINT8ARRAY(sha3.begin(), sha3.begin()+4);
       }
 
-      ByteData packed_to_data() const {
-        ByteData data = convert_funtion_name();
+      UINT8ARRAY packed_to_data()  {
+        UINT8ARRAY sha3 = convert_funtion_name();
+        vector<void*> coders;
         for(int i=0; i<inputs.size();i++) {
-          data += inputs[i].convert_to_contract();
+            inputs[i].pack(coders);
         }
+        auto data = abicoder::pack(coders);
+        abicoder::insert(data, sha3);
         return data;
       }
 
       bool padding(const MultiInput &p) {
           if(complete()) return false;
+          
           for(int i=0; i<inputs.size(); i++) {
             if(inputs[i].name == p.name) {
               inputs[i].value = p.value;
+              
               num++;
+              std::cout << inputs.size() << " "<<num<< std::endl;
               return true;
             }
           }
@@ -188,7 +197,10 @@ namespace evm4ccf
       bool complete() const {
         return num == inputs.size();
       }
+      ~Function() {
+        std::cout << "functions 析构"<< std::endl;
 
+      }
       private:
         size_t num = 0;
     };
@@ -502,4 +514,3 @@ namespace evm4ccf
 } // namespace evm4ccf
 
 #include "rpc_types_serialization.inl"
-

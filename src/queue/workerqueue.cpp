@@ -1,4 +1,4 @@
-#include "workerqueue.h"
+#include "workerqueue.hpp"
 
 using namespace evm4ccf;
 using namespace std;
@@ -19,23 +19,28 @@ void WorkerQueue::addModule( PrivacyPolicyTransaction& tx) {
 //     return true;
 // }
 
-std::tuple<bool, uint8_t> WorkerQueue::addMultiParty(MultiPartyTransaction &mpt) {
-    auto md = modules.find(mpt.to);
-    if(md == modules.end()) std::make_tuple(false,FAILED);    //未注册此模型
-    auto ppt = privacyPolicy.find(md->second);     // 取出模型
-    if(ppt==privacyPolicy.end()) return std::make_tuple(false,FAILED);
-    
-    // // 添加交易
+h256 WorkerQueue::addMultiParty(MultiPartyTransaction &mpt) {
+    auto ppt = findModules(mpt.to);
+    if(ppt.codeHash == "") return h256{};
+    // 添加交易
     CloakTransaction ct;
-    ppt->second.to_privacyPolicyModules_call(ct, mpt.name());
+    ppt.to_privacyPolicyModules_call(ct, mpt.name());
     ct.insert(mpt);
-    auto result = addTx(md->second, ct);
-    return std::make_tuple(result, ct.getStatus());
+    return addTx(ct);
 }
 
-bool WorkerQueue::addTx(h256 txHash, CloakTransaction &ct) {
-    workerQueue[txHash] = ct;
-    return true;
+h256 WorkerQueue::addTx(CloakTransaction &ct) {
+    auto hash = ct.hash();
+    workerQueue[hash] = std::move(ct);
+    return hash;
+}
+
+PrivacyPolicyTransaction WorkerQueue::findModules(const Address &addr) {
+    auto md = modules.find(addr);
+    if(md == modules.end()) return {};
+    auto ppt = privacyPolicy.find(md->second);     // 取出模型
+    if(ppt==privacyPolicy.end()) return {};
+    return ppt->second;
 }
 
 PrivacyPolicyTransaction WorkerQueue::getPrivacyPolicyTransactionByHash(const h256& hash){

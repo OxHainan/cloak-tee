@@ -3,7 +3,7 @@
 #pragma once
 
 #include <eEVM/util.h>
-
+#include "../src/abi/parsing.h"
 namespace evm4ccf
 {
   template <size_t N>
@@ -112,6 +112,7 @@ namespace evm4ccf
     s.miner = eevm::to_uint256(j["miner"]);
     s.block_hash = eevm::to_uint256(j["hash"]);
   }
+
   namespace policy
   {
     
@@ -121,6 +122,7 @@ namespace evm4ccf
       from_to_str(j, "name", s.name);
       from_to_str(j, "owner", s.owner);
       from_to_str(j, "type", s.type);
+      Parsing().check(s.type);
     }
 
     inline void from_json(const nlohmann::json& j ,stateParams & s) {
@@ -151,8 +153,8 @@ namespace evm4ccf
     inline void to_json(nlohmann::json& j, const MultiPartyParams& s)
     {
       j = nlohmann::json::object();
-      j["function"] = s.function;
-      j["inputs"] = s.inputs;
+      // j["function"] = s.function;
+      // j["inputs"] = s.inputs;
     }
     
     inline void from_json(const nlohmann::json& j ,Function & s) {
@@ -181,6 +183,17 @@ namespace evm4ccf
       from_array_to_object(j, "states", s.states);
       from_array_to_object(j, "functions", s.functions);
     }
+
+    inline void to_json(nlohmann::json& j,const Policy& s)
+    {
+      j = nlohmann::json::object();
+      j["contract"] = s.contract;
+      // j["states"] = s.states;
+      // j["functions"] = s.functions;
+      // from_array_to_object(j, "states", s.states);
+      // from_array_to_object(j, "functions", s.functions);
+    }
+
     inline void to_json(nlohmann::json& j, const MessageCall& s)
     {
       j = nlohmann::json::object();

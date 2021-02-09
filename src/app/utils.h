@@ -69,13 +69,6 @@ namespace Utils
         return strBin;
     }
 
-    // auto hash(const std::string &s) {
-    //     auto h = eevm::keccak_256(eevm::to_bytes(s));
-    //     return eevm::from_big_endian(h.data());
-    // }
-    // auto calcutaion_sha256(const std::string &s) {
-    //     return eevm::keccak_256(eevm::to_bytes(s));
-    // }
     template<typename T>
     inline void parse(const std::string &s, T &v) {
         auto j = nlohmann::json::parse(HexToBin(s));
