@@ -297,6 +297,7 @@ public:
 
     void setValue(const ByteData &_value){ 
         value = Utils::stringToArray(_value);
+        length = length > 1 ? length : value.size();
     }
 
     UINT8ARRAY encode();

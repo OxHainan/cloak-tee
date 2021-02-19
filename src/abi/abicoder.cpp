@@ -124,8 +124,8 @@ void abicoder::paramCoder(vector<void*> &coders, const ByteData &name, const Byt
     auto [type, length, boolean] = Parsing(_type).result();
     if(boolean) {
         // 数组类型
-        size_t len = length > 1 ? length : value.size();
-        CoderArray* array = new CoderArray(name, type, len);
+        // size_t len = length > 1 ? length : value.size();
+        CoderArray* array = new CoderArray(name, type, length);
         array->setValue(value);
         coders.push_back(array);
         return;
