@@ -1,6 +1,7 @@
 #pragma once
 #include "iostream"
 #include <string>
+#include "vector"
 // eEVM
 #include <eEVM/address.h>
 #include <eEVM/bigint.h>
@@ -88,5 +89,18 @@ namespace Utils
             h.at(i) = strtol(s.substr(x, 2).c_str(),0,16);
         }
         return h;
+    }
+
+    inline std::vector<std::string> stringToArray(const std::string &s){
+        std::vector<std::string> arr;
+        for(size_t i=1; i<s.size(); i++) {
+            size_t j = i;
+            for(; j<s.size(); j++) {
+                if(s[j] == ',' || s[j]==']') break;
+            }
+            arr.push_back(std::string(s.substr(i+1,j-i-2)));
+            i = j;
+        }
+        return arr;
     }
 }

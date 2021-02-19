@@ -1,9 +1,7 @@
 
 
-
 #include "tables.h"
-#include "jsonrpc.h"
-#include "utils.h"
+#include "rpc_types.h"
 #include "../queue/workerqueue.hpp"
 #include "../abi/abicoder.h"
 using namespace ccf;
@@ -43,7 +41,7 @@ R"xxx(
     {
 		"from": "0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe",
 		"to": "0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe",
-		"params": "0x7b2266756e6374696f6e223a22736574746c6552656365697661626c65222c22696e70757473223a5b7b226e616d65223a22616d6f756e74222c2276616c7565223a223078313234227d2c7b226e616d65223a226f776e6572222c2276616c7565223a22307864653042323935363639613946443933643546323844394563383545343066346362363937424165227d5d7d"
+		"params": "0x7b2266756e6374696f6e223a22736574746c6552656365697661626c65222c22696e70757473223a5b7b226e616d65223a22616d6f756e74222c2276616c7565223a223078313234227d5d7d"
     }
   )xxx"_json
 };
@@ -59,43 +57,33 @@ R"xxx(
 
 int main() {
     auto wq = std::make_unique<WorkerQueue>();
-    // try
-    // {
-    const auto tc = basic_request.get<rpcparams::SendPrivacyPolicy>();
+    try
+    {
+      const auto tc = basic_request.get<rpcparams::SendPrivacyPolicy>();
+      
+      auto p = nlohmann::json::parse(Utils::HexToBin(tc.policy));
+
+      auto s = p.get<rpcparams::Policy>();
+      // 添加隐私模型
+      PrivacyPolicyTransaction ppt(tc);
+      std::cout << to_checksum_address(tc.from) << std::endl;
+      wq->addModule(ppt);
+      auto hash = ppt.hash();
+
+      const auto mp = multiParty.get<rpcparams::SendMultiPartyTransaction>();
+      MultiPartyTransaction mpt(mp);
+
+      auto result = wq->addMultiParty(mpt);
+      cout << to_hex_string( result)  << endl;
+      const auto mp1 = multiParty1.get<rpcparams::SendMultiPartyTransaction>();
+      MultiPartyTransaction mpt1(mp1);
+      auto result1 = wq->addMultiParty(mpt1);
+      // cout << to_hex_string( result1)  << endl;
+    }
+    catch(const std::exception& e)
+    {
+      std::cerr << e.what() << '\n';
+    }
     
-    auto p = nlohmann::json::parse(Utils::HexToBin(tc.policy));
-    auto s = p.get<rpcparams::Policy>();
-    // 添加隐私模型
-    PrivacyPolicyTransaction ppt(tc);
-    std::cout << to_checksum_address(tc.from) << std::endl;
-    wq->addModule(ppt);
-    auto hash = ppt.hash();
-    // auto ppp = wq->getPrivacyPolicyTransactionByHash(hash);
-    const auto mp = multiParty.get<rpcparams::SendMultiPartyTransaction>();
-    MultiPartyTransaction mpt(mp);
-
-    auto result = wq->addMultiParty(mpt);
-    cout << to_hex_string( result)  << endl;
-
-    const auto mp1 = multiParty1.get<rpcparams::SendMultiPartyTransaction>();
-    MultiPartyTransaction mpt1(mp1);
-    auto result1 = wq->addMultiParty(mpt1);
-    cout << to_hex_string( result1)  << endl;
-    // }
-    // catch(const std::exception& e)
-    // {
-    //   std::cerr << e.what() << '\n';
-    // }
-    
-
-    // auto mes = wq->workerQueue.find(hash);
-    // cout << mes->second.function.inputs[1].getValue() << endl;
-    // auto pp = wq->getPrivacyPolicyTransactionByHash(ppt.hash());
-    // const auto mp1 = multiParty1.get<rpcparams::SendMultiPartyTransaction>();
-    // MultiPartyTransaction mpt1(mp1);
-    // auto [result1, status1] = wq->addMultiParty(mpt1);
-    // cout << result1 << " " << status1 << endl;
-
-   
     return 0;
 }

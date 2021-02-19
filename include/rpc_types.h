@@ -38,16 +38,6 @@ namespace evm4ccf
   using ByteString = std::vector<uint8_t>;
 
   using ContractParticipants = std::set<eevm::Address>;
-    // static enum Type  {
-    //   UINT256,
-    //   UINT256_ARRAY,
-    //   BOOL
-    // };
-    // static std::unordered_map<ByteData, int> contractType = {
-    //   {"uint256", UINT256},
-    //   {"uint256[]", UINT256_ARRAY},
-    //   {"bool", BOOL}
-    // };
   // TODO(eddy|#refactoring): Reconcile this with eevm::Block
   struct BlockHeader
   {
@@ -105,17 +95,6 @@ namespace evm4ccf
       }
     };
 
-    
-    // struct MultiPartyParams
-    // {
-    //   ByteData name = {};
-    //   ByteData value = {};
-
-    //   eevm::KeccakHash getHash() const {
-    //     return Utils::to_KeccakHash(policyHash);
-    //   }
-    // };
-
     struct Params {
     public:
       ByteData name = {};
@@ -130,7 +109,7 @@ namespace evm4ccf
       }
 
       void pack(vector<void*> &coders) {
-          abicoder::paramCoder(coders, name, type, getValue());        
+        abicoder::paramCoder(coders, name, type, getValue());        
       } 
     };
 
@@ -175,8 +154,9 @@ static std::unordered_map<ByteData, int> contractType = {
             inputs[i].pack(coders);
         }
         auto data = abicoder::pack(coders);
-        abicoder::insert(data, sha3);
-        return data;
+        // abicoder::insert(data, sha3);
+        sha3.insert(sha3.end(),data.begin(), data.end());
+        return sha3;
       }
 
       bool padding(const MultiInput &p) {
@@ -184,10 +164,8 @@ static std::unordered_map<ByteData, int> contractType = {
           
           for(int i=0; i<inputs.size(); i++) {
             if(inputs[i].name == p.name) {
-              inputs[i].value = p.value;
-              
+              inputs[i].value = p.value;             
               num++;
-              std::cout << inputs.size() << " "<<num<< std::endl;
               return true;
             }
           }
@@ -196,10 +174,6 @@ static std::unordered_map<ByteData, int> contractType = {
 
       bool complete() const {
         return num == inputs.size();
-      }
-      ~Function() {
-        std::cout << "functions 析构"<< std::endl;
-
       }
       private:
         size_t num = 0;
@@ -228,22 +202,12 @@ static std::unordered_map<ByteData, int> contractType = {
       
       policy::Function get_funtions(const ByteData &name) const {
         for(int i=0; i<functions.size(); i++) {
-          if(functions[i].name == name) return functions[i];
+          if(functions[i].name == name) {
+            return functions[i];
+          }
         }
         throw std::logic_error(fmt::format("doesn`t find this {} function in this policy modules", name));
       }
-
-      // std::tuple<bool, ByteData> paddingToPolicy(const policy::MultiPartyParams &p) {
-      //   int i=0;
-      //   for(; i<functions.size(); i++) {
-      //     if(functions[i].name == p.name) break;
-      //   }
-      //     auto status = functions[i].padding(p);
-      //     if(status && functions[i].complete()) {
-      //       return std::make_tuple(status, functions[i].packed_to_data());
-      //     }
-      //     return std::make_tuple(status, "");
-      // }
       
     };
 
@@ -268,6 +232,11 @@ static std::unordered_map<ByteData, int> contractType = {
     struct GetTransactionReceipt
     {
       TxHash tx_hash = {};
+    };
+
+    struct GetMultiPartyStatus
+    {
+      eevm::KeccakHash tx_hash = {};
     };
 
     struct SendRawTransaction
@@ -467,6 +436,16 @@ static std::unordered_map<ByteData, int> contractType = {
       GetTransactionReceiptTag,
       rpcparams::GetTransactionReceipt,
       rpcresults::ReceiptResponse>;
+
+    struct GetMultiPartyStatusTag
+    {
+      static constexpr auto name = "cloak_getMultiPartyStatus";
+    };
+    using GetMultiPartyStatus = RpcBuilder<
+      GetMultiPartyStatusTag,
+      rpcparams::GetMultiPartyStatus,
+      rpcresults::MultiPartyReceiptResponse
+    >;
 
     struct SendRawTransactionTag
     {

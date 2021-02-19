@@ -7,7 +7,7 @@ using namespace std;
 using namespace eevm;
 using namespace abicoder;
 
-
+// 测试合约输入变量打包
 int main() {
 
     vector<void*> coders;
@@ -20,8 +20,6 @@ int main() {
     abicoder::paramCoder(coders, "array", "uint[]", arrs);
     abicoder::paramCoder(coders, "bytes", "bytes10","1234567890");
     abicoder::paramCoder(coders, "Dbytes", "string", "Hello, world!");
-
-    cout << coders.size() << endl;
    
     auto out1 = abicoder::pack(coders);
     cout << to_hex_string(out1) << endl;

@@ -288,58 +288,55 @@ namespace evm4ccf
         return;
       };
 
-      auto send_privacy_policy = [](ccf::EndpointContext& args) {
+      auto send_privacy_policy = [this](ccf::EndpointContext& args) {
         const auto body_j =
           nlohmann::json::parse(args.rpc_ctx->get_request_body());
         auto sppp = body_j.get<rpcparams::SendPrivacyPolicy>();
-        // PrivacyPolicyTransaction ppt(sppp);
-        // workerQueue.add(ppt);
+        PrivacyPolicyTransaction ppt(sppp);
+        auto hash = workerQueue.addModule(ppt);
 
-        // EthereumTransactionWithSignature eth_tx(in);
-
-        // rpcparams::MessageCall tc;
-        // eth_tx.to_transaction_call(tc);
-
-        // auto tx_result = execute_transaction(args.caller_id, tc, args.tx);
-
-        // if (!tx_result.first) {
-        //   args.rpc_ctx->set_response_status(HTTP_STATUS_INTERNAL_SERVER_ERROR);
-        //   args.rpc_ctx->set_response_header(
-        //     http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
-        //   args.rpc_ctx->set_response_body(
-        //     jsonrpc::error_response(0, tx_result.second).dump()
-        //   );
-        //   return;
-        // }
-        // auto policyHash = Utils::hash(sppp.policy);
         // Return success HTTP response with the result json
         args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
         args.rpc_ctx->set_response_header(
           http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
         args.rpc_ctx->set_response_body(
-          jsonrpc::result_response(0, "").dump()
-          );
+          jsonrpc::result_response(0, eevm::to_hex_string(hash)).dump()
+        );
         return;
 
       };
 
-      auto send_multiPartyTransaction = [](ccf::EndpointContext& args) {
+      auto send_multiPartyTransaction = [this](ccf::EndpointContext& args) {
         const auto body_j =
           nlohmann::json::parse(args.rpc_ctx->get_request_body());
         auto smp = body_j.get<rpcparams::SendMultiPartyTransaction>();
+        MultiPartyTransaction mpt(smp);
+        auto result = workerQueue.addMultiParty(mpt);
 
-        rpcresults::MultiPartyReceiptResponse  response = nullopt;
-        response->state = true;
-        response->progress = "pending";
         args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
-          args.rpc_ctx->set_response_header(
-            http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
-          args.rpc_ctx->set_response_body(
-            jsonrpc::result_response(0, response).dump()
-            );
+        args.rpc_ctx->set_response_header(
+          http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+        args.rpc_ctx->set_response_body(
+          jsonrpc::result_response(0, eevm::to_hex_string(result)).dump()
+        );
         return;
       };
 
+      auto get_multiPartyStatus = [this](ccf::EndpointContext& args) {
+        const auto body_j =
+          nlohmann::json::parse(args.rpc_ctx->get_request_body());
+        auto mps = body_j.get<rpcparams::GetMultiPartyStatus>();
+        auto result = workerQueue.getMultiPartyStatus(mps.tx_hash);
+
+        args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
+        args.rpc_ctx->set_response_header(
+          http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+        args.rpc_ctx->set_response_body(
+          jsonrpc::result_response(0, result).dump()
+        );
+        return;
+      };
+      
       auto get_workOrderSubmit = [](ccf::EndpointContext& args) {
         const auto body_j = 
           nlohmann::json::parse(args.rpc_ctx->get_request_body());
@@ -438,6 +435,9 @@ namespace evm4ccf
         .install();
 
       make_endpoint(ethrpc::GetTransactionReceipt::name, HTTP_GET, get_transaction_receipt)
+        .install();
+
+      make_endpoint(ethrpc::GetMultiPartyStatus::name, HTTP_GET, get_multiPartyStatus)
         .install();
 
       make_endpoint(ethrpc::WorkOrderSubmit::name, HTTP_GET, get_workOrderSubmit)

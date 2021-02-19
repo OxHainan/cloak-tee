@@ -4,6 +4,8 @@
 
 #include <eEVM/util.h>
 #include "../src/abi/parsing.h"
+#include "../src/app/utils.h"
+#include "../src/queue/workertransaction.h"
 namespace evm4ccf
 {
   template <size_t N>
@@ -113,6 +115,8 @@ namespace evm4ccf
     s.block_hash = eevm::to_uint256(j["hash"]);
   }
 
+
+
   namespace policy
   {
     
@@ -122,13 +126,29 @@ namespace evm4ccf
       from_to_str(j, "name", s.name);
       from_to_str(j, "owner", s.owner);
       from_to_str(j, "type", s.type);
-      Parsing().check(s.type);
+      // Parsing().check(s.type);
+    }
+
+    inline void to_json( nlohmann::json& j, const Params &s) {
+      j = nlohmann::json::object();
+      j["name"] = s.name;
+      j["owner"] = s.owner;
+      j["type"] = s.type;
+      if(s.value.has_value()) {
+        j["value"] = s.value.value();
+      }
     }
 
     inline void from_json(const nlohmann::json& j ,stateParams & s) {
       require_object(j);
       from_to_str(j, "name", s.name);
       from_array_to_object(j, "keys", s.keys);
+    }
+
+    inline void to_json( nlohmann::json& j ,const stateParams & s) {
+      j = nlohmann::json::object();
+      j["name"] = s.name;
+      j["keys"] = s.keys;
     }
 
     inline void from_json(const nlohmann::json& j ,MultiInput & s) {
@@ -153,8 +173,8 @@ namespace evm4ccf
     inline void to_json(nlohmann::json& j, const MultiPartyParams& s)
     {
       j = nlohmann::json::object();
-      // j["function"] = s.function;
-      // j["inputs"] = s.inputs;
+      j["function"] = s.function;
+      j["inputs"] = s.inputs;
     }
     
     inline void from_json(const nlohmann::json& j ,Function & s) {
@@ -165,10 +185,17 @@ namespace evm4ccf
       from_array_to_object(j, "read", s.read);
       from_array_to_object(j, "mutate", s.mutate);
       from_array_to_object(j, "outputs", s.outputs);
-
-      return s;
     }
 
+    inline void to_json( nlohmann::json& j ,const Function & s) {
+      j = nlohmann::json::object();
+      j["name"] = s.name;
+      j["type"] = s.type;
+      j["inputs"] = s.inputs;
+      j["read"] = s.read;
+      j["mutate"] = s.mutate;
+      j["outputs"] = s.outputs;
+    }
 
   }
 
@@ -179,7 +206,6 @@ namespace evm4ccf
     {
       require_object(j);
       from_to_str(j, "contract", s.contract);
-      // s.functions = j["functions"].get<Policy::Function>();
       from_array_to_object(j, "states", s.states);
       from_array_to_object(j, "functions", s.functions);
     }
@@ -188,10 +214,8 @@ namespace evm4ccf
     {
       j = nlohmann::json::object();
       j["contract"] = s.contract;
-      // j["states"] = s.states;
-      // j["functions"] = s.functions;
-      // from_array_to_object(j, "states", s.states);
-      // from_array_to_object(j, "functions", s.functions);
+      j["states"] = s.states;
+      j["functions"] = s.functions;
     }
 
     inline void to_json(nlohmann::json& j, const MessageCall& s)
@@ -315,6 +339,18 @@ namespace evm4ccf
     {
       require_array(j);
       s.tx_hash = eevm::to_uint256(j[0]);
+    }
+
+    inline void to_json(nlohmann::json& j, const GetMultiPartyStatus& s)
+    {
+      j = nlohmann::json::array();
+      j.push_back(eevm::to_hex_string(s.tx_hash));
+    }
+
+    inline void from_json(const nlohmann::json& j, GetMultiPartyStatus& s)
+    {
+      require_array(j);
+      s.tx_hash = Utils::to_KeccakHash(j[0]);
     }
 
     inline void to_json(nlohmann::json& j, const WorkOrderSubmit& s) {

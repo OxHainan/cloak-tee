@@ -82,7 +82,7 @@ sign_app_library(evm4ccf.enclave
   ${CMAKE_CURRENT_BINARY_DIR}/signing_key.pem
 )
 
-add_executable(main  ${CMAKE_CURRENT_LIST_DIR}/../src/abi/test.cpp)
+add_executable(main  ${CMAKE_CURRENT_LIST_DIR}/../src/app/main.cpp)
 target_compile_options(main PRIVATE -stdlib=libc++)
 
 target_link_libraries(main

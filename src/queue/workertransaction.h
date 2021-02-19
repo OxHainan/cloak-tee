@@ -16,7 +16,7 @@ namespace evm4ccf
     using h256 = eevm::KeccakHash;
     using ByteString = std::vector<uint8_t>;
     using uint256 = uint256_t;
-    // using WorkerQueue = evm4ccf::WorkerQueue;
+
     enum Status {
         PENDING,
         PACKAGE,
@@ -55,13 +55,13 @@ namespace evm4ccf
             ByteString          data;
     };
 
-     struct CloakTransaction {
+    struct CloakTransaction {
     public:
         Address             from;
         Address             to;
         Address             verifierAddr;
         ByteData            codeHash;
-        struct policy::Function    function;
+        policy::Function    function;
         std::vector<policy::Params> states;
         Status              status = PENDING;
         std::map<Address, MultiPartyTransaction> multiParty ;
@@ -72,8 +72,9 @@ namespace evm4ccf
             {
                 function.padding(mpt.parmas.inputs[i]);
             }
-            cout << function.complete() << endl;
+
             if(function.complete()){
+                status = PACKAGE;
                 auto data = function.packed_to_data();
                 cout << to_hex_string(data) << endl;
             }        
@@ -86,9 +87,7 @@ namespace evm4ccf
         h256 hash() const {
             return eevm::keccak_256(eevm::to_bytes(codeHash));
         }
-        ~CloakTransaction() {
-            cout << "CloakTransaction 析构" << endl;
-        }
+
     private:
         ByteString   data;
     };
@@ -100,7 +99,7 @@ namespace evm4ccf
         Address             to;
         Address             verifierAddr;
         ByteData            codeHash;
-        Policy              policy;
+        rpcparams::Policy              policy;
         PrivacyPolicyTransaction(){}
         PrivacyPolicyTransaction(const rpcparams::SendPrivacyPolicy &p) {
             from = p.from;
@@ -112,7 +111,6 @@ namespace evm4ccf
         }
 
         void to_privacyPolicyModules_call(CloakTransaction &tc, const ByteData &name) const {
-
             tc.from = from;
             tc.to = to;
             tc.verifierAddr = verifierAddr;
@@ -132,7 +130,4 @@ namespace evm4ccf
         private:
             ByteString          data;
     };
-
-   
-
 } // namespace evm4ccf

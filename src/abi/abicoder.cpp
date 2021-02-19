@@ -120,12 +120,23 @@ UINT8ARRAY abicoder::CoderArray::encode() {
 }
 
 void abicoder::paramCoder(vector<void*> &coders, const ByteData &name, const ByteData &_type,const ByteData & value) {
-    auto [type, length, _] = Parsing(_type).result();
-    paramCoder(coders, name, type, value, length);
+
+    auto [type, length, boolean] = Parsing(_type).result();
+    if(boolean) {
+        // 数组类型
+        size_t len = length > 1 ? length : value.size();
+        CoderArray* array = new CoderArray(name, type, len);
+        array->setValue(value);
+        coders.push_back(array);
+        return;
+    }
+    paramCoder(coders, name, type, value, length);  
 }
 
+// 处理数组类型
 void abicoder::paramCoder(vector<void*> &coders, const ByteData &name, const ByteData &_type,const vector<ByteData> & value) {
     auto [type, length, boolean] = Parsing(_type).result();
+    std::cout << type << std::endl;
     if(boolean) {
         // array
         size_t len = length > 1 ? length : value.size();
@@ -139,46 +150,45 @@ void abicoder::paramCoder(vector<void*> &coders, const ByteData &name, const Byt
 void abicoder::paramCoder(vector<void*> &coders, const ByteData &name, const ByteData &type,const ByteData & value, int length) {
     switch (contractType[type]){
     case ADDRESS: {
-        CoderAddress* addr = new CoderAddress(name);
-        addr->setValue(value);
-        coders.push_back(addr);
+        CoderAddress* code = new CoderAddress(name);
+        code->setValue(value);
+        coders.push_back(code);
         return;
     }
     case BOOL: {
-        CoderBoolean* boolean =new  CoderBoolean(name);
-        boolean->setValue(value);
-        coders.push_back(boolean);
+        CoderBoolean* code =new  CoderBoolean(name);
+        code->setValue(value);
+        coders.push_back(code);
         break;
     }
     case STRING: {
-        CoderString* str = new CoderString(name);
-        str->setValue(value);
-        coders.push_back(str);
+        CoderString* code = new CoderString(name);
+        code->setValue(value);
+        coders.push_back(code);
         break;
     }
     case BYTES: {
-        cout << length << name << endl;
         if(length == 0) {
-            CoderDynamicBytes* dynamicBytes = new CoderDynamicBytes(name);
-            dynamicBytes->setValue(value);
-            coders.push_back(dynamicBytes);
+            CoderDynamicBytes* code = new CoderDynamicBytes(name);
+            code->setValue(value);
+            coders.push_back(code);
         } else {
-            CoderFixedBytes* dynamicBytes= new CoderFixedBytes(length);
-            dynamicBytes->setValue(value);
-            coders.push_back(dynamicBytes);
+            CoderFixedBytes* code= new CoderFixedBytes(length);
+            code->setValue(value);
+            coders.push_back(code);
         }       
         break;
     }
     case UINT: {
-        CoderNumber* number =new  CoderNumber(length, false);
-        number->setValue(value);
-        coders.push_back(number);
+        CoderNumber* code =new  CoderNumber(length, false);
+        code->setValue(value);
+        coders.push_back(code);
         break;
     }
     case INT: {
-        CoderNumber* number1 = new CoderNumber(length, true);
-        number1->setValue(value);
-        coders.push_back(number1);
+        CoderNumber* code = new CoderNumber(length, true);
+        code->setValue(value);
+        coders.push_back(code);
         break;
     }
     default:

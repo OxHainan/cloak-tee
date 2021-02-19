@@ -26,7 +26,7 @@ namespace abicoder {
 inline double alignSize(size_t size) {
     return 32 * (ceil(size / 32.0));
 }
-static void print_bytes( const UINT8ARRAY &in_bytes )
+inline void print_bytes( const UINT8ARRAY &in_bytes )
 {
     for (size_t i = 0; i < in_bytes.size(); i++)
     {
@@ -131,9 +131,7 @@ public:
         return Dynamic;
     }
 
-    ~CoderNumber() {
-        cout << "CoderNumber 析构" << endl;
-    }
+
 };
 
 
@@ -143,18 +141,14 @@ public:
     void setValue(const ByteData &_value) {
         value = _value;
     }
-    UINT8ARRAY encode() {
+    UINT8ARRAY encode() {        
         UINT8ARRAY result = to_bytes(value, 12u);
-        cout << result.size() << endl;
-        print_bytes(result);
         return result;       
     }
     bool getDynamic() const {
         return Dynamic;
     }
-    ~CoderAddress() {
-        cout << "CoderAddress 析构" << endl;
-    }
+
 private:
     ByteData name;
     ByteData coderType = "address";
@@ -178,9 +172,7 @@ public:
     bool getDynamic() const {
         return Dynamic;
     }
-    ~CoderBoolean() {
-        cout << "CoderBoolean 析构" << endl;
-    }
+
 private:
     ByteData name;
     ByteData coderType = "bool";
@@ -207,9 +199,7 @@ public:
     bool getDynamic() const {
         return Dynamic;
     }
-    ~CoderString() {
-        cout << "CoderString 析构" << endl;
-    }
+
 private:
     ByteData name;
     ByteData coderType = "string";
@@ -234,9 +224,7 @@ public:
     bool getDynamic() const {
         return Dynamic;
     }
-    ~CoderDynamicBytes() {
-        cout << "CoderDynamicBytes 析构" << endl;
-    }
+
 private:
     ByteData name;
     ByteData coderType = "bytes";
@@ -266,9 +254,7 @@ public:
     bool getDynamic() const {
         return Dynamic;
     }
-    ~CoderFixedBytes() {
-        cout << "CoderFixedBytes 析构" << endl;
-    }
+
 private:
     ByteData name;
     bool     Dynamic = false;
@@ -310,7 +296,7 @@ public:
     }
 
     void setValue(const ByteData &_value){ 
-        value.push_back(_value);
+        value = Utils::stringToArray(_value);
     }
 
     UINT8ARRAY encode();

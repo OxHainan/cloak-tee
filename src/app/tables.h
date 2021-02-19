@@ -79,5 +79,6 @@ namespace evm4ccf
     using Storage = kv::Map<StorageKey, uint256_t>;
 
     using Results = kv::Map<TxHash, TxResult>;
+
   } // namespace tables
 } // namespace evm4ccf
