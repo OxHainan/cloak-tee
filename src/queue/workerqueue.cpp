@@ -21,13 +21,14 @@ bool WorkerQueue::drop(const h256& hash) {
 }
 
 h256 WorkerQueue::addMultiParty(MultiPartyTransaction &mpt) {
-    auto ppt = findModules(mpt.to);
-    if(ppt.codeHash == "") return h256{};
     if (existCloakTx(mpt.to)) {
         auto ct = workerQueue[queueTx[mpt.to]];
         ct.insert(mpt);
         return update(ct);
     }
+    auto ppt = findModules(mpt.to);
+    if(ppt.codeHash == "") return h256{};
+    
     // 添加交易
     cout << "添加新交易"<< endl;
     CloakTransaction ct;
