@@ -1,4 +1,6 @@
 #pragma once
+#include "ds/logger.h"
+#include "fmt/core.h"
 #include "iostream"
 #include "string"
 #include "vector"
@@ -73,11 +75,11 @@ namespace evm4ccf
                 function.padding(mpt.parmas.inputs[i]);
             }
 
-            if(function.complete()){
-                status = PACKAGE;
-                auto data = function.packed_to_data();
-                cout << to_hex_string(data) << endl;
-            }        
+            // if(function.complete()){
+            //     status = PACKAGE;
+            //     auto data = function.packed_to_data();
+            //     cout << to_hex_string(data) << endl;
+            // }        
         }
 
         ByteData getStatus() const {
@@ -86,6 +88,10 @@ namespace evm4ccf
 
         h256 hash() const {
             return eevm::keccak_256(eevm::to_bytes(codeHash));
+        }
+
+        void set_status_to_package() {
+            status = PACKAGE;
         }
 
     private:
@@ -108,6 +114,7 @@ namespace evm4ccf
             codeHash = p.codeHash;
             data = eevm::to_bytes(p.policy);
             policy = Utils::parse<Policy>(p.policy);
+            LOG_DEBUG_FMT("PrivacyPolicyTransaction info: {}\n", info());
         }
 
         void to_privacyPolicyModules_call(CloakTransaction &tc, const ByteData &name) const {
@@ -125,6 +132,11 @@ namespace evm4ccf
 
         std::string to_hex_hash() const {
             return to_hex_string(hash());
+        }
+
+        std::string info() const {
+            return fmt::format("from: {}, to: {}, codeHash: {} \n \
+                    policy:{}\n", from, to, codeHash, policy.info());
         }
 
         private:

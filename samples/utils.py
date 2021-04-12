@@ -16,6 +16,8 @@ class Caller:
         self.account = account
         self.w3 = w3
         self.w3.eth.sendPrivacyPolicy = types.MethodType(cloak_ext.sendPrivacyPolicy, self.w3.eth)
+        self.w3.eth.sendPrivacyPolicy_v2 = types.MethodType(cloak_ext.sendPrivacyPolicy_v2, self.w3.eth)
+        self.w3.eth.sendMultiPartyTransaction = types.MethodType(cloak_ext.sendMultiPartyTransaction_v2, self.w3.eth)
         self.default_transaction = {
             "from": self.account.address,
             "gas": 0,
@@ -34,10 +36,18 @@ class Caller:
         tx_hash = self.w3.eth.sendTransaction(txn)
         return self.w3.eth.waitForTransactionReceipt(tx_hash)
 
-    def sendPrivacyPolicy(self, fn, **kwargs):
+    def sendPrivacyPolicy(self, fn, policy, **kwargs):
         txn = self._build_transaction(fn, **kwargs)
         signed = self.account.signTransaction(txn)
-        tx_hash = self.w3.eth.sendPrivacyPolicy(signed.rawTransaction, "this is a fake privacy model")
+        tx_hash = self.w3.eth.sendPrivacyPolicy(signed.rawTransaction, policy)
+        return tx_hash
+
+    def sendPrivacyPolicy_v2(self, f, t ,v, policy):
+        tx_hash = self.w3.eth.sendPrivacyPolicy_v2(f, t, v, policy)
+        return tx_hash
+
+    def sendMultiPartyTransaction(self, t, data):
+        tx_hash = self.w3.eth.sendMultiPartyTransaction(self.account.address, t, data)
         return tx_hash
 
     def send_signed(self, fn, **kwargs):

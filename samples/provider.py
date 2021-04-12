@@ -30,8 +30,8 @@ class CCFProvider(web3.providers.BaseProvider):
 
         http_verb = "POST" if "post" in self.supported_methods[http_path] else "GET"
 
-        if method == "cloak_sendPrivacyPolicy":
-            params[0] = params[0].hex()
+        # if method == "cloak_sendPrivacyPolicy":
+        #     params[0] = params[0].hex()
             
         response = self.ccf_client.call("/app"+http_path, params, http_verb)
      

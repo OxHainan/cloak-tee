@@ -12,6 +12,7 @@
 #include <kv/store.h>
 #include <kv/map.h>
 #include <node/rpc/serdes.h>
+#include "ds/logger.h"
 #include "jsonrpc.h"
 #include "../src/app/utils.h"
 // STL
@@ -111,6 +112,15 @@ namespace evm4ccf
       void pack(vector<void*> &coders) {
         abicoder::paramCoder(coders, name, type, getValue());        
       } 
+
+      std::string info() const {
+          std::string s = fmt::format("param name:{}, type:{}, owner:{}", name, type, owner);
+          if (value.has_value()) {
+              s.append(fmt::format(", value:{}", value.value()));
+          }
+          s.append("\n");
+          return s;
+      }
     };
 
     struct stateParams {
@@ -143,7 +153,20 @@ static std::unordered_map<ByteData, int> contractType = {
       std::vector<Params> outputs;
 
       UINT8ARRAY convert_funtion_name() const {
-        auto sha3 = eevm::keccak_256(name);
+        LOG_DEBUG_FMT("original function name:{}", signed_name);
+        std::string signed_name = name + "(";
+        bool first = true;
+        for (auto &&p : inputs) {
+            if (!first) {
+                signed_name += ","+p.type;
+            } else {
+                signed_name += p.type;
+            }
+            first = false;
+        }
+        signed_name += ")";
+        LOG_DEBUG_FMT("signed name:{}", signed_name);
+        auto sha3 = eevm::keccak_256(signed_name);
         return UINT8ARRAY(sha3.begin(), sha3.begin()+4);
       }
 
@@ -175,6 +198,15 @@ static std::unordered_map<ByteData, int> contractType = {
       bool complete() const {
         return num == inputs.size();
       }
+
+      std::string info() const {
+          std::string s = fmt::format("name:{}, type:{}\n", name, type);
+          for (auto &&i : inputs) {
+              s.append(i.info());
+          }
+          return s;
+      }
+      
       private:
         size_t num = 0;
     };
@@ -207,6 +239,14 @@ static std::unordered_map<ByteData, int> contractType = {
           }
         }
         throw std::logic_error(fmt::format("doesn`t find this {} function in this policy modules", name));
+      }
+
+      std::string info() const {
+          std::string s = fmt::format("contract: {}, \n", contract);
+          for (auto &&v : functions) {
+              s.append(fmt::format("function: {}\n", v.info()));
+          }
+          return s;
       }
       
     };

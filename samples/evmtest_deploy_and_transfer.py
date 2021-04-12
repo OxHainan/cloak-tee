@@ -38,6 +38,27 @@ def read_math_library_from_file():
         contracts_dir, "eevmtests/EvmTest_combined.json")
     return read_contract_from_file(file_path, "EvmTest.sol:Math")
 
+def read_evmtest_policy_from_file():
+    env_name = "CONTRACTS_DIR"
+    contracts_dir = os.getenv(env_name)
+    if contracts_dir is None:
+        raise RuntimeError(
+            f"Cannot find contracts, please set env var '{env_name}'")
+    file_path = os.path.join(
+        contracts_dir, "eevmtests/EvmTestPolicy.json")
+    with open(file_path, mode='rb') as f:
+        return web3.Web3.toHex(f.read())
+
+def read_evmtest_params_from_file():
+    env_name = "CONTRACTS_DIR"
+    contracts_dir = os.getenv(env_name)
+    if contracts_dir is None:
+        raise RuntimeError(
+            f"Cannot find contracts, please set env var '{env_name}'")
+    file_path = os.path.join(
+        contracts_dir, "eevmtests/mptParams.json")
+    with open(file_path, mode='rb') as f:
+        return web3.Web3.toHex(f.read())
 
 def test_deploy(ccf_client):
     math_abi, math_bin = read_math_library_from_file()
@@ -50,7 +71,7 @@ def test_deploy(ccf_client):
     LOG.info("Library deployment")
     math_spec = w3.eth.contract(abi=math_abi, bytecode=math_bin)
 
-    # deploy_receipt = owner.sendPrivacyPolicy(math_spec.constructor())
+    # deploy_receipt = owner.sendPrivacyPolicy(math_spec.constructor(), evmtest_policy)
 
     deploy_receipt = owner.send_signed(math_spec.constructor())
     ccf_client.math_library_address = deploy_receipt.contractAddress
@@ -68,6 +89,11 @@ def test_deploy(ccf_client):
     evmtest_spec = w3.eth.contract(abi=evmtest_abi, bytecode=evmtest_bin)
     deploy_receipt = owner.send_signed(
         evmtest_spec.constructor(10000, [11, 12, 13]))
+
+    evmtest_policy = read_evmtest_policy_from_file()
+    sppr = owner.sendPrivacyPolicy_v2(owner.account.address, deploy_receipt.contractAddress, "", evmtest_policy)
+    mptParams = read_evmtest_params_from_file()
+    smptr = owner.sendMultiPartyTransaction(deploy_receipt.contractAddress, mptParams)
 
     ccf_client.evmtest_contract_address = deploy_receipt.contractAddress
     print(deploy_receipt.contractAddress)
@@ -112,7 +138,7 @@ def get_balance(ccf_client):
     receipt = w3.eth.getTransactionReceipt(txhash.hex())
     # text = json.loads(receipt)
     # print(receipt)
-    print(count)
+    print(f"count:{count}")
     print(balance)
     chaind = w3.eth.estimateGas(params)
     print(chaind)
@@ -126,6 +152,6 @@ if __name__ == "__main__":
         config.cert, 
         config.key
         )
-    get_balance(ccf_client)
-    # test_deploy(ccf_client)
-    # test_get_sum(ccf_client)
+    # get_balance(ccf_client)
+    test_deploy(ccf_client)
+    test_get_sum(ccf_client)

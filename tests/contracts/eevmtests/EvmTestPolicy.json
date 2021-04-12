@@ -1,0 +1,28 @@
+{
+   "contract":"EvmTest",
+   "functions":[
+      {
+         "type":"function",
+         "name":"getSum",
+         "inputs":[
+            {
+               "name":"_a",
+               "type":"uint256",
+               "owner":"all"
+            },
+            {
+               "name":"_b",
+               "type":"uint256",
+               "owner":"all"
+            }
+         ],
+         "outputs":[
+            {
+               "name":"",
+               "type":"uint256",
+               "owner":"all"
+            }
+         ]
+      }
+   ]
+}

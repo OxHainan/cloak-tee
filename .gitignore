@@ -12,3 +12,5 @@ sphinx/env/
 __pycache__/
 
 getting_started/*.retry
+
+compile_commands.json

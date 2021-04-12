@@ -19,7 +19,8 @@ public:
     PrivacyPolicyTransaction getPrivacyPolicyTransactionByHash(const h256& hash);
     ByteData getMultiPartyStatus(const h256& hash);
     bool drop(const h256 &hash);
-    PrivacyPolicyTransaction findModules(const Address &addr);
+    std::optional<PrivacyPolicyTransaction*> findModules(const Address &addr);
+    std::optional<CloakTransaction*> GetCloakTransaction(const h256 &hash);
 private:
     h256 addTx(CloakTransaction &ct);
     h256 update(CloakTransaction &ct);
