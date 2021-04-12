@@ -153,7 +153,7 @@ static std::unordered_map<ByteData, int> contractType = {
       std::vector<Params> outputs;
 
       UINT8ARRAY convert_funtion_name() const {
-        LOG_DEBUG_FMT("original function name:{}", signed_name);
+        LOG_DEBUG_FMT("original function name:{}", name);
         std::string signed_name = name + "(";
         bool first = true;
         for (auto &&p : inputs) {
