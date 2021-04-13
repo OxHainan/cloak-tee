@@ -48,7 +48,7 @@ bool WorkerQueue::existCloakTx(const Address &addr) {
 h256 WorkerQueue::addTx(CloakTransaction &ct) {
     auto hash = ct.hash();
     workerQueue[hash] = ct;
-    queueTx[ct.to] = hash;
+    queueTx[ct.from] = hash;
     return hash;
 }
 // 更新交易
