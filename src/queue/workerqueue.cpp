@@ -21,6 +21,7 @@ bool WorkerQueue::drop(const h256& hash) {
     return true;
 }
 
+// TODO: check exception
 h256 WorkerQueue::addMultiParty(MultiPartyTransaction &mpt) {
     if (existCloakTx(mpt.to)) {
         auto ct = workerQueue[queueTx[mpt.to]];

@@ -60,6 +60,17 @@ def read_evmtest_params_from_file():
     with open(file_path, mode='rb') as f:
         return web3.Web3.toHex(f.read())
 
+def signMpt(private_key, frm, to, data, nonce=1):
+    import rlp
+    from eth_hash.auto import keccak as keccak_256
+    from_int = int(frm, 0)
+    to_int = int(to, 0)
+    params = rlp.encode([nonce, from_int, to_int, data])
+    msg_hash = keccak_256(params)
+    signed = web3.eth.Account.signHash(msg_hash, private_key=private_key)
+    res = rlp.encode([nonce, from_int, to_int, data, signed.v, signed.r, signed.s]).hex()
+    return res
+
 def test_deploy(ccf_client):
     math_abi, math_bin = read_math_library_from_file()
     evmtest_abi, evmtest_bin = read_evmtest_contract_from_file()
@@ -69,6 +80,7 @@ def test_deploy(ccf_client):
     owner = Caller(web3.Account.create(), w3)
 
     LOG.info("Library deployment")
+    LOG.info(f"owner account:{owner.account.address}")
     math_spec = w3.eth.contract(abi=math_abi, bytecode=math_bin)
 
     # deploy_receipt = owner.sendPrivacyPolicy(math_spec.constructor(), evmtest_policy)
@@ -92,8 +104,9 @@ def test_deploy(ccf_client):
 
     evmtest_policy = read_evmtest_policy_from_file()
     sppr = owner.sendPrivacyPolicy_v2(owner.account.address, deploy_receipt.contractAddress, "", evmtest_policy)
-    mptParams = read_evmtest_params_from_file()
-    smptr = owner.sendMultiPartyTransaction(deploy_receipt.contractAddress, mptParams)
+    mpt_data = read_evmtest_params_from_file()
+    mpt_params = signMpt(owner.account.key, owner.account.address, deploy_receipt.contractAddress, mpt_data)
+    smptr = owner.sendMultiPartyTransaction(mpt_params)
 
     ccf_client.evmtest_contract_address = deploy_receipt.contractAddress
     print(deploy_receipt.contractAddress)

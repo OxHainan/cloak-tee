@@ -10,6 +10,7 @@
 #include "http/http_status.h"
 #include "jsonrpc.h"
 #include "tables.h"
+#include "tls/key_pair.h"
 #include "utils.h"
 // CCF
 #include "ds/hash.h"
@@ -26,6 +27,7 @@
 #include <eEVM/util.h>
 
 // STL/3rd-party
+#include <iostream>
 #include <msgpack/msgpack.hpp>
 #include <unistd.h>
 
@@ -234,6 +236,7 @@ namespace evm4ccf
 
         rpcparams::MessageCall tc;
         eth_tx.to_transaction_call(tc);
+        // tls::PublicKey_k1Bitcoin::recover_key
 
         auto tx_result = execute_transaction(args.caller_id, tc, args.tx);
 
@@ -301,16 +304,13 @@ namespace evm4ccf
       };
 
       auto send_multiPartyTransaction = [this](ccf::EndpointContext& args) {
+        CLOAK_DEBUG_FMT("request body:{}", args.rpc_ctx->get_request_body());
         const auto body_j =
           nlohmann::json::parse(args.rpc_ctx->get_request_body());
         auto smp = body_j.get<rpcparams::SendMultiPartyTransaction>();
         MultiPartyTransaction mpt(smp);
+        mpt.checkSignature();
         auto result = workerQueue.addMultiParty(mpt);
-        if (result.empty())
-        {
-          return ccf::make_error(
-            HTTP_STATUS_BAD_REQUEST, "add multi party faled");
-        }
 
         args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
         args.rpc_ctx->set_response_header(
@@ -322,19 +322,26 @@ namespace evm4ccf
         auto ct = workerQueue.GetCloakTransaction(result);
         if (ct.has_value() && ct.value()->function.complete())
         {
-          LOG_DEBUG_FMT("ct function: {}\n", ct.value()->function.info());
-          ct.value()->set_status_to_package();
-          auto data = ct.value()->function.packed_to_data();
+          CloakTransaction *ct_value = ct.value();
+          CLOAK_DEBUG_FMT("ct function: {}\n", ct_value->function.info());
+          ct_value->set_status(PACKAGE);
+          auto data = ct_value->function.packed_to_data();
           MessageCall mc;
-          mc.from = smp.from;
-          mc.to = smp.to;
+          mc.from = mpt.from;
+          mc.to = mpt.to;
           mc.data = to_hex_string(data);
-          LOG_DEBUG_FMT("ct function data: {}", mc.data);
+          CLOAK_DEBUG_FMT("ct function data: {}", mc.data);
           auto es = make_state(args.tx);
 
           const auto res = run_in_evm(mc, es).first;
-          // TODO: handle error and status
-          LOG_DEBUG_FMT("run in evm, res: {}, msg: {}\n", res.output, res.exmsg);
+          CLOAK_DEBUG_FMT("run in evm, res: {}, msg: {}\n", res.output, res.exmsg);
+          if (res.er == ExitReason::threw) {
+              ct_value->set_status(FAILED);
+          } else {
+              // TODO: add succeeded status
+              // ct_value->>set_status()
+          }
+          // TODO: handle return result
         }
 
         return ccf::make_success("");

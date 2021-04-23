@@ -17,7 +17,7 @@ class Caller:
         self.w3 = w3
         self.w3.eth.sendPrivacyPolicy = types.MethodType(cloak_ext.sendPrivacyPolicy, self.w3.eth)
         self.w3.eth.sendPrivacyPolicy_v2 = types.MethodType(cloak_ext.sendPrivacyPolicy_v2, self.w3.eth)
-        self.w3.eth.sendMultiPartyTransaction = types.MethodType(cloak_ext.sendMultiPartyTransaction_v2, self.w3.eth)
+        self.w3.eth.sendMultiPartyTransaction = types.MethodType(cloak_ext.sendMultiPartyTransaction, self.w3.eth)
         self.default_transaction = {
             "from": self.account.address,
             "gas": 0,
@@ -46,8 +46,8 @@ class Caller:
         tx_hash = self.w3.eth.sendPrivacyPolicy_v2(f, t, v, policy)
         return tx_hash
 
-    def sendMultiPartyTransaction(self, t, data):
-        tx_hash = self.w3.eth.sendMultiPartyTransaction(self.account.address, t, data)
+    def sendMultiPartyTransaction(self, data):
+        tx_hash = self.w3.eth.sendMultiPartyTransaction(data)
         return tx_hash
 
     def send_signed(self, fn, **kwargs):

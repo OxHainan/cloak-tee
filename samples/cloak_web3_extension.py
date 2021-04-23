@@ -19,16 +19,10 @@ def sendOnchainContract(self, to, contract_abi):
     )
 
 
-def sendMultiPartyTransaction(self, to, data, value, para):
+def sendMultiPartyTransaction(self, data):
     return self.web3.manager.request_blocking(
         "cloak_sendMultiPartyTransaction",
-        [to, value, data, para],
-    )
-
-def sendMultiPartyTransaction_v2(self, f, t, data):
-    return self.web3.manager.request_blocking(
-        "cloak_sendMultiPartyTransaction",
-        {"from": f, "to": t, "params": data},
+        {"params": data},
     )
 
 # Implementation of web3 Provider which talks framed-JSON-over-TLS to a CCF node

@@ -147,12 +147,13 @@ static std::unordered_map<ByteData, int> contractType = {
     public:
       ByteData type;
       ByteData name;
+      UINT8ARRAY signedName;
       std::vector<Params> inputs;
       std::vector<stateParams> read;
       std::vector<stateParams> mutate;
       std::vector<Params> outputs;
 
-      UINT8ARRAY convert_funtion_name() const {
+      void sign_funtion_name() {
         LOG_DEBUG_FMT("original function name:{}", name);
         std::string signed_name = name + "(";
         bool first = true;
@@ -167,11 +168,11 @@ static std::unordered_map<ByteData, int> contractType = {
         signed_name += ")";
         LOG_DEBUG_FMT("signed name:{}", signed_name);
         auto sha3 = eevm::keccak_256(signed_name);
-        return UINT8ARRAY(sha3.begin(), sha3.begin()+4);
+        signedName = UINT8ARRAY(sha3.begin(), sha3.begin()+4);
       }
 
       UINT8ARRAY packed_to_data()  {
-        UINT8ARRAY sha3 = convert_funtion_name();
+        UINT8ARRAY sha3 = signedName;
         vector<void*> coders;
         for(int i=0; i<inputs.size();i++) {
             inputs[i].pack(coders);
@@ -238,7 +239,7 @@ static std::unordered_map<ByteData, int> contractType = {
             return functions[i];
           }
         }
-        throw std::logic_error(fmt::format("doesn`t find this {} function in this policy modules", name));
+        throw std::logic_error(fmt::format("doesn't find this {} function in this policy modules", name));
       }
 
       std::string info() const {
@@ -305,8 +306,6 @@ static std::unordered_map<ByteData, int> contractType = {
 
     struct SendMultiPartyTransaction
     {
-      eevm::Address from = {};
-      eevm::Address to = {};
       ByteData params = {};
     };
 
