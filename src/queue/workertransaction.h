@@ -152,6 +152,7 @@ namespace evm4ccf
             codeHash = p.codeHash;
             data = eevm::to_bytes(p.policy);
             policy = Utils::parse<Policy>(p.policy);
+            policy.sign_funtions_name();
             LOG_DEBUG_FMT("PrivacyPolicyTransaction info: {}\n", info());
         }
 

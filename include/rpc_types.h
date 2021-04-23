@@ -153,7 +153,7 @@ static std::unordered_map<ByteData, int> contractType = {
       std::vector<stateParams> mutate;
       std::vector<Params> outputs;
 
-      void sign_funtion_name() {
+      void sign_function_name() {
         LOG_DEBUG_FMT("original function name:{}", name);
         std::string signed_name = name + "(";
         bool first = true;
@@ -240,6 +240,12 @@ static std::unordered_map<ByteData, int> contractType = {
           }
         }
         throw std::logic_error(fmt::format("doesn't find this {} function in this policy modules", name));
+      }
+
+      void sign_funtions_name() {
+          for (auto &&f : functions) {
+              f.sign_function_name();
+          }
       }
 
       std::string info() const {
