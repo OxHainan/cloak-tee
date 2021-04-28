@@ -25,7 +25,8 @@ namespace evm4ccf
   };
 } // namespace evm4ccf
 
-#include "msgpacktypes.h"
+#include "../msgpack/types.h"
+#include "../msgpack/address.h"
 #include "nljsontypes.h"
 
 // Implement std::hash for uint256, so it can be used as key in kv
@@ -79,6 +80,21 @@ namespace evm4ccf
     using Storage = kv::Map<StorageKey, uint256_t>;
 
     using Results = kv::Map<TxHash, TxResult>;
+
+    struct TransactionStorage {
+        using Privacy = kv::Map<h256, PrivacyPolicyTransaction>;
+        // using CloakTransaction = kv::Map<h256, CloakTransaction>
+        Privacy privacy;
+
+        struct Views 
+        {
+            Privacy::TxView* privacy;
+        };
+
+        Views get_views(kv::Tx &tx) {
+            return {tx.get_view(privacy)};
+        }
+    };
 
   } // namespace tables
 } // namespace evm4ccf

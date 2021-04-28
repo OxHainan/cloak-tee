@@ -474,11 +474,12 @@ namespace evm4ccf
       },
       storage("eth.storage"),
       tx_results("eth.txresults"),
-      workerQueue()
+      workerQueue(*nwt.tables)
     // SNIPPET_END: initialization
     {
       context.get_historical_state();
       install_standard_rpcs();
+      
     }
 
   private:
@@ -624,7 +625,7 @@ namespace evm4ccf
 
   }; // class EVMHandlers
 
-  class EVM : public ccf::UserRpcFrontend
+  class EVM : public ccf::UserRpcFrontend 
   {
   private:
     EVMHandlers evm_handlers;
@@ -633,11 +634,14 @@ namespace evm4ccf
     EVM(ccf::NetworkTables& network, ccfapp::AbstractNodeContext& context) :
       ccf::UserRpcFrontend(*network.tables, evm_handlers),
       evm_handlers(network, context)
-    {}
+    {
 
+    }
+    
     void open() override
     {
       ccf::UserRpcFrontend::open();
+      LOG_INFO_FMT("primary {}", ccf::UserRpcFrontend::RpcFrontend::is_primary());
       evm_handlers.openapi_info.title = "CCF Homestead EVM App";
       evm_handlers.openapi_info.description =
         "This CCF Homestead EVM app implements a simple EVM";

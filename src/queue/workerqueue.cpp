@@ -3,10 +3,23 @@
 using namespace evm4ccf;
 using namespace std;
 using h256 = eevm::KeccakHash;
+#pragma GCC diagnostic ignored "-Wunused-private-field"
+#pragma GCC diagnostic ignored "-Wreorder"
+
+WorkerQueue::WorkerQueue(kv::Store& _store) :
+    store(_store),
+    storage {
+        tables::TransactionStorage::Privacy("eth.privacyPolicy"),
+    },
+    txStorage (store.create_tx())
+{
+    
+}
 
 h256 WorkerQueue::addModule( PrivacyPolicyTransaction& tx) {
     const h256 txHash = tx.hash();
-    privacyPolicy[txHash] = tx;
+    auto view = storage.get_views(txStorage).privacy;
+    view->put(txHash, tx);
     modules[tx.to] = txHash;
     cout << "添加一个隐私模型，HASH为：" << tx.to_hex_hash() << endl;
     return txHash;
@@ -28,7 +41,7 @@ h256 WorkerQueue::addMultiParty(MultiPartyTransaction &mpt) {
     }
     auto ppt = findModules(mpt.to);
     if(ppt.codeHash == "") return h256{};
-    
+
     // 添加交易
     cout << "添加新交易"<< endl;
     CloakTransaction ct;
@@ -61,9 +74,9 @@ h256 WorkerQueue::update(CloakTransaction &ct) {
 PrivacyPolicyTransaction WorkerQueue::findModules(const Address &addr) {
     auto md = modules.find(addr);
     if(md == modules.end()) return {};
-    auto ppt = privacyPolicy.find(md->second);     // 取出模型
-    if(ppt==privacyPolicy.end()) return {};
-    return ppt->second;
+
+    auto ppt = storage.get_views(txStorage).privacy->get(md->second);
+    return ppt.value_or(PrivacyPolicyTransaction{});
 }
 
 PrivacyPolicyTransaction WorkerQueue::getPrivacyPolicyTransactionByHash(const h256& hash){
