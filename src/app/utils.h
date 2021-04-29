@@ -1,5 +1,6 @@
 #pragma once
 #include "fmt/core.h"
+#include <algorithm>
 #include <iostream>
 #include <string>
 #include "vector"
@@ -103,6 +104,12 @@ namespace Utils
             i = j;
         }
         return arr;
+    }
+
+    inline std::string to_lower(const std::string &str) {
+        std::string res(str.size(), ' ');
+        std::transform(str.begin(), str.end(), res.begin(), ::towlower);
+        return res;
     }
 }
 

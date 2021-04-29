@@ -7,6 +7,7 @@
 #include "../app/utils.h"
 #include "map"
 #include "rpc_types.h"
+#include <cctype>
 #include <eEVM/bigint.h>
 #include <eEVM/rlp.h>
 #include <eEVM/util.h>
@@ -48,7 +49,7 @@ namespace evm4ccf
         uint8_t v;
         uint256_t r;
         uint256_t s;
-        policy::MultiPartyParams parmas;
+        policy::MultiPartyParams params;
 
         MultiPartyTransaction(const SendMultiPartyTransaction& s) {
             auto res = eevm::rlp::decode<
@@ -66,11 +67,11 @@ namespace evm4ccf
             this->v = std::get<4>(res);
             this->r = std::get<5>(res);
             this->s = std::get<6>(res);
-            parmas = Utils::parse<policy::MultiPartyParams>(std::get<3>(res));
+            params = Utils::parse<policy::MultiPartyParams>(std::get<3>(res));
             CLOAK_DEBUG_FMT("nonce:{}, from:{}, to:{}, data:{} ,data hex:{}, v:{}, r:{}, s:{}", nonce, from, to, std::get<3>(res), to_hex_string(data), v, r, this->s);
         }
 
-        void checkSignature() {
+        void checkSignature() const {
             tls::RecoverableSignature sig;
             sig.recovery_id = from_ethereum_recovery_id(v);
 
@@ -86,9 +87,9 @@ namespace evm4ccf
                 throw std::logic_error("Signature error, please check your input");
             }
         }
-        
+
         ByteData name() const {
-            return parmas.name();
+          return params.name();
         }
         // h256 hash() const {
         //     return parmas.getHash();
@@ -108,9 +109,8 @@ namespace evm4ccf
 
         void insert(MultiPartyTransaction &mpt) {
             multiParty.insert(std::make_pair(mpt.from, mpt));
-            for (size_t i = 0; i < mpt.parmas.inputs.size(); i++)
-            {
-                function.padding(mpt.parmas.inputs[i]);
+            for (size_t i = 0; i < mpt.params.inputs.size(); i++) {
+                function.padding(mpt.params.inputs[i]);
             }
 
             // if(function.complete()){
@@ -163,6 +163,24 @@ namespace evm4ccf
             tc.codeHash = codeHash;
             tc.states = policy.states;
             tc.function = policy.get_funtions(name);
+        }
+
+        void checkMptParams(const MultiPartyTransaction& mpt) const {
+            policy::Function func = policy.get_funtions(mpt.params.name());
+            for (auto&& i : mpt.params.inputs) {
+                bool found = false;
+                for (auto&& pi : func.inputs) {
+                    if (i.name == pi.name) {
+                        found = true;
+                        if (pi.owner != "all" && to_uint256(pi.owner) != mpt.from) {
+                            throw std::logic_error(fmt::format("param:{} is not valid", i.name));
+                        }
+                    }
+                }
+                if (!found) {
+                    throw std::logic_error(fmt::format("param:{} not found", i.name));
+                }
+            }
         }
 
         h256 hash() const {

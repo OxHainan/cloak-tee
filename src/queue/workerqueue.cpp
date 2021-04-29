@@ -23,14 +23,15 @@ bool WorkerQueue::drop(const h256& hash) {
 
 // TODO: check exception
 h256 WorkerQueue::addMultiParty(MultiPartyTransaction &mpt) {
+    auto ppt = findModules(mpt.to);
+    if (!ppt.has_value()) {
+        return {};
+    }
+    ppt.value()->checkMptParams(mpt);
     if (existCloakTx(mpt.to)) {
         auto ct = workerQueue[queueTx[mpt.to]];
         ct.insert(mpt);
         return update(ct);
-    }
-    auto ppt = findModules(mpt.to);
-    if (!ppt.has_value()) {
-        return {};
     }
     // if(ppt.codeHash == "") return h256{};
     
