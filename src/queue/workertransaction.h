@@ -11,8 +11,10 @@
 #include <eEVM/bigint.h>
 #include <eEVM/rlp.h>
 #include <eEVM/util.h>
-#include <ethereum_transaction.h>
 #include <stdexcept>
+#include "ethereum_transaction.h"
+#include "../msgpack/address.h"
+#include "../msgpack/policy.h"
 
 namespace evm4ccf
 {   
@@ -144,13 +146,15 @@ namespace evm4ccf
         Address             verifierAddr;
         ByteData            codeHash;
         rpcparams::Policy              policy;
+        ByteString          pdata;
+        MSGPACK_DEFINE(from, to, verifierAddr, codeHash, policy);
         PrivacyPolicyTransaction(){}
         PrivacyPolicyTransaction(const rpcparams::SendPrivacyPolicy &p) {
             from = p.from;
             to = p.to;
             verifierAddr = p.verifierAddr;
             codeHash = p.codeHash;
-            data = eevm::to_bytes(p.policy);
+            pdata =eevm::to_bytes( p.policy);
             policy = Utils::parse<Policy>(p.policy);
             policy.sign_funtions_name();
             LOG_DEBUG_FMT("PrivacyPolicyTransaction info: {}\n", info());
@@ -184,7 +188,29 @@ namespace evm4ccf
         }
 
         h256 hash() const {
-            return eevm::keccak_256(data);
+            return eevm::keccak_256(pdata);
+        }
+
+        void serialized(uint8_t* &data, size_t &size) {
+            serialized::write(data, size, from);
+            serialized::write(data, size, to);
+            serialized::write(data, size, verifierAddr);
+            serialized::write(data, size, codeHash);
+            serialized::write(data, size, policy);
+            // serialized::write(data, size, pdata.data(), pdata.size());
+        }
+
+        static PrivacyPolicyTransaction deserialize(
+            const uint8_t* &data, size_t &size ) 
+        {
+            PrivacyPolicyTransaction p;
+            p.from =serialized::read<Address>(data,size);
+            p.to = serialized::read<Address>(data,size);
+            p.verifierAddr = serialized::read<Address>(data,size);
+            p.codeHash = serialized::read<std::string>(data,size);
+            p.policy = serialized::read<rpcparams::Policy>(data,size);
+            // p.policy = Utils::parse<Policy>((char*)p.pdata.data());
+            return p;
         }
 
         std::string to_hex_hash() const {
@@ -195,8 +221,5 @@ namespace evm4ccf
             return fmt::format("from: {}, to: {}, codeHash: {} \n \
                     policy:{}\n", from, to, codeHash, policy.info());
         }
-
-        private:
-            ByteString          data;
     };
 } // namespace evm4ccf

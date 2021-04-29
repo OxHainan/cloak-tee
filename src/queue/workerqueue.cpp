@@ -4,10 +4,23 @@
 using namespace evm4ccf;
 using namespace std;
 using h256 = eevm::KeccakHash;
+#pragma GCC diagnostic ignored "-Wunused-private-field"
+#pragma GCC diagnostic ignored "-Wreorder"
+
+WorkerQueue::WorkerQueue(kv::Store& _store) :
+    store(_store),
+    storage {
+        tables::TransactionStorage::Privacy("eth.privacyPolicy"),
+    },
+    txStorage (store.create_tx())
+{
+    
+}
 
 h256 WorkerQueue::addModule( PrivacyPolicyTransaction& tx) {
     const h256 txHash = tx.hash();
-    privacyPolicy[txHash] = tx;
+    auto view = storage.get_views(txStorage).privacy;
+    view->put(txHash, tx);
     modules[tx.to] = txHash;
     cout << "添加一个隐私模型，HASH为：" << tx.to_hex_hash() << endl;
     return txHash;
@@ -27,18 +40,17 @@ h256 WorkerQueue::addMultiParty(MultiPartyTransaction &mpt) {
     if (!ppt.has_value()) {
         return {};
     }
-    ppt.value()->checkMptParams(mpt);
+    ppt.value().checkMptParams(mpt);
     if (existCloakTx(mpt.to)) {
         auto ct = workerQueue[queueTx[mpt.to]];
         ct.insert(mpt);
         return update(ct);
     }
-    // if(ppt.codeHash == "") return h256{};
-    
+
     // 添加交易
     cout << "添加新交易"<< endl;
     CloakTransaction ct;
-    ppt.value()->to_privacyPolicyModules_call(ct, mpt.name());
+    ppt.value().to_privacyPolicyModules_call(ct, mpt.name());
     ct.insert(mpt);
     return addTx(ct);
 }
@@ -60,7 +72,7 @@ bool WorkerQueue::existCloakTx(const Address &addr) {
 h256 WorkerQueue::addTx(CloakTransaction &ct) {
     auto hash = ct.hash();
     workerQueue[hash] = ct;
-    queueTx[ct.to] = hash;
+    queueTx[ct.from] = hash;
     return hash;
 }
 // 更新交易
@@ -70,18 +82,14 @@ h256 WorkerQueue::update(CloakTransaction &ct) {
     return hash;
 }
 
-std::optional<PrivacyPolicyTransaction*> WorkerQueue::findModules(const Address &addr) {
+std::optional<PrivacyPolicyTransaction> WorkerQueue::findModules(const Address &addr) {
     auto md = modules.find(addr);
     if(md == modules.end()) {
         LOG_INFO_FMT("addr not found in modules: {}", addr);
         return {};
     };
-    auto ppt = privacyPolicy.find(md->second);     // 取出模型
-    if(ppt==privacyPolicy.end()) {
-        LOG_DEBUG_FMT("h256 not found in privacyPolicy: {}", md->second);
-        return {};
-    }
-    return &ppt->second;
+    auto ppt = storage.get_views(txStorage).privacy->get(md->second);
+    return ppt.value_or(PrivacyPolicyTransaction{});
 }
 
 std::optional<CloakTransaction*> WorkerQueue::GetCloakTransaction(const h256 &hash) {

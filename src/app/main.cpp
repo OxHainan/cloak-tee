@@ -54,9 +54,56 @@ R"xxx(
     }
   )xxx"_json
 };
+ constexpr auto k = "key";
+ struct Node
+ {
+  public:
+  std::string invalid_key;
+  Address v1;
+  MSGPACK_DEFINE(invalid_key, v1);
+  Node() {}
+  Node(std::string &a, Address& b) : invalid_key(a), v1(b) {}
+  void serialized(uint8_t* &data, size_t &size) const {
+    serialized::write(data,size,invalid_key);
+    serialized::write(data,size,v1);
+  }
 
+  static Node deserialize(const uint8_t* &data, size_t &size) {
+    Node n;
+    n.invalid_key = serialized::read<std::string>(data,size);
+    n.v1 = serialized::read<Address>(data,size);
+    return n;
+  }
+ };
+ 
+  
+void store(Address b) {
+
+  using PolicyModule = kv::Map<std::string, Node>;
+  kv::Store st("kv");
+  PolicyModule map("public::eth.policy");
+  auto tx = st.create_tx();
+  auto view = tx.get_view(map);
+  std::string a = "sfjjfsj'";
+  Node node(a,b);
+  view->put(k,node);
+  auto v = view->get(k);
+  int res = tx.commit();
+  cout << v.has_value() <<endl;
+  cout << to_hex_string(v->v1) <<endl;
+}
 int main() {
-    auto wq = std::make_unique<WorkerQueue>();
+    // auto d = kv::Consensus::is_primary();
+  //  auto nodeID = ccf::NodeState::is_primary();
+    // cout << d <<endl;
+    using PrivacyPolicy = kv::Map<Address, PrivacyPolicyTransaction>;
+    kv::Store st("kv");
+    auto tx = st.create_tx();
+    PrivacyPolicy map("public::eth.privacy");
+    auto view = tx.get_view(map);
+     kv::Consensus* consensus(0);
+    auto wq = std::make_unique<WorkerQueue>(st);
+    
     try
     {
       const auto tc = basic_request.get<rpcparams::SendPrivacyPolicy>();
@@ -66,7 +113,9 @@ int main() {
       auto s = p.get<rpcparams::Policy>();
       // 添加隐私模型
       PrivacyPolicyTransaction ppt(tc);
+      view->put(tc.from, ppt);
       std::cout << to_checksum_address(tc.from) << std::endl;
+      store(tc.from);
       wq->addModule(ppt);
       auto hash = ppt.hash();
 
@@ -79,6 +128,10 @@ int main() {
       MultiPartyTransaction mpt1(mp1);
       auto result1 = wq->addMultiParty(mpt1);
       // cout << to_hex_string( result1)  << endl;
+      auto pp = view->get(tc.from);
+      if(pp.has_value()) {
+        cout << to_hex_string(pp->to) << endl;
+      }
     }
     catch(const std::exception& e)
     {

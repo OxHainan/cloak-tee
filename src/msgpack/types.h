@@ -12,36 +12,7 @@ namespace msgpack
   {
     namespace adaptor
     {
-      // msgpack conversion for uint256_t
-      template <>
-      struct convert<uint256_t>
-      {
-        msgpack::object const& operator()(
-          msgpack::object const& o, uint256_t& v) const
-        {
-          const std::vector<uint8_t> vec =
-            o.via.array.ptr[0].as<std::vector<uint8_t>>();
-          v = eevm::from_big_endian(vec.data(), vec.size());
-
-          return o;
-        }
-      };
-
-      template <>
-      struct pack<uint256_t>
-      {
-        template <typename Stream>
-        packer<Stream>& operator()(
-          msgpack::packer<Stream>& o, uint256_t const& v) const
-        {
-          std::vector<uint8_t> big_end_val(0x20); // size of 256 bits in bytes
-          eevm::to_big_endian(v, big_end_val.data());
-          o.pack_array(1);
-          o.pack(big_end_val);
-          return o;
-        }
-      };
-
+      
       // msgpack conversion for eevm::LogEntry
       template <>
       struct convert<eevm::LogEntry>
