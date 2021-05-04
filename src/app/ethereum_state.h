@@ -3,6 +3,7 @@
 #pragma once
 
 // EVM-for-CCF
+#include "account_proxy.h"
 #include "tables.h"
 
 // CCF

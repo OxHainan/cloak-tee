@@ -29,7 +29,8 @@ public:
     PrivacyPolicyTransaction getPrivacyPolicyTransactionByHash(const h256& hash);
     ByteData getMultiPartyStatus(const h256& hash);
     bool drop(const h256 &hash);
-    PrivacyPolicyTransaction findModules(const Address &addr);
+    std::optional<PrivacyPolicyTransaction> findModules(const Address &addr);
+    std::optional<CloakTransaction*> GetCloakTransaction(const h256 &hash);
     void set_consensus(kv::Consensus* &c) {
         consensus = c;
         if(consensus != nullptr)

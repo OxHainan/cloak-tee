@@ -393,16 +393,16 @@ namespace evm4ccf
     inline void to_json(nlohmann::json& j, const SendMultiPartyTransaction& s)
     {
       j = nlohmann::json::object();
-      j["from"] = eevm::to_checksum_address(s.from);
-      j["to"] = eevm::to_checksum_address(s.to);
+      // j["from"] = eevm::to_checksum_address(s.from);
+      // j["to"] = eevm::to_checksum_address(s.to);
       j["params"] = s.params; 
     }
   
     inline void from_json(const nlohmann::json& j, SendMultiPartyTransaction& s)
     {
       require_object(j);
-      s.from = eevm::to_uint256(j["from"]);
-      s.to = eevm::to_uint256(j["to"]);
+      // s.from = eevm::to_uint256(j["from"]);
+      // s.to = eevm::to_uint256(j["to"]);
       from_to_str(j, "params", s.params);
     }
     

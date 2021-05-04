@@ -170,4 +170,4 @@ if __name__ == "__main__":
 
     test_deploy(ccf_client)
     # test_transfers(ccf_client)
-    test(ccf_client)
+    # test(ccf_client)

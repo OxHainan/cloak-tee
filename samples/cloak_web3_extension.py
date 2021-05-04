@@ -6,6 +6,11 @@ def sendPrivacyPolicy(self, codeHash, privacy_policy):
         [codeHash, privacy_policy],
     )
 
+def sendPrivacyPolicy_v2(self, f, t, v, privacy_policy):
+    return self.web3.manager.request_blocking(
+        "cloak_sendPrivacyPolicy",
+        {"from": f, "to": t, "verifierAddr": v, "policy": privacy_policy}
+    )
 
 def sendOnchainContract(self, to, contract_abi):
     return self.web3.manager.request_blocking(
@@ -14,12 +19,11 @@ def sendOnchainContract(self, to, contract_abi):
     )
 
 
-def sendMultiPartyTransaction(self, to, data, value, para):
+def sendMultiPartyTransaction(self, data):
     return self.web3.manager.request_blocking(
         "cloak_sendMultiPartyTransaction",
-        [to, value, data, para],
+        {"params": data},
     )
-
 
 # Implementation of web3 Provider which talks framed-JSON-over-TLS to a CCF node
 def cloak_middleware(make_request, w3):

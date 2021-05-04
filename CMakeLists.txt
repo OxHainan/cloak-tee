@@ -29,5 +29,10 @@ if(RECORD_TRACE)
   add_definitions(-DRECORD_TRACE)
 endif(RECORD_TRACE)
 
+IF (NOT DEFINED CLOAK_LOG_LEVEL)
+    SET(CLOAK_LOG_LEVEL 1)
+ENDIF()
+
+add_definitions(-DCLOAK_LOG_LEVEL=${CLOAK_LOG_LEVEL})
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/evm4ccf.app.cmake)

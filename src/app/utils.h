@@ -1,5 +1,7 @@
 #pragma once
-#include "iostream"
+#include "fmt/core.h"
+#include <algorithm>
+#include <iostream>
 #include <string>
 #include "vector"
 // eEVM
@@ -103,4 +105,31 @@ namespace Utils
         }
         return arr;
     }
+
+    inline std::string to_lower(const std::string &str) {
+        std::string res(str.size(), ' ');
+        std::transform(str.begin(), str.end(), res.begin(), ::towlower);
+        return res;
+    }
 }
+
+namespace CloakLogger {
+    enum CloakLogLevel : int8_t { 
+        CLL_FATAL = 0,
+        CLL_FAIL  = 1,
+        CLL_INFO  = 2,
+        CLL_DEBUG = 3,
+        CLL_TRACE = 4
+    };
+}
+
+#define CLOAK_LOG(log_level, ...)                                                                          \
+    do {                                                                                                        \
+        if (log_level <= CLOAK_LOG_LEVEL) {                                                                     \
+            std::cout << fmt::format("[{}:{}, {}][cll:{}]", __FILE__, __LINE__, __FUNCTION__, CLOAK_LOG_LEVEL); \
+            std::cout << fmt::format(__VA_ARGS__);                                                         \
+            std::cout << std::endl;                                                                             \
+        }                                                                                                       \
+    } while (false)
+
+#define CLOAK_DEBUG_FMT(...) CLOAK_LOG(CloakLogger::CLL_DEBUG, __VA_ARGS__)

@@ -38,6 +38,38 @@ def read_math_library_from_file():
         contracts_dir, "eevmtests/EvmTest_combined.json")
     return read_contract_from_file(file_path, "EvmTest.sol:Math")
 
+def read_evmtest_policy_from_file():
+    env_name = "CONTRACTS_DIR"
+    contracts_dir = os.getenv(env_name)
+    if contracts_dir is None:
+        raise RuntimeError(
+            f"Cannot find contracts, please set env var '{env_name}'")
+    file_path = os.path.join(
+        contracts_dir, "eevmtests/EvmTestPolicy.json")
+    with open(file_path, mode='rb') as f:
+        return web3.Web3.toHex(f.read())
+
+def read_evmtest_params_from_file():
+    env_name = "CONTRACTS_DIR"
+    contracts_dir = os.getenv(env_name)
+    if contracts_dir is None:
+        raise RuntimeError(
+            f"Cannot find contracts, please set env var '{env_name}'")
+    file_path = os.path.join(
+        contracts_dir, "eevmtests/mptParams.json")
+    with open(file_path, mode='rb') as f:
+        return web3.Web3.toHex(f.read())
+
+def signMpt(private_key, frm, to, data, nonce=1):
+    import rlp
+    from eth_hash.auto import keccak as keccak_256
+    from_int = int(frm, 0)
+    to_int = int(to, 0)
+    params = rlp.encode([nonce, from_int, to_int, data])
+    msg_hash = keccak_256(params)
+    signed = web3.eth.Account.signHash(msg_hash, private_key=private_key)
+    res = rlp.encode([nonce, from_int, to_int, data, signed.v, signed.r, signed.s]).hex()
+    return res
 
 def test_deploy(ccf_client):
     math_abi, math_bin = read_math_library_from_file()
@@ -48,9 +80,10 @@ def test_deploy(ccf_client):
     owner = Caller(web3.Account.create(), w3)
 
     LOG.info("Library deployment")
+    LOG.info(f"owner account:{owner.account.address}")
     math_spec = w3.eth.contract(abi=math_abi, bytecode=math_bin)
 
-    # deploy_receipt = owner.sendPrivacyPolicy(math_spec.constructor())
+    # deploy_receipt = owner.sendPrivacyPolicy(math_spec.constructor(), evmtest_policy)
 
     deploy_receipt = owner.send_signed(math_spec.constructor())
     ccf_client.math_library_address = deploy_receipt.contractAddress
@@ -68,6 +101,12 @@ def test_deploy(ccf_client):
     evmtest_spec = w3.eth.contract(abi=evmtest_abi, bytecode=evmtest_bin)
     deploy_receipt = owner.send_signed(
         evmtest_spec.constructor(10000, [11, 12, 13]))
+
+    evmtest_policy = read_evmtest_policy_from_file()
+    sppr = owner.sendPrivacyPolicy_v2(owner.account.address, deploy_receipt.contractAddress, "", evmtest_policy)
+    mpt_data = read_evmtest_params_from_file()
+    mpt_params = signMpt(owner.account.key, owner.account.address, deploy_receipt.contractAddress, mpt_data)
+    smptr = owner.sendMultiPartyTransaction(mpt_params)
 
     ccf_client.evmtest_contract_address = deploy_receipt.contractAddress
     print(deploy_receipt.contractAddress)
@@ -112,7 +151,7 @@ def get_balance(ccf_client):
     receipt = w3.eth.getTransactionReceipt(txhash.hex())
     # text = json.loads(receipt)
     # print(receipt)
-    print(count)
+    print(f"count:{count}")
     print(balance)
     chaind = w3.eth.estimateGas(params)
     print(chaind)
@@ -126,6 +165,6 @@ if __name__ == "__main__":
         config.cert, 
         config.key
         )
-    get_balance(ccf_client)
-    # test_deploy(ccf_client)
-    # test_get_sum(ccf_client)
+    # get_balance(ccf_client)
+    test_deploy(ccf_client)
+    test_get_sum(ccf_client)
