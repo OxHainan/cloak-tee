@@ -1,5 +1,6 @@
 #pragma once
 #include "fmt/core.h"
+#include "ds/logger.h"
 #include <algorithm>
 #include <iostream>
 #include <string>
@@ -113,23 +114,8 @@ namespace Utils
     }
 }
 
-namespace CloakLogger {
-    enum CloakLogLevel : int8_t { 
-        CLL_FATAL = 0,
-        CLL_FAIL  = 1,
-        CLL_INFO  = 2,
-        CLL_DEBUG = 3,
-        CLL_TRACE = 4
-    };
-}
-
-#define CLOAK_LOG(log_level, ...)                                                                          \
-    do {                                                                                                        \
-        if (log_level <= CLOAK_LOG_LEVEL) {                                                                     \
-            std::cout << fmt::format("[{}:{}, {}][cll:{}]", __FILE__, __LINE__, __FUNCTION__, CLOAK_LOG_LEVEL); \
-            std::cout << fmt::format(__VA_ARGS__);                                                         \
-            std::cout << std::endl;                                                                             \
-        }                                                                                                       \
-    } while (false)
-
-#define CLOAK_DEBUG_FMT(...) CLOAK_LOG(CloakLogger::CLL_DEBUG, __VA_ARGS__)
+#ifdef CLOAK_DEBUG_LOGGING
+#    define CLOAK_DEBUG_FMT(...) LOG_INFO_FMT(__VA_ARGS__)
+#else
+#    define CLOAK_DEBUG_FMT(...)
+#endif
