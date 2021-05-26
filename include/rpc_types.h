@@ -103,6 +103,8 @@ namespace evm4ccf
       ByteData owner = {};
       std::optional<ByteData> value = std::nullopt;
 
+      MSGPACK_DEFINE(name, type, owner, value);
+
       ByteData getValue() const {
         if(!value.has_value())
           return "";
@@ -126,6 +128,9 @@ namespace evm4ccf
     struct stateParams {
       ByteData name = {};
       std::vector<ByteData> keys = {};
+
+      MSGPACK_DEFINE(name, keys);
+
     };
     enum Type  {
       ADDRESS,
@@ -152,6 +157,8 @@ static std::unordered_map<ByteData, int> contractType = {
       std::vector<stateParams> read;
       std::vector<stateParams> mutate;
       std::vector<Params> outputs;
+
+      MSGPACK_DEFINE(name, type, inputs, read, mutate, outputs);
 
       void sign_function_name() {
         LOG_DEBUG_FMT("original function name:{}", name);
@@ -232,6 +239,9 @@ static std::unordered_map<ByteData, int> contractType = {
       ByteData contract = {};
       std::vector<policy::Params> states;
       std::vector<policy::Function> functions;
+      
+      MSGPACK_DEFINE(contract, states, functions );
+
       
       policy::Function get_funtions(const ByteData &name) const {
         for(int i=0; i<functions.size(); i++) {

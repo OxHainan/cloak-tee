@@ -290,6 +290,7 @@ namespace evm4ccf
         const auto body_j =
           nlohmann::json::parse(args.rpc_ctx->get_request_body());
         auto sppp = body_j.get<rpcparams::SendPrivacyPolicy>();
+        printf( "privacy_policy tx: %p \n", (void*)&args.tx);
         // TODO: check target contract
         PrivacyPolicyTransaction ppt(sppp);
         auto hash = workerQueue.addModule(ppt);
@@ -305,9 +306,12 @@ namespace evm4ccf
 
       auto send_multiPartyTransaction = [this](ccf::EndpointContext& args) {
         CLOAK_DEBUG_FMT("request body:{}", args.rpc_ctx->get_request_body());
+        printf( "send_multiPartyTransaction tx: %p \n", (void*)&args.tx);
         const auto body_j =
           nlohmann::json::parse(args.rpc_ctx->get_request_body());
         auto smp = body_j.get<rpcparams::SendMultiPartyTransaction>();
+        
+
         MultiPartyTransaction mpt(smp);
         mpt.checkSignature();
         auto result = workerQueue.addMultiParty(mpt);

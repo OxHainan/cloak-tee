@@ -31,11 +31,11 @@ public:
     bool drop(const h256 &hash);
     std::optional<PrivacyPolicyTransaction> findModules(const Address &addr);
     std::optional<CloakTransaction*> GetCloakTransaction(const h256 &hash);
-    void set_consensus(kv::Consensus* &c) {
-        consensus = c;
-        if(consensus != nullptr)
-        cout << "当前节点：" << consensus->is_primary() << endl;
-    }
+    // void set_consensus(kv::Consensus* &c) {
+    //     consensus = c;
+    //     if(consensus != nullptr)
+    //     cout << "当前节点：" << consensus->is_primary() << endl;
+    // }
     // kv::Tx tx;
     
 private:
@@ -50,14 +50,14 @@ private:
     std::unordered_map<h256, PrivacyPolicyTransaction> privacyPolicy;
 
     
-    kv::Consensus* consensus;
+    // kv::Consensus* consensus;
     tables::TransactionStorage storage;
     kv::Store& store;
     kv::Tx txStorage;
-    mutable Mutex x_queue;      // 验证交易队列锁
-    std::condition_variable m_queueReady;										///< Signaled when m_unverified has a new entry.
-    std::thread verify;
-    std::atomic<bool> m_aborting = {false};
+    // mutable Mutex x_queue;      // 验证交易队列锁
+    // std::condition_variable m_queueReady;										///< Signaled when m_unverified has a new entry.
+    // std::thread verify;
+    // std::atomic<bool> m_aborting = {false};
 };
 
 } // namespace evm4ccf

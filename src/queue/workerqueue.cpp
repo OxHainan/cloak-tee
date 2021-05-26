@@ -19,8 +19,8 @@ WorkerQueue::WorkerQueue(kv::Store& _store) :
 
 h256 WorkerQueue::addModule( PrivacyPolicyTransaction& tx) {
     const h256 txHash = tx.hash();
-    auto view = storage.get_views(txStorage).privacy;
-    view->put(txHash, tx);
+    auto view = storage.get_views(txStorage);
+    view.privacy->put(txHash, tx);
     modules[tx.to] = txHash;
     cout << "添加一个隐私模型，HASH为：" << tx.to_hex_hash() << endl;
     return txHash;
