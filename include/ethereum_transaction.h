@@ -26,7 +26,7 @@ namespace evm4ccf
 
   // TODO: This may become constexpr, determined at compile time. For now it
   // is malleable.
-  static size_t current_chain_id = ChainIDs::pre_eip_155;
+  static size_t current_chain_id = ChainIDs::ethereum_mainnet;
 
   static constexpr size_t pre_155_v_start = 27;
   static constexpr size_t post_155_v_start = 35;
@@ -69,26 +69,29 @@ namespace evm4ccf
     }
 
     // 20201229 测试chainId时此部分代码报错
-    // constexpr auto min_valid_v = 37u;
-    // if (v < min_valid_v)
-    // {
-    //   throw std::logic_error(fmt::format(
-    //     "Expected v to encode a valid chain ID (must be at least {}), but is "
-    //     "{}",
-    //     min_valid_v,
-    //     v));
-    // }
+    // 20210615 测试使用chainId最低为1
+    constexpr auto min_valid_v = 37u;
+    if (v < min_valid_v)
+    {
+      throw std::logic_error(fmt::format(
+        "Expected v to encode a valid chain ID (must be at least {}), but is "
+        "{}",
+        min_valid_v,
+        v));
+    }
 
     const size_t rec_id = (v - post_155_v_start) % 2;
 
     const size_t chain_id = ((v - rec_id) - post_155_v_start) / 2;
     if (chain_id != current_chain_id)
     {
-      throw std::logic_error(fmt::format(
+      CLOAK_DEBUG_FMT(fmt::format(
         "Parsed chain ID {} (from v {}), expected to find current chain ID {}",
         chain_id,
         v,
         current_chain_id));
+
+        throw std::logic_error("Invalid Sender!");
     }
 
     return rec_id;

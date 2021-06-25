@@ -85,12 +85,14 @@ namespace evm4ccf
     struct MultiInput {
       ByteData name = {};
       ByteData value = {};
+      MSGPACK_DEFINE(name, value);
     };
 
     struct MultiPartyParams {
       ByteData function = {};
       std::vector<MultiInput> inputs = {};
-
+      MSGPACK_DEFINE(function, inputs);
+      
       ByteData name() const {
         return function;
       }
@@ -111,7 +113,12 @@ namespace evm4ccf
         return value.value();
       }
 
-      void pack(vector<void*> &coders) {
+      void set_value(const ByteData &_v)
+      {
+        value = _v;
+      }
+
+      void pack(vector<void*> &coders) const {
         abicoder::paramCoder(coders, name, type, getValue());        
       } 
 
@@ -130,8 +137,8 @@ namespace evm4ccf
       std::vector<ByteData> keys = {};
 
       MSGPACK_DEFINE(name, keys);
-
     };
+
     enum Type  {
       ADDRESS,
       UINT,
@@ -159,6 +166,23 @@ static std::unordered_map<ByteData, int> contractType = {
       std::vector<Params> outputs;
 
       MSGPACK_DEFINE(name, type, inputs, read, mutate, outputs);
+
+      ByteData get_signed_name() const
+      {
+        auto signed_name = name + "(";
+        bool first = true;
+        for (auto &&p : inputs) {
+            if (!first) {
+                signed_name += ","+p.type;
+            } else {
+                signed_name += p.type;
+            }
+            first = false;
+        }
+        signed_name += ")";
+        LOG_DEBUG_FMT("signed name:{}", signed_name);
+        return signed_name;
+      }
 
       void sign_function_name() {
         LOG_DEBUG_FMT("original function name:{}", name);
@@ -190,17 +214,21 @@ static std::unordered_map<ByteData, int> contractType = {
         return sha3;
       }
 
-      bool padding(const MultiInput &p) {
+      void padding(const MultiInput &p) {
           if(complete()) return false;
           
           for(int i=0; i<inputs.size(); i++) {
             if(inputs[i].name == p.name) {
-              inputs[i].value = p.value;             
+              inputs[i].set_value(p.value);             
               num++;
-              return true;
+              return;
             }
           }
-        return false;
+
+          // 检查用户的交易输入，合法性校验
+          throw std::logic_error(fmt::format(
+              "input params doesn`t match, get {}", p.name
+          ));
       }
 
       bool complete() const {
@@ -240,7 +268,7 @@ static std::unordered_map<ByteData, int> contractType = {
       std::vector<policy::Params> states;
       std::vector<policy::Function> functions;
       
-      MSGPACK_DEFINE(contract, states, functions );
+      MSGPACK_DEFINE(contract, states, functions);
 
       
       policy::Function get_funtions(const ByteData &name) const {

@@ -8,7 +8,8 @@ import provider
 import ccf_network_config as config
 import json
 from loguru import logger as LOG
-
+import rlp
+from eth_hash.auto import keccak as keccak_256
 class EvmTestContract:
     def __init__(self, contract):
         self.contract = contract
@@ -47,7 +48,9 @@ def read_evmtest_policy_from_file():
     file_path = os.path.join(
         contracts_dir, "eevmtests/EvmTestPolicy.json")
     with open(file_path, mode='rb') as f:
-        return web3.Web3.toHex(f.read())
+        file_json = json.load(f)
+        print(file_json)
+        return web3.Web3.toHex(file_json.encode('utf-8'))
 
 def read_evmtest_params_from_file():
     env_name = "CONTRACTS_DIR"
@@ -61,8 +64,6 @@ def read_evmtest_params_from_file():
         return web3.Web3.toHex(f.read())
 
 def signMpt(private_key, frm, to, data, nonce=1):
-    import rlp
-    from eth_hash.auto import keccak as keccak_256
     from_int = int(frm, 0)
     to_int = int(to, 0)
     params = rlp.encode([nonce, from_int, to_int, data])
@@ -71,6 +72,19 @@ def signMpt(private_key, frm, to, data, nonce=1):
     res = rlp.encode([nonce, from_int, to_int, data, signed.v, signed.r, signed.s]).hex()
     return res
 
+def signPrivacy(private_key, to, verifierAddr, codeHash, policy1):
+    params = rlp.encode([to, verifierAddr, codeHash, policy1])
+    msg_hash = keccak_256(params)
+    print(msg_hash)
+    signed = web3.eth.Account.signHash(msg_hash, private_key=private_key)
+    print(signed)
+    print(signed.v)
+    print(signed.r)
+    print(signed.s)
+    return rlp.encode([to, verifierAddr, codeHash, policy1,  signed.v, signed.r, signed.s]).hex()
+
+
+policyData="{\"contract\":\"Subppp\",\"functions\":[{\"type\":\"function\",\"name\":\"settleReceivable\",\"inputs\":[{\"name\":\"owner\",\"type\":\"address\",\"owner\":\"all\"},{\"name\":\"amount\",\"type\":\"uint256\",\"owner\":\"tee\"}],\"read\":[{\"name\":\"balances\",\"keys\":[\"owner\"]},{\"name\":\"receivables\",\"keys\":[\"owner:msg.sender\"]}],\"mutate\":[{\"name\":\"balances\",\"keys\":[\"msg.sender\"]},{\"name\":\"receivables\",\"keys\":[\"owner:msg.sender\"]}],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"owner\":\"all\"}]}],\"states\":[{\"name\":\"balances\",\"type\":\"mapping(address=>uint256)\",\"owner\":\"mapping(address!x=>uint256@x)\"},{\"name\":\"receivables\",\"type\":\"mapping(address=>mapping(address=>uint256))\",\"owner\":\"mapping(address!x=>mapping(address=>uint256@x))\"}]}"
 def test_deploy(ccf_client):
     math_abi, math_bin = read_math_library_from_file()
     evmtest_abi, evmtest_bin = read_evmtest_contract_from_file()
@@ -79,38 +93,41 @@ def test_deploy(ccf_client):
 
     owner = Caller(web3.Account.create(), w3)
 
-    LOG.info("Library deployment")
+    # LOG.info("Library deployment")
     LOG.info(f"owner account:{owner.account.address}")
-    math_spec = w3.eth.contract(abi=math_abi, bytecode=math_bin)
+    # math_spec = w3.eth.contract(abi=math_abi, bytecode=math_bin)
 
-    # deploy_receipt = owner.sendPrivacyPolicy(math_spec.constructor(), evmtest_policy)
+    # # deploy_receipt = owner.sendPrivacyPolicy(math_spec.constructor(), evmtest_policy)
 
-    deploy_receipt = owner.send_signed(math_spec.constructor())
-    ccf_client.math_library_address = deploy_receipt.contractAddress
-    LOG.info("math_library_address: " + ccf_client.math_library_address)
+    # deploy_receipt = owner.send_signed(math_spec.constructor())
+    # ccf_client.math_library_address = deploy_receipt.contractAddress
+    # LOG.info("math_library_address: " + ccf_client.math_library_address)
 
-    _ph = w3.toHex(w3.sha3(text="EvmTest.sol:Math"))
+    # _ph = w3.toHex(w3.sha3(text="EvmTest.sol:Math"))
 
-    LOG.info("math_library_placeholder: " + "__$"+_ph[2:36] + "$__")
+    # LOG.info("math_library_placeholder: " + "__$"+_ph[2:36] + "$__")
 
-    LOG.info("Contract deployment")
+    # LOG.info("Contract deployment")
 
-    evmtest_bin = evmtest_bin.replace(
-        "__$"+_ph[2:36] + "$__", ccf_client.math_library_address[2:])
+    # evmtest_bin = evmtest_bin.replace(
+    #     "__$"+_ph[2:36] + "$__", ccf_client.math_library_address[2:])
 
-    evmtest_spec = w3.eth.contract(abi=evmtest_abi, bytecode=evmtest_bin)
-    deploy_receipt = owner.send_signed(
-        evmtest_spec.constructor(10000, [11, 12, 13]))
+    # evmtest_spec = w3.eth.contract(abi=evmtest_abi, bytecode=evmtest_bin)
+    # deploy_receipt = owner.send_signed(
+    #     evmtest_spec.constructor(10000, [11, 12, 13]))
 
     evmtest_policy = read_evmtest_policy_from_file()
-    sppr = owner.sendPrivacyPolicy_v2(owner.account.address, deploy_receipt.contractAddress, "", evmtest_policy)
-    mpt_data = read_evmtest_params_from_file()
-    mpt_params = signMpt(owner.account.key, owner.account.address, deploy_receipt.contractAddress, mpt_data)
-    smptr = owner.sendMultiPartyTransaction(mpt_params)
-
-    ccf_client.evmtest_contract_address = deploy_receipt.contractAddress
-    print(deploy_receipt.contractAddress)
-    ccf_client.owner_account = owner.account
+    print(evmtest_policy)
+    # sppr = owner.sendPrivacyPolicy_v2(owner.account.address, deploy_receipt.contractAddress, "", evmtest_policy)
+    # mpt_data = read_evmtest_params_from_file()
+    # mpt_params = signMpt(owner.account.key, owner.account.address, deploy_receipt.contractAddress, mpt_data)
+    # smptr = owner.sendMultiPartyTransaction(mpt_params)
+    policy = signPrivacy(owner.account.key, owner.account.address, owner.account.address, owner.account.address, evmtest_policy)
+    # ccf_client.evmtest_contract_address = deploy_receipt.contractAddress
+    # print(deploy_receipt.contractAddress)
+    print(policy)
+    print(policyData)
+    # ccf_client.owner_account = owner.account
 
     return ccf_client
 
@@ -167,4 +184,4 @@ if __name__ == "__main__":
         )
     # get_balance(ccf_client)
     test_deploy(ccf_client)
-    test_get_sum(ccf_client)
+    # test_get_sum(ccf_client)

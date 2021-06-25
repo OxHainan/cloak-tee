@@ -13,6 +13,7 @@
 #include <eEVM/util.h>
 #include <stdexcept>
 #include "ethereum_transaction.h"
+#include "bytecode.h"
 
 namespace evm4ccf
 {   
@@ -39,6 +40,21 @@ namespace evm4ccf
         {FAILED, "failed"}
     };
 
+    struct MultiPartyTransaction1
+    {
+        size_t nonce;
+        Address to;
+        Address from;
+        policy::MultiPartyParams params;
+        MSGPACK_DEFINE(nonce, from, to, params);
+
+        ByteData name() const {
+          return params.name();
+        }
+    };
+
+    using MultiPartys = kv::Map<h256, MultiPartyTransaction1>;
+    
     struct MultiPartyTransaction
     {
     public:
@@ -96,6 +112,9 @@ namespace evm4ccf
         // }  
     };
 
+    
+    
+
     struct CloakTransaction {
     public:
         Address             from;
@@ -136,6 +155,8 @@ namespace evm4ccf
         ByteString   data;
     };
 
+    
+
     struct PrivacyPolicyTransaction
     {
     public:
@@ -143,7 +164,7 @@ namespace evm4ccf
         Address             to;
         Address             verifierAddr;
         ByteData            codeHash;
-        rpcparams::Policy              policy;
+        rpcparams::Policy   policy;
         ByteString          pdata;
         MSGPACK_DEFINE(from, to, verifierAddr, codeHash, policy);
         PrivacyPolicyTransaction(){}
@@ -192,10 +213,69 @@ namespace evm4ccf
         std::string to_hex_hash() const {
             return to_hex_string(hash());
         }
-
+        
         std::string info() const {
             return fmt::format("from: {}, to: {}, codeHash: {} \n \
                     policy:{}\n", from, to, codeHash, policy.info());
         }
     };
+
+    using Privacys = kv::Map<h256, PrivacyPolicyTransaction>;
+    using PrivacyDigests = kv::Map<Address, h256>;
+
+    struct CloakPolicyTransaction
+    {
+    public:
+        Address             from;
+        Address             to;
+        Address             verifierAddr;
+        ByteData            codeHash;
+        policy::Function    function;
+        std::vector<policy::Params> states;
+        MSGPACK_DEFINE(from, to, verifierAddr, codeHash, function, states);
+
+        CloakPolicyTransaction(
+           const PrivacyPolicyTransaction& ppt, const ByteData& name)
+        {
+            from = ppt.from;
+            to = ppt.to;
+            verifierAddr = ppt.verifierAddr;
+            codeHash = ppt.codeHash;
+            states = ppt.policy.states;
+            function = ppt.policy.get_funtions(name);
+        }
+
+        // 添加用户的交易内容，即合约函数的入参
+        void set_content(const std::vector<policy::MultiInput> &inputs)
+        {
+            // 检查用户的交易输入，合法性校验
+            if (inputs.size() != function.inputs.size()) {
+                throw std::logic_error(fmt::format(
+                    "input params doesn`t match, want {} but get {}",  function.inputs.size(), inputs.size()
+                ));
+            }
+
+            for (size_t i = 0; i < inputs.size(); i++)
+            {
+                function.padding(inputs[i]);
+            }
+        }
+
+        // 添加多方参与的交易内容，即合约定义的全局变量，未考虑
+        void add_multi_party()
+        {
+
+        }
+    
+    private:
+        UINT8ARRAY packed_to_evm_data()
+        {
+            auto data = Bytecode(function.get_signed_name(), function.inputs);
+            return data.encode();
+        }
+    };
+
+
+    using CloakPolicys = kv::Map<h256, CloakPolicyTransaction>;
+    using CloakDigests = kv::Map<Address, h256>;
 } // namespace evm4ccf

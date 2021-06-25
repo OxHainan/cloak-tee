@@ -10,17 +10,17 @@ namespace evm4ccf
 {
     using h256 = eevm::KeccakHash;
     using Address = eevm::Address;
-    using Mutex = std::mutex;
-    using Guard = std::lock_guard<std::mutex>;
-    using RecursiveMutex = std::recursive_mutex;
-    using RecursiveGuard = std::lock_guard<std::recursive_mutex>;
+    // using Mutex = std::mutex;
+    // using Guard = std::lock_guard<std::mutex>;
+    // using RecursiveMutex = std::recursive_mutex;
+    // using RecursiveGuard = std::lock_guard<std::recursive_mutex>;
 
     
     
 class WorkerQueue
 {
 public:
-   
+    
     WorkerQueue(kv::Store& _store); 
     ~WorkerQueue() {}
     
