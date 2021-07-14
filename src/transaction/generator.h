@@ -1,6 +1,6 @@
 #pragma once
-#include "transaction_tables.h"
-
+#include "tables.h"
+#include "signature.h"
 namespace evm4ccf
 {
     class TransactionGenerator
@@ -41,7 +41,7 @@ namespace evm4ccf
         auto add_cloakTransaction(const eevm::rlp::ByteString& encoded)
         {
             const auto decoded = CloakTransactionWithSignature(encoded);
-            MultiPartyTransaction1 mpt;
+            MultiPartyTransaction mpt;
             decoded.to_transaction_call(mpt);
 
             // 检查该笔交易是用户交易还是多方交易

@@ -2,9 +2,8 @@
 
 #include "tables.h"
 #include "rpc_types.h"
-#include "../queue/workerqueue.hpp"
 #include "../abi/abicoder.h"
-#include "../queue/transaction_tables.h"
+#include "../transaction/tables.h"
 
 using namespace ccf;
 using namespace evm4ccf;
@@ -62,7 +61,7 @@ R"xxx(
 };
 #include "tls/key_pair.h"
 #include "ethereum_transaction.h"
-#include "../queue/transaction.h"
+#include "../transaction/generator.h"
 int main() {
     const auto raw_tx = eevm::to_bytes(raw_hex);
     // const auto decoded = PrivacyTransactionWithSignature(raw_tx);
@@ -87,7 +86,7 @@ int main() {
     gen.add_cloakTransaction(raw2_tx);
 
     // const auto decoded = CloakTransactionWithSignature(raw1_tx);
-    // MultiPartyTransaction1 mpt;
+    // MultiPartyTransaction mpt;
     // decoded.to_transaction_call(mpt);
     // cout << eevm::to_hex_string(decoded.digest()) << endl;
 

@@ -4,9 +4,9 @@
 #include "kv/map.h"
 #include "kv/store.h"
 #include "ethereum_transaction.h"
-#include "workertransaction.h"
+#include "../queue/workertransaction.h"
 #include "../app/utils.h"
-#include "signature.h"
+#include "signature_abstract.h"
 #include "../app/tables.h"
 namespace evm4ccf
 {
@@ -129,17 +129,17 @@ namespace evm4ccf
         return PrivacyTransactionWithSignature(tx, sig);
     }
 
-    struct CloakTransaction1
+    struct CloakTransaction
     {
     protected:
-        CloakTransaction1() {}
+        CloakTransaction() {}
     
     public:
         size_t nonce;
         eevm::rlp::ByteString to;
         eevm::rlp::ByteString data;
 
-        CloakTransaction1(const eevm::rlp::ByteString& encoded)
+        CloakTransaction(const eevm::rlp::ByteString& encoded)
         {
             auto tup = eevm::rlp::decode<
                 size_t,
@@ -160,7 +160,7 @@ namespace evm4ccf
             return eevm::keccak_256(encode());
         }
 
-        virtual void to_transaction_call(MultiPartyTransaction1& mpt) const
+        virtual void to_transaction_call(MultiPartyTransaction& mpt) const
         {
             mpt.to = eevm::from_big_endian(to.data(), 20u);
             mpt.nonce = nonce;
@@ -168,7 +168,7 @@ namespace evm4ccf
         }
     };
     
-    struct CloakTransactionWithSignature : public SignatureAbstract, public CloakTransaction1
+    struct CloakTransactionWithSignature : public SignatureAbstract, public CloakTransaction
     {
         CloakTransactionWithSignature(const eevm::rlp::ByteString& encoded)
         {
@@ -189,9 +189,9 @@ namespace evm4ccf
         }
 
         CloakTransactionWithSignature(
-            const CloakTransaction1& tx, const tls::RecoverableSignature& sig) :
+            const CloakTransaction& tx, const tls::RecoverableSignature& sig) :
             SignatureAbstract(sig),
-            CloakTransaction1(tx)
+            CloakTransaction(tx)
         {}
 
         eevm::rlp::ByteString encode() const
@@ -208,7 +208,7 @@ namespace evm4ccf
         {
             if (is_pre_eip_155(v))
             {
-                return CloakTransaction1::to_be_signed();
+                return CloakTransaction::to_be_signed();
             }
 
             return eevm::keccak_256(eevm::rlp::encode(
@@ -216,54 +216,11 @@ namespace evm4ccf
             ));
         }
 
-        void to_transaction_call(MultiPartyTransaction1& mpt) const override
+        void to_transaction_call(MultiPartyTransaction& mpt) const override
         {
-            CloakTransaction1::to_transaction_call(mpt);
+            CloakTransaction::to_transaction_call(mpt);
             const auto tbs = to_be_signed();
             mpt.from = SignatureAbstract::signatureAndVerify(tbs);
         }
-    };
-    
-
-    
-    struct TxTables
-    {
-        static constexpr auto PRIVACYS = "eth.transaction.privacys";
-        static constexpr auto PRIVACY_DIGESTS = "eth.transaction.privacy_digests";
-        static constexpr auto CLOAKPOLICYS = "eth.transaction.cloak_policys";
-        static constexpr auto CLOAK_DIGESTS = "eth.transaction.cloak_digests";
-        static constexpr auto MULTI_PARTYS = "eth.transaction.multi_partys";
-        static constexpr auto NONCES = "eth.account.nonce";
-    };
-    
-    struct AccTables
-    {
-        static constexpr auto BALANCES = "eth.account.balance";
-        static constexpr auto CODERS = "eth.account.code";
-        static constexpr auto NONCES = "eth.account.nonce";     
-    };
-    
-
-    struct TransactionTables
-    {
-        const kv::Store& store;
-        Privacys privacys;     // 存储隐私模型
-        PrivacyDigests privacy_digests;
-
-        CloakPolicys cloak_policys;
-        CloakDigests cloak_digests;
-        MultiPartys  multi_partys;
-        tables::Accounts::Nonces nonces;
-        TransactionTables(const kv::Store& _store) :
-            store(_store),
-            privacys(TxTables::PRIVACYS),
-            privacy_digests(TxTables::PRIVACY_DIGESTS),
-            cloak_policys(TxTables::CLOAKPOLICYS),
-            cloak_digests(TxTables::CLOAK_DIGESTS),
-            multi_partys(TxTables::MULTI_PARTYS),
-            nonces(TxTables::NONCES)
-        {}
-    };
-    
-    
+    };  
 } // namespace evm4ccf

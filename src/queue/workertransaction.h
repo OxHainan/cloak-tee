@@ -13,7 +13,7 @@
 #include <eEVM/util.h>
 #include <stdexcept>
 #include "ethereum_transaction.h"
-#include "bytecode.h"
+#include "../transaction/bytecode.h"
 
 namespace evm4ccf
 {   
@@ -40,7 +40,7 @@ namespace evm4ccf
         {FAILED, "failed"}
     };
 
-    struct MultiPartyTransaction1
+    struct MultiPartyTransaction
     {
         size_t nonce;
         Address to;
@@ -53,9 +53,9 @@ namespace evm4ccf
         }
     };
 
-    using MultiPartys = kv::Map<h256, MultiPartyTransaction1>;
+    using MultiPartys = kv::Map<h256, MultiPartyTransaction>;
     
-    struct MultiPartyTransaction
+    struct MultiPartyTransaction1
     {
     public:
         size_t nonce;
@@ -67,7 +67,7 @@ namespace evm4ccf
         uint256_t s;
         policy::MultiPartyParams params;
 
-        MultiPartyTransaction(const SendMultiPartyTransaction& s) {
+        MultiPartyTransaction1(const SendMultiPartyTransaction& s) {
             auto res = eevm::rlp::decode<
                 size_t, 
                 uint256_t,
@@ -115,7 +115,7 @@ namespace evm4ccf
     
     
 
-    struct CloakTransaction {
+    struct CloakTransaction1 {
     public:
         Address             from;
         Address             to;
@@ -124,9 +124,9 @@ namespace evm4ccf
         policy::Function    function;
         std::vector<policy::Params> states;
         Status              status = PENDING;
-        std::map<Address, MultiPartyTransaction> multiParty ;
+        std::map<Address, MultiPartyTransaction1> multiParty ;
 
-        void insert(MultiPartyTransaction &mpt) {
+        void insert(MultiPartyTransaction1 &mpt) {
             multiParty.insert(std::make_pair(mpt.from, mpt));
             for (size_t i = 0; i < mpt.params.inputs.size(); i++) {
                 function.padding(mpt.params.inputs[i]);
@@ -179,7 +179,7 @@ namespace evm4ccf
             LOG_DEBUG_FMT("PrivacyPolicyTransaction info: {}\n", info());
         }
 
-        void to_privacyPolicyModules_call(CloakTransaction &tc, const ByteData &name) const {
+        void to_privacyPolicyModules_call(CloakTransaction1 &tc, const ByteData &name) const {
             tc.from = from;
             tc.to = to;
             tc.verifierAddr = verifierAddr;
@@ -188,7 +188,7 @@ namespace evm4ccf
             tc.function = policy.get_funtions(name);
         }
 
-        void checkMptParams(const MultiPartyTransaction& mpt) const {
+        void checkMptParams(const MultiPartyTransaction1& mpt) const {
             policy::Function func = policy.get_funtions(mpt.params.name());
             for (auto&& i : mpt.params.inputs) {
                 bool found = false;
