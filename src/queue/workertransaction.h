@@ -13,8 +13,7 @@
 #include <eEVM/util.h>
 #include <stdexcept>
 #include "ethereum_transaction.h"
-#include "../msgpack/address.h"
-#include "../msgpack/policy.h"
+#include "../transaction/bytecode.h"
 
 namespace evm4ccf
 {   
@@ -43,6 +42,21 @@ namespace evm4ccf
 
     struct MultiPartyTransaction
     {
+        size_t nonce;
+        Address to;
+        Address from;
+        policy::MultiPartyParams params;
+        MSGPACK_DEFINE(nonce, from, to, params);
+
+        ByteData name() const {
+          return params.name();
+        }
+    };
+
+    using MultiPartys = kv::Map<h256, MultiPartyTransaction>;
+    
+    struct MultiPartyTransaction1
+    {
     public:
         size_t nonce;
         Address from;
@@ -53,7 +67,7 @@ namespace evm4ccf
         uint256_t s;
         policy::MultiPartyParams params;
 
-        MultiPartyTransaction(const SendMultiPartyTransaction& s) {
+        MultiPartyTransaction1(const SendMultiPartyTransaction& s) {
             auto res = eevm::rlp::decode<
                 size_t, 
                 uint256_t,
@@ -98,7 +112,10 @@ namespace evm4ccf
         // }  
     };
 
-    struct CloakTransaction {
+    
+    
+
+    struct CloakTransaction1 {
     public:
         Address             from;
         Address             to;
@@ -107,9 +124,9 @@ namespace evm4ccf
         policy::Function    function;
         std::vector<policy::Params> states;
         Status              status = PENDING;
-        std::map<Address, MultiPartyTransaction> multiParty ;
+        std::map<Address, MultiPartyTransaction1> multiParty ;
 
-        void insert(MultiPartyTransaction &mpt) {
+        void insert(MultiPartyTransaction1 &mpt) {
             multiParty.insert(std::make_pair(mpt.from, mpt));
             for (size_t i = 0; i < mpt.params.inputs.size(); i++) {
                 function.padding(mpt.params.inputs[i]);
@@ -138,6 +155,8 @@ namespace evm4ccf
         ByteString   data;
     };
 
+    
+
     struct PrivacyPolicyTransaction
     {
     public:
@@ -145,7 +164,7 @@ namespace evm4ccf
         Address             to;
         Address             verifierAddr;
         ByteData            codeHash;
-        rpcparams::Policy              policy;
+        rpcparams::Policy   policy;
         ByteString          pdata;
         MSGPACK_DEFINE(from, to, verifierAddr, codeHash, policy);
         PrivacyPolicyTransaction(){}
@@ -160,7 +179,7 @@ namespace evm4ccf
             LOG_DEBUG_FMT("PrivacyPolicyTransaction info: {}\n", info());
         }
 
-        void to_privacyPolicyModules_call(CloakTransaction &tc, const ByteData &name) const {
+        void to_privacyPolicyModules_call(CloakTransaction1 &tc, const ByteData &name) const {
             tc.from = from;
             tc.to = to;
             tc.verifierAddr = verifierAddr;
@@ -169,7 +188,7 @@ namespace evm4ccf
             tc.function = policy.get_funtions(name);
         }
 
-        void checkMptParams(const MultiPartyTransaction& mpt) const {
+        void checkMptParams(const MultiPartyTransaction1& mpt) const {
             policy::Function func = policy.get_funtions(mpt.params.name());
             for (auto&& i : mpt.params.inputs) {
                 bool found = false;
@@ -191,35 +210,72 @@ namespace evm4ccf
             return eevm::keccak_256(pdata);
         }
 
-        void serialized(uint8_t* &data, size_t &size) {
-            serialized::write(data, size, from);
-            serialized::write(data, size, to);
-            serialized::write(data, size, verifierAddr);
-            serialized::write(data, size, codeHash);
-            serialized::write(data, size, policy);
-            // serialized::write(data, size, pdata.data(), pdata.size());
-        }
-
-        static PrivacyPolicyTransaction deserialize(
-            const uint8_t* &data, size_t &size ) 
-        {
-            PrivacyPolicyTransaction p;
-            p.from =serialized::read<Address>(data,size);
-            p.to = serialized::read<Address>(data,size);
-            p.verifierAddr = serialized::read<Address>(data,size);
-            p.codeHash = serialized::read<std::string>(data,size);
-            p.policy = serialized::read<rpcparams::Policy>(data,size);
-            // p.policy = Utils::parse<Policy>((char*)p.pdata.data());
-            return p;
-        }
-
         std::string to_hex_hash() const {
             return to_hex_string(hash());
         }
-
+        
         std::string info() const {
             return fmt::format("from: {}, to: {}, codeHash: {} \n \
                     policy:{}\n", from, to, codeHash, policy.info());
         }
     };
+
+    using Privacys = kv::Map<h256, PrivacyPolicyTransaction>;
+    using PrivacyDigests = kv::Map<Address, h256>;
+
+    struct CloakPolicyTransaction
+    {
+    public:
+        Address             from;
+        Address             to;
+        Address             verifierAddr;
+        ByteData            codeHash;
+        policy::Function    function;
+        std::vector<policy::Params> states;
+        MSGPACK_DEFINE(from, to, verifierAddr, codeHash, function, states);
+
+        CloakPolicyTransaction(
+           const PrivacyPolicyTransaction& ppt, const ByteData& name)
+        {
+            from = ppt.from;
+            to = ppt.to;
+            verifierAddr = ppt.verifierAddr;
+            codeHash = ppt.codeHash;
+            states = ppt.policy.states;
+            function = ppt.policy.get_funtions(name);
+        }
+
+        // 添加用户的交易内容，即合约函数的入参
+        void set_content(const std::vector<policy::MultiInput> &inputs)
+        {
+            // 检查用户的交易输入，合法性校验
+            if (inputs.size() != function.inputs.size()) {
+                throw std::logic_error(fmt::format(
+                    "input params doesn`t match, want {} but get {}",  function.inputs.size(), inputs.size()
+                ));
+            }
+
+            for (size_t i = 0; i < inputs.size(); i++)
+            {
+                function.padding(inputs[i]);
+            }
+        }
+
+        // 添加多方参与的交易内容，即合约定义的全局变量，未考虑
+        void add_multi_party()
+        {
+
+        }
+    
+    private:
+        UINT8ARRAY packed_to_evm_data()
+        {
+            auto data = Bytecode(function.get_signed_name(), function.inputs);
+            return data.encode();
+        }
+    };
+
+
+    using CloakPolicys = kv::Map<h256, CloakPolicyTransaction>;
+    using CloakDigests = kv::Map<Address, h256>;
 } // namespace evm4ccf

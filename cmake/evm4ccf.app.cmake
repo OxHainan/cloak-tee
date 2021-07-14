@@ -46,7 +46,7 @@ set(EVM_CPP_FILES
 
 set(EVM4CCF_FILE
   ${CMAKE_CURRENT_LIST_DIR}/../src/app/evm_for_ccf.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/../src/queue/workerqueue.cpp
+  # ${CMAKE_CURRENT_LIST_DIR}/../src/queue/workerqueue.cpp
   ${CMAKE_CURRENT_LIST_DIR}/../src/abi/abicoder.cpp
 
 )
@@ -99,6 +99,7 @@ target_link_libraries(main
 target_include_directories(
   main
   SYSTEM PRIVATE
+  /opt/openenclave/include
   ${CMAKE_CURRENT_LIST_DIR}/../include
   ${EVM_DIR}/include
   ${CCF_DIR}/3rdparty
