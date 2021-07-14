@@ -536,6 +536,21 @@ static std::unordered_map<ByteData, int> contractType = {
     };
     using SendRawTransaction =
       RpcBuilder<SendRawTransactionTag, rpcparams::SendRawTransaction, TxHash>;
+    
+    struct SendRawPrivacyTransactionTag
+    {
+      static constexpr auto name = "cloak_sendRawPrivacyTransaction";
+    };
+    using SendRawPrivacyTransaction =
+      RpcBuilder<SendRawPrivacyTransactionTag, rpcparams::SendRawTransaction, TxHash>;
+    
+    struct SendRawMultiPartyTransactionTag
+    {
+      static constexpr auto name = "cloak_sendRawMultiPartyTransaction";
+    };
+    using SendRawMultiPartyTransaction =
+      RpcBuilder<SendRawMultiPartyTransactionTag, rpcparams::SendRawTransaction, TxHash>;
+    
 
     struct SendTransactionTag
     {

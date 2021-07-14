@@ -73,8 +73,9 @@ int main() {
     // // cout << eevm::to_hex_string(decoded.data) << endl;
     // cout << eevm::to_hex_string(tc.from) << endl;
     // cout << decoded.codeHash << endl;
-    TransactionTables networks;
     kv::Store st("kv");
+    TransactionTables networks(st);
+    
     auto tx = st.create_tx();
     TransactionGenerator gen(networks, tx);
     gen.add_privacy(raw_tx);

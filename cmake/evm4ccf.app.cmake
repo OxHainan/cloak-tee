@@ -99,6 +99,7 @@ target_link_libraries(main
 target_include_directories(
   main
   SYSTEM PRIVATE
+  /opt/openenclave/include
   ${CMAKE_CURRENT_LIST_DIR}/../include
   ${EVM_DIR}/include
   ${CCF_DIR}/3rdparty

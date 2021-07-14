@@ -12,6 +12,7 @@
 #include "tables.h"
 #include "tls/key_pair.h"
 #include "utils.h"
+#include "../queue/transaction.h"
 // CCF
 #include "ds/hash.h"
 #include "enclave/app_interface.h"
@@ -46,6 +47,7 @@ namespace evm4ccf
     tables::Accounts accounts;
     tables::Storage storage;
     tables::Results tx_results;
+    TransactionTables txTables;
     WorkerQueue workerQueue;
     EthereumState make_state(kv::Tx& tx)
     {
@@ -108,6 +110,7 @@ namespace evm4ccf
           jsonrpc::result_response(0, result).dump());
         return;
       };
+      
       auto get_gasPrice = [](ccf::EndpointContext& args) {
         auto result = nlohmann::json(to_hex_string(0));
         args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
@@ -304,6 +307,42 @@ namespace evm4ccf
         return;
       };
 
+      auto send_raw_privacy_policy_transaction = [this](ccf::EndpointContext& args) {
+        const auto body_j = 
+          nlohmann::json::parse(args.rpc_ctx->get_request_body());
+        auto srpp = body_j.get<rpcparams::SendRawTransaction>();
+
+        eevm::rlp::ByteString in = eevm::to_bytes(srpp.raw_transaction);
+        TransactionGenerator gen(txTables, args.tx);
+        auto policy_digest = gen.add_privacy(in);
+        CLOAK_DEBUG_FMT("隐私模型hash {}", eevm::to_hex_string(policy_digest));
+
+        // Return success HTTP response with the result json
+        args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
+        args.rpc_ctx->set_response_header(
+          http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+        args.rpc_ctx->set_response_body(
+          jsonrpc::result_response(0, eevm::to_hex_string(policy_digest)).dump());
+        return;
+      };
+
+      auto send_raw_multiPartyTransaction = [this](ccf::EndpointContext& args) {
+        const auto body_j = 
+          nlohmann::json::parse(args.rpc_ctx->get_request_body());
+        auto srmp = body_j.get<rpcparams::SendRawTransaction>();
+        eevm::rlp::ByteString in = eevm::to_bytes(srmp.raw_transaction);
+        TransactionGenerator gen(txTables, args.tx);
+        auto ct_digest = gen.add_cloakTransaction(in);
+
+        // Return success HTTP response with the result json
+        args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
+        args.rpc_ctx->set_response_header(
+          http::headers::CONTENT_TYPE, http::headervalues::contenttype::TEXT);
+        args.rpc_ctx->set_response_body(
+          jsonrpc::result_response(0, eevm::to_hex_string(ct_digest)).dump());
+        return;
+      };
+
       auto send_multiPartyTransaction = [this](ccf::EndpointContext& args) {
         CLOAK_DEBUG_FMT("request body:{}", args.rpc_ctx->get_request_body());
         printf( "send_multiPartyTransaction tx: %p \n", (void*)&args.tx);
@@ -472,6 +511,14 @@ namespace evm4ccf
         ethrpc::SendRawTransaction::name, HTTP_POST, send_raw_transaction)
         .install();
 
+      make_endpoint(
+        ethrpc::SendRawPrivacyTransaction::name, HTTP_POST, send_raw_privacy_policy_transaction)
+        .install();
+
+      make_endpoint(
+        ethrpc::SendRawMultiPartyTransaction::name, HTTP_POST, send_raw_multiPartyTransaction)
+        .install();
+
       make_endpoint(ethrpc::SendTransaction::name, HTTP_POST, send_transaction)
         .install();
 
@@ -505,6 +552,7 @@ namespace evm4ccf
       },
       storage("eth.storage"),
       tx_results("eth.txresults"),
+      txTables(*nwt.tables),
       workerQueue(*nwt.tables)
     // SNIPPET_END: initialization
     {
@@ -670,7 +718,6 @@ namespace evm4ccf
     void open() override
     {
       ccf::UserRpcFrontend::open();
-      // LOG_INFO_FMT("primary {}", ccf::UserRpcFrontend::RpcFrontend::is_primary());
       evm_handlers.openapi_info.title = "CCF Homestead EVM App";
       evm_handlers.openapi_info.description =
         "This CCF Homestead EVM app implements a simple EVM";

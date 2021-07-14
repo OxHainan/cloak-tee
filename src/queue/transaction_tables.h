@@ -246,7 +246,7 @@ namespace evm4ccf
 
     struct TransactionTables
     {
-        std::shared_ptr<kv::Store> tables;
+        const kv::Store& store;
         Privacys privacys;     // 存储隐私模型
         PrivacyDigests privacy_digests;
 
@@ -254,7 +254,8 @@ namespace evm4ccf
         CloakDigests cloak_digests;
         MultiPartys  multi_partys;
         tables::Accounts::Nonces nonces;
-        TransactionTables() :
+        TransactionTables(const kv::Store& _store) :
+            store(_store),
             privacys(TxTables::PRIVACYS),
             privacy_digests(TxTables::PRIVACY_DIGESTS),
             cloak_policys(TxTables::CLOAKPOLICYS),
