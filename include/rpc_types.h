@@ -559,24 +559,6 @@ static std::unordered_map<ByteData, int> contractType = {
     using SendTransaction =
       RpcBuilder<SendTransactionTag, rpcparams::SendTransaction, TxHash>;
 
-    struct SendPrivacyPolicyTag
-    {
-      static constexpr auto name = "cloak_sendPrivacyPolicy";
-    };
-    using SendPrivacyPolicy = 
-      RpcBuilder<SendPrivacyPolicyTag, rpcparams::SendPrivacyPolicy, TxHash>;
-    
-
-    struct SendMultiPartyTransactionTag
-    {
-      static constexpr auto name = "cloak_sendMultiPartyTransaction";
-    };
-    using SendMultiPartyTransaction = 
-      RpcBuilder<SendMultiPartyTransactionTag, 
-        rpcparams::SendMultiPartyTransaction, 
-        rpcresults::MultiPartyReceiptResponse
-      >;
-
     struct WorkOrderSubmitTag
     {
       static constexpr auto name = "cloak_workOrderSubmit";

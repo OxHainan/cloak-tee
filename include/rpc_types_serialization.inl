@@ -119,8 +119,6 @@ namespace evm4ccf
 
   namespace policy
   {
-    
-
     inline void from_json(const nlohmann::json& j, Params &s) {
       require_object(j);
       from_to_str(j, "name", s.name);
@@ -388,23 +386,6 @@ namespace evm4ccf
       require_array(j);
       s.call_data = j[0];
     }
-
-    //
-    inline void to_json(nlohmann::json& j, const SendMultiPartyTransaction& s)
-    {
-      j = nlohmann::json::object();
-      // j["from"] = eevm::to_checksum_address(s.from);
-      // j["to"] = eevm::to_checksum_address(s.to);
-      j["params"] = s.params; 
-    }
-  
-    inline void from_json(const nlohmann::json& j, SendMultiPartyTransaction& s)
-    {
-      require_object(j);
-      // s.from = eevm::to_uint256(j["from"]);
-      // s.to = eevm::to_uint256(j["to"]);
-      from_to_str(j, "params", s.params);
-    }
     
     //
     inline void to_json(nlohmann::json& j, const SendRawTransaction& s)
@@ -419,27 +400,6 @@ namespace evm4ccf
       s.raw_transaction = j[0];
     }
 
-    
-    inline void to_json(nlohmann::json& j, const SendPrivacyPolicy& s)
-    {
-      j = nlohmann::json::object();
-      j["from"] = eevm::to_checksum_address(s.from);
-      j["to"] = eevm::to_checksum_address(s.to);
-      j["codeHash"] = s.codeHash;
-      j["verifierAddr"] = eevm::to_checksum_address(s.verifierAddr);
-      j["policy"] = s.policy;
-    }
-
-    inline void from_json(const nlohmann::json& j, SendPrivacyPolicy& s)
-    {
-      require_object(j);
-
-      s.from = eevm::to_uint256(j["from"]);
-      s.to = eevm::to_uint256(j["to"]);
-      from_to_str(j, "codeHash", s.codeHash);
-      from_to_str(j, "policy", s.policy);
-      s.verifierAddr = eevm::to_uint256(j["verifierAddr"]);
-    }
   } // namespace rpcparams
 
   namespace rpcresults
