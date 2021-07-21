@@ -82,6 +82,15 @@ namespace evm4ccf
             v = std::get<4>(tup);
             r = std::get<5>(tup);
             s = std::get<6>(tup);
+            CLOAK_DEBUG_FMT(
+                "verifierAddr:{}, codeHash:{}, to:{}, data:{} , v:{}, r:{}, s:{}",
+                eevm::to_hex_string(verifierAddr),
+                eevm::to_hex_string(codeHash),
+                eevm::to_hex_string(to),
+                eevm::to_hex_string(data),
+                v,
+                eevm::to_hex_string(r),
+                eevm::to_hex_string(s));
         }
 
         PrivacyTransactionWithSignature(
@@ -162,7 +171,7 @@ namespace evm4ccf
 
         virtual void to_transaction_call(MultiPartyTransaction& mpt) const
         {
-            mpt.to = eevm::from_big_endian(to.data(), 20u);
+            mpt.to = to;
             mpt.nonce = nonce;
             mpt.params = Utils::parse<policy::MultiPartyParams>(eevm::to_hex_string(data));
         }

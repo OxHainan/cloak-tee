@@ -16,44 +16,35 @@
 // STL/3rd-party
 #include <vector>
 
-namespace evm4ccf
-{
-  struct TxResult
-  {
+namespace evm4ccf {
+  struct TxResult {
     std::optional<eevm::Address> contract_address;
     std::vector<eevm::LogEntry> logs;
   };
 } // namespace evm4ccf
 
-#include "../msgpack/types.h"
 #include "../msgpack/address.h"
+#include "../msgpack/types.h"
 #include "nljsontypes.h"
 
 // Implement std::hash for uint256, so it can be used as key in kv
-namespace std
-{
+namespace std {
   template <unsigned N>
-  struct hash<intx::uint<N>>
-  {
-    size_t operator()(const intx::uint<N>& n) const
-    {
+  struct hash<intx::uint<N>> {
+    size_t operator()(const intx::uint<N>& n) const {
       const auto words = intx::to_words<size_t>(n);
       return hash_container(words);
     }
   };
 } // namespace std
 
-namespace evm4ccf
-{
-  inline bool operator==(const TxResult& l, const TxResult& r)
-  {
+namespace evm4ccf {
+  inline bool operator==(const TxResult& l, const TxResult& r) {
     return l.contract_address == r.contract_address && l.logs == r.logs;
   }
 
-  namespace tables
-  {
-    struct Accounts
-    {
+  namespace tables {
+    struct Accounts {
       using Balances = kv::Map<eevm::Address, uint256_t>;
       Balances balances;
 
@@ -63,14 +54,14 @@ namespace evm4ccf
       using Nonces = kv::Map<eevm::Address, eevm::Account::Nonce>;
       Nonces nonces;
 
-      struct Views
+      struct Views 
       {
         Balances::TxView* balances;
         Codes::TxView* codes;
         Nonces::TxView* nonces;
       };
 
-      Views get_views(kv::Tx& tx)
+      Views get_views(kv::Tx& tx) 
       {
         return {tx.get_view(balances), tx.get_view(codes), tx.get_view(nonces)};
       }
@@ -80,21 +71,6 @@ namespace evm4ccf
     using Storage = kv::Map<StorageKey, uint256_t>;
 
     using Results = kv::Map<TxHash, TxResult>;
-
-    struct TransactionStorage {
-        using Privacy = kv::Map<h256, PrivacyPolicyTransaction>;
-        // using CloakTransaction = kv::Map<h256, CloakTransaction>
-        Privacy privacy;
-
-        struct Views 
-        {
-            Privacy::TxView* privacy;
-        };
-
-        Views get_views(kv::Tx &tx) {
-            return {tx.get_view(privacy)};
-        }
-    };
 
   } // namespace tables
 } // namespace evm4ccf

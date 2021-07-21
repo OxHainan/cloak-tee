@@ -31,7 +31,7 @@ namespace evm4ccf
     struct TransactionTables
     {
         const kv::Store& store;
-        Privacys privacys;     // 存储隐私模型
+        Privacys privacys;
         PrivacyDigests privacy_digests;
 
         CloakPolicys cloak_policys;
