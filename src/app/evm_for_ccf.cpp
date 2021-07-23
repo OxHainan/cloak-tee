@@ -9,9 +9,11 @@
 #include "http/http_status.h"
 #include "jsonrpc.h"
 #include "tables.h"
+#include "tee_manager.h"
 #include "tls/key_pair.h"
 #include "utils.h"
 #include "../transaction/generator.h"
+
 // CCF
 #include "ds/hash.h"
 #include "enclave/app_interface.h"
@@ -399,6 +401,52 @@ namespace evm4ccf
             account_state.acc.get_nonce()});
         };
 
+      auto prepare = [](kv::Tx& tx, const nlohmann::json& params) {
+          Address cloak_service_addr = to_uint256(params["cloak_service_addr"].get<std::string>());
+          Address pki_addr = to_uint256(params["pki_addr"].get<std::string>());
+          TeeManager::prepare(tx, cloak_service_addr, pki_addr);
+          return true;
+      };
+
+      auto sync_old_states = [this](kv::Tx& tx, const nlohmann::json& params) {
+          auto old_states = abicoder::decode_uint256_array(to_bytes(params["data"].get<std::string>()));
+          h256 tx_hash = Utils::to_KeccakHash(params["tx_hash"].get<std::string>());
+          std::vector<void*> codes;
+          abicoder::paramCoder(codes, "oldStates", "uint[]", old_states);
+          auto old_states_packed = abicoder::pack(codes);
+          auto old_states_hash = eevm::keccak_256(old_states_packed);
+
+          CloakPolicyTransaction ct(txTables.cloak_policys, txTables.privacy_digests, tx, tx_hash);
+          if (!ct.function.complete()) {
+              CLOAK_DEBUG_FMT("function is not ready, info:{}", ct.function.info());
+              LOG_AND_THROW("function is not ready");
+              return false;
+          }
+          ct.old_states = old_states;
+          ct.old_states_hash = old_states_hash;
+          CLOAK_DEBUG_FMT("old_states:{}", fmt::join(ct.old_states, ", "));
+          if (ct.request_public_keys(tx)) {
+              return true;
+          }
+          execute_mpt(ct.old_states, ct, tx);
+          return true;
+      };
+
+      auto sync_public_keys = [this](kv::Tx& tx, const nlohmann::json& params) {
+          auto tx_hash = Utils::to_KeccakHash(params["tx_hash"].get<std::string>());
+          CloakPolicyTransaction ct(txTables.cloak_policys, txTables.privacy_digests, tx, tx_hash);
+          std::map<std::string, std::string> public_keys;
+          auto public_keys_str = params["data"].get<std::string>();
+          auto public_key_list = abicoder::decode_uint256_array(to_bytes(public_keys_str));
+          for (size_t i = 0; i < public_key_list.size(); i++) {
+              public_keys.insert(std::make_pair(public_key_list[i], public_key_list[i + 1]));
+          }
+          std::vector<std::string> decrypted = ct.decrypt_states(tx, public_keys);
+          auto eth_state = make_state(tx);
+          execute_mpt(decrypted, ct, tx);
+          return true;
+      };
+
       // Because CCF OpenAPI json module do not support uint256, thus do not use
       // ccf::json_adapter(call) or add_auto_schema(...)
       make_endpoint(ethrpc::Call::name, HTTP_GET, call).install();
@@ -438,12 +486,15 @@ namespace evm4ccf
       make_endpoint(ethrpc::SendTransaction::name, HTTP_POST, send_transaction)
         .install();
 
-      make_endpoint(
-        "eth_getTransactionCount_Test",
-        HTTP_GET,
-        ccf::json_adapter(get_transaction_count_test))
-        .set_auto_schema<ethrpc::GetTransactionCountTest>()
-        .install();
+      make_endpoint("eth_getTransactionCount_Test", HTTP_GET, ccf::json_adapter(get_transaction_count_test))
+          .set_auto_schema<ethrpc::GetTransactionCountTest>()
+          .install();
+
+      make_endpoint("eth_sync_old_states", HTTP_POST, ccf::json_adapter(sync_old_states)).install();
+
+      make_endpoint("eth_sync_public_keys", HTTP_POST, ccf::json_adapter(sync_public_keys)).install();
+
+      make_endpoint("cloak_prepare", HTTP_POST, ccf::json_adapter(prepare)).install();
     }
 
   public:
@@ -468,62 +519,54 @@ namespace evm4ccf
 
   private:
     static std::pair<ExecResult, AccountState> run_in_evm(
-      const rpcparams::MessageCall& call_data,
-      EthereumState& es,
-      LogHandler& log_handler)
+        const rpcparams::MessageCall& call_data, EthereumState& es, LogHandler& log_handler)
     {
-      Address from = call_data.from;
-      Address to;
+        Address from = call_data.from;
+        Address to;
 
-      if (call_data.to.has_value())
-      {
-        to = call_data.to.value();
-      }
-      else
-      {
-        // If there's no to field, create a new account to deploy this to
-        const auto from_state = es.get(from);
-        to = eevm::generate_address(
-          from_state.acc.get_address(), from_state.acc.get_nonce());
-        es.create(to, call_data.gas, to_bytes(call_data.data));
-      }
+        if (call_data.to.has_value()) {
+            to = call_data.to.value();
+        } else {
+            // If there's no to field, create a new account to deploy this to
+            const auto from_state = es.get(from);
+            to = eevm::generate_address(from_state.acc.get_address(), from_state.acc.get_nonce());
+            es.create(to, call_data.gas, to_bytes(call_data.data));
+        }
 
-      Transaction eth_tx(from, log_handler);
+        Transaction eth_tx(from, log_handler);
 
-      auto account_state = es.get(to);
+        auto account_state = es.get(to);
 
 #ifdef RECORD_TRACE
-      eevm::Trace tr;
+        eevm::Trace tr;
 #endif
 
-      Processor proc(es);
-      const auto result = proc.run(
-        eth_tx,
-        from,
-        account_state,
-        to_bytes(call_data.data),
-        call_data.value
+        Processor proc(es);
+        const auto result = proc.run(
+            eth_tx,
+            from,
+            account_state,
+            to_bytes(call_data.data),
+            call_data.value
 #ifdef RECORD_TRACE
-        ,
-        &tr
+            ,
+            &tr
 #endif
-      );
+        );
 
 #ifdef RECORD_TRACE
-      if (result.er == ExitReason::threw)
-      {
-        LOG_INFO_FMT("--- Trace of failing evm execution ---\n{}", tr);
-      }
+        if (result.er == ExitReason::threw) {
+            LOG_INFO_FMT("--- Trace of failing evm execution ---\n{}", tr);
+        }
 #endif
 
-      return std::make_pair(result, account_state);
+        return std::make_pair(result, account_state);
     }
 
-    static pair<ExecResult, AccountState> run_in_evm(
-      const rpcparams::MessageCall& call_data, EthereumState& es)
+    static pair<ExecResult, AccountState> run_in_evm(const rpcparams::MessageCall& call_data, EthereumState& es)
     {
-      NullLogHandler ignore;
-      return run_in_evm(call_data, es, ignore);
+        NullLogHandler ignore;
+        return run_in_evm(call_data, es, ignore);
     }
 
     // TODO: This and similar should take EthereumTransaction, not
@@ -605,6 +648,70 @@ namespace evm4ccf
         exec_result, tx_hash, account_state.acc.get_address());
     }
 
+    void execute_mpt(const std::vector<std::string>& decryped_states, CloakPolicyTransaction &ct, kv::Tx& tx)
+    {
+        auto tee_addr = TeeManager::tee_addr(tx);
+        MessageCall set_states_mc;
+        std::vector<void*> codes;
+        abicoder::paramCoder(codes, "set_states", "uint[]", decryped_states);
+        auto decryped_states_packed = abicoder::pack(codes);
+        // function selector
+        auto set_states_call_data = Utils::make_function_selector("set_states(uint256[])");
+        CLOAK_DEBUG_FMT("decryped_states:{}", fmt::join(decryped_states, ", "));
+        set_states_call_data.insert(
+            set_states_call_data.end(), decryped_states_packed.begin(), decryped_states_packed.end());
+        set_states_mc.from = tee_addr;
+        set_states_mc.to = ct.to;
+        CLOAK_DEBUG_FMT("call_data:{}", eevm::to_hex_string(set_states_call_data));
+        set_states_mc.data = eevm::to_hex_string(set_states_call_data);
+        auto set_states_es = make_state(tx);
+        auto set_states_res = run_in_evm(set_states_mc, set_states_es).first;
+        if (set_states_res.er == ExitReason::threw) {
+            CLOAK_DEBUG_FMT("set_states execution error: {}", set_states_res.exmsg);
+            return;
+        }
+
+        // run in evm
+        CLOAK_DEBUG_FMT("ct function: {}\n", ct.function.info());
+        auto data = ct.function.packed_to_data();
+        MessageCall mc;
+        mc.from = ct.from;
+        mc.to = ct.to;
+        mc.data = to_hex_string(data);
+        CLOAK_DEBUG_FMT("ct function data: {}", mc.data);
+        auto es = make_state(tx);
+
+        const auto res = run_in_evm(mc, es).first;
+        CLOAK_DEBUG_FMT("run in evm, res: {}, msg: {}\n", res.output, res.exmsg);
+        if (res.er == ExitReason::threw) {
+            LOG_AND_THROW("run mpt in evm faild");
+        }
+
+        // == get new states ==
+        MessageCall get_new_states_mc;
+        auto get_new_states_call_data = ct.get_states_call_data(false);
+        CLOAK_DEBUG_FMT("get_new_states_call_data:{}", to_hex_string(get_new_states_call_data));
+        get_new_states_mc.from = tee_addr;
+        get_new_states_mc.to = ct.to;
+        get_new_states_mc.data = eevm::to_hex_string(get_new_states_call_data);
+        auto get_new_states_es = make_state(tx);
+        auto get_new_states_res = run_in_evm(get_new_states_mc, get_new_states_es).first;
+        CLOAK_DEBUG_FMT(
+            "get_new_states res:{}, {}, {}, {}",
+            get_new_states_res.er,
+            get_new_states_res.ex,
+            to_hex_string(get_new_states_res.output),
+            get_new_states_res.exmsg);
+        if (get_new_states_res.er == ExitReason::threw) {
+            LOG_AND_THROW("get new states in evm faild:{}", res.exmsg);
+        }
+
+        // == Sync new states ==
+        std::vector<std::string> new_states = abicoder::decode_uint256_array(get_new_states_res.output);
+        auto encrypted = ct.encrypt_states(tx, new_states);
+        CLOAK_DEBUG_FMT("encrypted:{}", fmt::join(encrypted, ", "));
+        ct.sync_result(tx, encrypted);
+    }
   }; // class EVMHandlers
 
   class EVM : public ccf::UserRpcFrontend 

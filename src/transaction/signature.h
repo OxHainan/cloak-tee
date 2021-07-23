@@ -8,6 +8,7 @@
 #include "../app/utils.h"
 #include "signature_abstract.h"
 #include "../app/tables.h"
+#include <eEVM/util.h>
 namespace evm4ccf
 {
     struct PrivacyTransaction
@@ -126,6 +127,7 @@ namespace evm4ccf
             PrivacyTransaction::to_transaction(tc);
             const auto tbs = to_be_signed();
             tc.from = SignatureAbstract::signatureAndVerify(tbs);
+            CLOAK_DEBUG_FMT("recoverd from:{}", to_checksum_address(tc.from));
             return calc_policy_hash();
         }
     };
@@ -230,6 +232,7 @@ namespace evm4ccf
             CloakTransaction::to_transaction_call(mpt);
             const auto tbs = to_be_signed();
             mpt.from = SignatureAbstract::signatureAndVerify(tbs);
+            CLOAK_DEBUG_FMT("recoverd from:{}", to_checksum_address(mpt.from));
         }
     };  
 } // namespace evm4ccf
