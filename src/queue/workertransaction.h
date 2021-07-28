@@ -4,6 +4,7 @@
 #include "iostream"
 #include "kv/tx.h"
 #include "string"
+#include "tls/key_pair.h"
 #include "vector"
 #include "../app/utils.h"
 #include "map"
@@ -339,8 +340,8 @@ namespace evm4ccf
             mc.data = to_hex_string(data);
             // TODO: choose a better value based on concrete contract
             mc.gas = 0x34abf;
-            CLOAK_DEBUG_FMT("data:{}, nonce:{}, from:{}", mc.data, nonce, mc.from);
-            auto signed_data = sign_eth_tx(tee_kp, mc, 0);
+            CLOAK_DEBUG_FMT("data:{}", mc.data);
+            auto signed_data = sign_eth_tx(tee_kp, mc, nonce);
             nlohmann::json j;
             j["tx_hash"] = to_hex_string(mpt_hash);
             j["data"] = to_hex_string(signed_data);

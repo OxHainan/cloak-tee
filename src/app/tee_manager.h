@@ -39,7 +39,7 @@ namespace evm4ccf::TeeManager
         handler->put(Const::TEE_MANAGER_KEYS::PKI_ADDR, eevm::to_checksum_address(pki_addr));
 
         // set nonce
-        handler->put(Const::TEE_MANAGER_KEYS::NONCE, eevm::to_hex_string(0));
+        handler->put(Const::TEE_MANAGER_KEYS::NONCE, eevm::to_hex_string(1));
     }
 
     inline tls::KeyPairPtr get_tee_kp(kv::Tx& tx) {

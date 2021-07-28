@@ -55,15 +55,22 @@ namespace evm4ccf
             if (mpt.check_transaction_type())
             {
                 eevm::KeccakHash target_digest = Utils::vec_to_KeccakHash(mpt.to);
-                auto cpt = cp->get(target_digest);
-                if (!cpt.has_value())
-                {
+                auto cpt_opt = cp->get(target_digest);
+                if (!cpt_opt.has_value()) {
                     throw std::logic_error(fmt::format(
                         "multi party transaction digests doesn't exists (digests {})", eevm::to_hex_string(target_digest)
                     ));
                 }
-                cpt->set_content(mpt.params.inputs);
-                return multi_digest;
+                cpt_opt->mpt_hash = target_digest;
+                if (cpt_opt->function.complete()) {
+                    LOG_AND_THROW("mpt has been completed");
+                }
+                cpt_opt->set_content(mpt.params.inputs);
+                cp->put(target_digest, cpt_opt.value());
+                if (cpt_opt->function.complete()) {
+                    cpt_opt->request_old_state(tx);
+                }
+                return target_digest;
                 // TODO: add_multi_party
             }
             

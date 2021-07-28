@@ -10,6 +10,8 @@ import json
 from loguru import logger as LOG
 import rlp
 from eth_hash.auto import keccak as keccak_256
+import subprocess
+
 class EvmTestContract:
     def __init__(self, contract):
         self.contract = contract
@@ -63,13 +65,11 @@ def read_evmtest_params_from_file():
     with open(file_path, mode='rb') as f:
         return web3.Web3.toHex(f.read())
 
-def signMpt(private_key, frm, to, data, nonce=1):
-    from_int = int(frm, 0)
-    to_int = int(to, 0)
-    params = rlp.encode([nonce, from_int, to_int, data])
+def signMpt(private_key, to, data, nonce=1):
+    params = rlp.encode([nonce, to, data])
     msg_hash = keccak_256(params)
     signed = web3.eth.Account.signHash(msg_hash, private_key=private_key)
-    res = rlp.encode([nonce, from_int, to_int, data, signed.v, signed.r, signed.s]).hex()
+    res = rlp.encode([nonce, to, data, signed.v, signed.r, signed.s]).hex()
     return res
 
 def signPrivacy(private_key, to, verifierAddr, codeHash, policy1):
@@ -173,6 +173,71 @@ def get_balance(ccf_client):
     chaind = w3.eth.estimateGas(params)
     print(chaind)
 
+def read_sum_mpt_data():
+    t1 = """
+    {
+        "function": "sum",
+        "inputs" : [
+            { "name": "_a", "value": "100"}
+        ]
+    }
+    """
+    t2 = """
+    {
+        "function": "sum",
+        "inputs" : [
+            { "name": "_b", "value": "100"}
+        ]
+    }
+    """
+    return t1, t2
+
+def cloak_prepare(ccf_client: ccf.clients.CCFClient, cloak_service_addr: str, pki_addr: str):
+    ccf_client.call("/app/cloak_prepare", {"cloak_service_addr": cloak_service_addr, "pki_addr": pki_addr})
+
+def test_mpt(ccf_client):
+    compile_dir = os.environ["HOME"] + "/git/cloak-compiler/test/output/"
+    w3 = web3.Web3(provider.CCFProvider(ccf_client))
+    owner_1 = Caller(web3.Account.create(), w3)
+    owner_2 = Caller(web3.Account.create(), w3)
+    print(f"owner_1:{owner_1.account.address}, owner_2:{owner_2.account.address}")
+    file_path = compile_dir + "private_contract.sol"
+    process = subprocess.Popen([
+        os.environ["HOME"] + "/.solcx/solc-v0.6.12",
+        "--combined-json", "abi,bin,bin-runtime,hashes", "--evm-version", "homestead", "--optimize",
+        file_path
+    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = process.communicate()
+    cj = json.loads(out)
+    income = cj["contracts"][f"{file_path}:Sum"]
+    abi = income["abi"]
+    bi = income["bin"]
+    print(f"hashs:{income['hashes']}")
+    codeHash = web3.Web3.keccak(open(file_path, 'rb').read())
+    spec = w3.eth.contract(abi=abi, bytecode=bi)
+    deployed_receipt = owner_1.send_signed(spec.constructor())
+    print(f"deployed_addr:{deployed_receipt.contractAddress}")
+    contractAddress = web3.Web3.toBytes(hexstr=deployed_receipt.contractAddress)
+
+    policy = None
+    with open(compile_dir + "policy.json", mode='rb') as f:
+        policy = f.read()
+    print(f"pt:{type(policy)}, ph:{web3.Web3.keccak(policy).hex()}")
+    verifierAddr = web3.Web3.toBytes(hexstr="0xA090d6ce5AbdebB4206a82bC047eC2D66195E6F0")
+    sp = signPrivacy(owner_1.account.key, contractAddress, verifierAddr, codeHash, policy)
+    res = owner_1.sendRawPrivacyPolicy(sp)
+    print(f"res:{res}")
+
+    # mpt
+    mpt_data_1, mpt_data_2 = read_sum_mpt_data()
+    mpt_params = signMpt(owner_1.account.key, contractAddress, mpt_data_1)
+    smptr = owner_1.sendMultiPartyTransaction(mpt_params)
+    print(f"mpt 1 res:{smptr}")
+    mpt_params = signMpt(owner_2.account.key, web3.Web3.toBytes(hexstr=smptr), mpt_data_2)
+    smptr = owner_2.sendMultiPartyTransaction(mpt_params)
+    print(f"mpt 2 res:{smptr}")
+
+
 if __name__ == "__main__":
 
     ccf_client = ccf.clients.CCFClient(
@@ -183,5 +248,7 @@ if __name__ == "__main__":
         config.key
         )
     # get_balance(ccf_client)
-    test_deploy(ccf_client)
+    # test_deploy(ccf_client)
+    # cloak_prepare(ccf_client, "0x1Df966ff5eC7905C1f1d31743a52eE6E91132876", "0x6aF954f1624d3408481ff1c8FF6944f06Be5EfA2")
+    test_mpt(ccf_client)
     # test_get_sum(ccf_client)
