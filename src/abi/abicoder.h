@@ -334,4 +334,6 @@ static std::unordered_map<ByteData, int> contractType = {
 void paramCoder(vector<void*> &coders, const ByteData &name, const ByteData &_type,const vector<ByteData> & value);
 void paramCoder(vector<void*> &coders, const ByteData &name, const ByteData &type,const ByteData & value, int length);
 void paramCoder(vector<void*> &coders, const ByteData &name, const ByteData &_type,const ByteData & value);
+
+std::vector<std::string> decode_uint256_array(const std::vector<uint8_t>& states);
 }

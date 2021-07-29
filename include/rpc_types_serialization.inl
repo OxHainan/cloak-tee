@@ -206,6 +206,7 @@ namespace evm4ccf
       from_to_str(j, "contract", s.contract);
       from_array_to_object(j, "states", s.states);
       from_array_to_object(j, "functions", s.functions);
+      s.sign_functions_name();
     }
 
     inline void to_json(nlohmann::json& j,const Policy& s)
