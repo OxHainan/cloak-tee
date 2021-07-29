@@ -106,26 +106,27 @@ UINT8ARRAY abicoder::pack(const std::vector<void*>& coders, const vector<ByteDat
     return basic_pack(parts);
 }
 
-UINT8ARRAY abicoder::CoderArray::encode() {
-    UINT8ARRAY result;
-    result = UintNumber().encode(to_string(value.size()));
-    
+UINT8ARRAY abicoder::CoderArray::encode() {  
     vector<void*> coders;
     for (size_t i=0; i<value.size(); i++) {
         abicoder::paramCoder(coders, name, type, value[i], length);
     }
     auto data = pack(coders);
-    result.insert(result.end(),data.begin(), data.end());
-    return result;
+    if (Dynamic)
+    {
+        auto result = UintNumber().encode(to_string(value.size()));
+        result.insert(result.end(),data.begin(), data.end());
+        return result;
+    }
+    return data;
 }
 
 void abicoder::paramCoder(vector<void*> &coders, const ByteData &name, const ByteData &_type,const ByteData & value) {
 
     auto [type, length, boolean] = Parsing(_type).result();
     if(boolean) {
-        // 数组类型
         // size_t len = length > 1 ? length : value.size();
-        CoderArray* array = new CoderArray(name, type, length);
+        CoderArray* array = new CoderArray(name, type, length, length == 0);
         array->setValue(value);
         coders.push_back(array);
         return;
@@ -133,14 +134,13 @@ void abicoder::paramCoder(vector<void*> &coders, const ByteData &name, const Byt
     paramCoder(coders, name, type, value, length);  
 }
 
-// 处理数组类型
+// handle Array type
 void abicoder::paramCoder(vector<void*> &coders, const ByteData &name, const ByteData &_type,const vector<ByteData> & value) {
     auto [type, length, boolean] = Parsing(_type).result();
-    std::cout << type << std::endl;
     if(boolean) {
         // array
         size_t len = length > 1 ? length : value.size();
-        CoderArray* array = new CoderArray(name, type, len);
+        CoderArray* array = new CoderArray(name, type, len, length == 0);
         array->setValue(value);
         coders.push_back(array);
         return;

@@ -233,7 +233,7 @@ private:
 
 };
 
-// 处理静态bytes类型，如bytes2 bytes10等
+
 class CoderFixedBytes : public Coder {
 public:
     CoderFixedBytes() {}
@@ -278,7 +278,6 @@ UINT8ARRAY pack(const std::vector<void*>& coders, const vector<ByteData> &value)
 class CoderArray : Coder{
 public:
     // CoderArray( ByteData _type, int _length, bool dynamic = true) : length(_length) {
-    //     // 此长度并非数组的长度，而是type中括号标识的程度
     //     // type = _type + "[" + (length >=0 ? to_string(length) : "") + "]";
     //     type = _type;
     //     Dynamic =  dynamic;
@@ -286,9 +285,8 @@ public:
     // }
 
     CoderArray(ByteData _name, ByteData _type, int _length, bool dynamic = true) : length(_length), name(_name) {
-        // 此长度并非数组的长度，而是type中括号标识的程度
         type = _type;
-        Dynamic =  dynamic;      
+        Dynamic =  dynamic;
     }
 
     void setValue(const vector<ByteData> &_value){
