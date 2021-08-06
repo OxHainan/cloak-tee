@@ -26,7 +26,6 @@ namespace evm4ccf
         strtoul(stripped.substr(i * 2, 2).c_str(), nullptr, 16));
     }
   }
-  
 
   template <typename T>
     inline void from_to_str(
@@ -38,6 +37,17 @@ namespace evm4ccf
         return;
       v = *it;
     }
+
+  template <typename T>
+  inline void from_to_array(const nlohmann::json& j, const std::string& s, T& v)
+  {
+    std::string vs;
+    from_to_str(j, s, vs);
+    if (!vs.empty())
+    {
+      v = eevm::to_bytes(vs);
+    }
+  }
 
   template <typename T>
   inline void from_optional_hex_str(
@@ -180,6 +190,8 @@ namespace evm4ccf
       from_to_str(j, "name", s.name);
       from_to_str(j, "type", s.type);
       from_array_to_object(j, "inputs", s.inputs);
+      from_to_array(j, "entry", s.entry);
+      s.check_params();
       from_array_to_object(j, "read", s.read);
       from_array_to_object(j, "mutate", s.mutate);
       from_array_to_object(j, "outputs", s.outputs);
@@ -206,6 +218,7 @@ namespace evm4ccf
       from_to_str(j, "contract", s.contract);
       from_array_to_object(j, "states", s.states);
       from_array_to_object(j, "functions", s.functions);
+      s.sign_functions_name();
     }
 
     inline void to_json(nlohmann::json& j,const Policy& s)

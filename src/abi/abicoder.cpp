@@ -1,5 +1,6 @@
 #include "abicoder.h"
 #include "vector"
+#include <stdexcept>
 
 void abicoder::insert(UINT8ARRAY &coder,const UINT8ARRAY &input, size_t offset) {
     for(size_t i= offset, x = 0; x< input.size(); x++, i++ ) {
@@ -7,9 +8,15 @@ void abicoder::insert(UINT8ARRAY &coder,const UINT8ARRAY &input, size_t offset) 
     }
 }
 
-
 UINT8ARRAY abicoder::to_bytes(const std::string& _s, size_t offset, bool boolean) {
     auto s = eevm::strip(_s);
+    if (s.size() > 64) {
+        throw std::logic_error(fmt::format(
+            "Invalid length, want {} but get {}",
+            32,
+            s.size()
+        ));
+    }
     UINT8ARRAY h(32);
     if(!boolean)
         h.resize(ceil(s.size() / 2.0));
@@ -19,6 +26,12 @@ UINT8ARRAY abicoder::to_bytes(const std::string& _s, size_t offset, bool boolean
     }
         
     for(size_t  x = 0; x < s.size(); offset++, x+=2) {
+        if (offset >= h.size())
+        {
+            throw std::logic_error(fmt::format(
+                "Handle encoding string to uint8 array error, offset out of maximum range 32"
+            ));
+        }
         h.at(offset) = strtol(s.substr(x, 2).c_str(),0,16);          
     }
     return h;
@@ -114,7 +127,7 @@ UINT8ARRAY abicoder::CoderArray::encode() {
     auto data = pack(coders);
     if (Dynamic)
     {
-        auto result = UintNumber().encode(to_string(value.size()));
+        auto result = uint256Coder(value.size());
         result.insert(result.end(),data.begin(), data.end());
         return result;
     }
@@ -126,7 +139,7 @@ void abicoder::paramCoder(vector<void*> &coders, const ByteData &name, const Byt
     auto [type, length, boolean] = Parsing(_type).result();
     if(boolean) {
         // size_t len = length > 1 ? length : value.size();
-        CoderArray* array = new CoderArray(name, type, length, length == 0);
+        CoderArray* array = new CoderArray(name, type, length, !length);
         array->setValue(value);
         coders.push_back(array);
         return;
@@ -140,7 +153,7 @@ void abicoder::paramCoder(vector<void*> &coders, const ByteData &name, const Byt
     if(boolean) {
         // array
         size_t len = length > 1 ? length : value.size();
-        CoderArray* array = new CoderArray(name, type, len, length == 0);
+        CoderArray* array = new CoderArray(name, type, len, !length);
         array->setValue(value);
         coders.push_back(array);
         return;
@@ -195,3 +208,4 @@ void abicoder::paramCoder(vector<void*> &coders, const ByteData &name, const Byt
         break;
     }
 }
+

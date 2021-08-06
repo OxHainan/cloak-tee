@@ -130,8 +130,6 @@ public:
     bool getDynamic() const {
         return Dynamic;
     }
-
-
 };
 
 
@@ -332,4 +330,24 @@ static std::unordered_map<ByteData, int> contractType = {
 void paramCoder(vector<void*> &coders, const ByteData &name, const ByteData &_type,const vector<ByteData> & value);
 void paramCoder(vector<void*> &coders, const ByteData &name, const ByteData &type,const ByteData & value, int length);
 void paramCoder(vector<void*> &coders, const ByteData &name, const ByteData &_type,const ByteData & value);
+
+inline std::vector<std::string> decode_uint256_array(const std::vector<uint8_t>& states)
+{
+    CLOAK_DEBUG_FMT("raw data:{}", states);
+    if (states.size() < 64) {
+        LOG_AND_THROW("decode_uint256_array error, states length:{} is to short", states.size());
+    }
+    std::vector<uint8_t> count_vec(states.begin() + 32, states.begin() + 64);
+    std::vector<std::string> res;
+    size_t count = size_t(eevm::to_uint256(eevm::to_hex_string(count_vec)));
+    CLOAK_DEBUG_FMT("count:{}", count);
+    for (size_t i = 0; i < count; i++) {
+        auto it = states.begin() + 64 + i * 32;
+        std::vector<uint8_t> state(it, it + 32);
+        res.push_back(eevm::to_hex_string(state));
+    }
+    CLOAK_DEBUG_FMT("res:{}", fmt::join(res, ", "));
+    return res;
 }
+
+} // namespace abicoder
