@@ -195,19 +195,50 @@ def read_sum_mpt_data():
 def cloak_prepare(ccf_client: ccf.clients.CCFClient, cloak_service_addr: str, pki_addr: str):
     ccf_client.call("/app/cloak_prepare", {"cloak_service_addr": cloak_service_addr, "pki_addr": pki_addr})
 
+def get_pk_pem(key: str) -> str:
+    cmd = f"echo 302e0201010420 {key[2:]} a00706052b8104000a | xxd -r -p | openssl ec -inform d -pubout"
+    print(f"cmd:{cmd}")
+    # exit(1)
+    out, err = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).communicate()
+    print(f"key:{key}, out:{out}, err:{err}, pem:{out}")
+    return out.decode()
+
+def register_pki(owner: Caller):
+    w3 = web3.Web3(web3.Web3.HTTPProvider('http://127.0.0.1:8545'))
+    acc = web3.Account.from_key(owner.account.key)
+    # w3.eth.default_account = acc.address
+
+    file_name = "CloakPKI.sol"
+    file_path = f"{os.environ['HOME']}/git/cloak-compiler/test/output/{file_name}"
+    out, err = subprocess.Popen(
+        f"solc --combined-json abi,bin,bin-runtime,hashes --evm-version homestead --optimize {file_path}",
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).communicate()
+    cj = json.loads(out)
+    j = cj["contracts"][f"{file_path}:CloakPKI"]
+    abi = j["abi"]
+    bi = j["bin"]
+
+    ct = w3.eth.contract(address="0x90aDdf434baCF95dF8E6b6DB7968F159411fc55B", abi=abi)
+    fn = ct.functions.announcePk(get_pk_pem(owner.account.key.hex()))
+    signed = acc.signTransaction(fn.buildTransaction({'nonce': 7, "gas": "0x461fb", "gasPrice": 0}))
+    tx_hash = w3.eth.sendRawTransaction(signed.rawTransaction)
+    w3.eth.waitForTransactionReceipt(tx_hash)
+    # res = ct.functions.getPk([owner.account.address]).call()
+    # print(f"register_pki:{res}")
+
 def test_mpt(ccf_client):
     compile_dir = os.environ["HOME"] + "/git/cloak-compiler/test/output/"
     w3 = web3.Web3(provider.CCFProvider(ccf_client))
     owner_1 = Caller(web3.Account.create(), w3)
     owner_2 = Caller(web3.Account.create(), w3)
+    # register_pki(owner_1)
     print(f"owner_1:{owner_1.account.address}, owner_2:{owner_2.account.address}")
     file_path = compile_dir + "private_contract.sol"
-    process = subprocess.Popen([
-        os.environ["HOME"] + "/.solcx/solc-v0.6.12",
-        "--combined-json", "abi,bin,bin-runtime,hashes", "--evm-version", "homestead", "--optimize",
-        file_path
-    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(
+        f"solc --combined-json abi,bin,bin-runtime,hashes --evm-version homestead --optimize {file_path}",
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     out, err = process.communicate()
+    print(err)
     cj = json.loads(out)
     income = cj["contracts"][f"{file_path}:Sum"]
     abi = income["abi"]
@@ -223,7 +254,7 @@ def test_mpt(ccf_client):
     with open(compile_dir + "policy.json", mode='rb') as f:
         policy = f.read()
     print(f"pt:{type(policy)}, ph:{web3.Web3.keccak(policy).hex()}")
-    verifierAddr = web3.Web3.toBytes(hexstr="0xA090d6ce5AbdebB4206a82bC047eC2D66195E6F0")
+    verifierAddr = web3.Web3.toBytes(hexstr="0x37dc04c38a5d136e5DBFD1c315Bd05cb42fd9E2d")
     sp = signPrivacy(owner_1.account.key, contractAddress, verifierAddr, codeHash, policy)
     res = owner_1.sendRawPrivacyPolicy(sp)
     print(f"res:{res}")
@@ -249,6 +280,6 @@ if __name__ == "__main__":
         )
     # get_balance(ccf_client)
     # test_deploy(ccf_client)
-    # cloak_prepare(ccf_client, "0x1Df966ff5eC7905C1f1d31743a52eE6E91132876", "0x6aF954f1624d3408481ff1c8FF6944f06Be5EfA2")
+    # cloak_prepare(ccf_client, "0x029399F5C03E6515Bf2A5E7475c15bfc0E17b199", "0x90aDdf434baCF95dF8E6b6DB7968F159411fc55B")
     test_mpt(ccf_client)
     # test_get_sum(ccf_client)

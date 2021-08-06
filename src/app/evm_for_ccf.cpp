@@ -426,9 +426,11 @@ namespace evm4ccf
           ct.old_states_hash = old_states_hash;
           CLOAK_DEBUG_FMT("old_states:{}", fmt::join(ct.old_states, ", "));
           if (ct.request_public_keys(tx)) {
+              ct.save(tx, txTables.cloak_policys);
               return true;
           }
           execute_mpt(ct.old_states, ct, tx);
+          ct.save(tx, txTables.cloak_policys);
           return true;
       };
 
@@ -437,13 +439,18 @@ namespace evm4ccf
           CloakPolicyTransaction ct(txTables.cloak_policys, txTables.privacy_digests, tx, tx_hash);
           std::map<std::string, std::string> public_keys;
           auto public_keys_str = params["data"].get<std::string>();
-          auto public_key_list = abicoder::decode_uint256_array(to_bytes(public_keys_str));
-          for (size_t i = 0; i < public_key_list.size(); i++) {
-              public_keys.insert(std::make_pair(public_key_list[i], public_key_list[i + 1]));
+          CLOAK_DEBUG_FMT("public_keys_str:{}", public_keys_str);
+          auto public_keys_vec = to_bytes(public_keys_str);
+          auto public_key_list = abicoder::decode_string_array({public_keys_vec.begin()+32, public_keys_vec.end()});
+          CLOAK_DEBUG_FMT("public_keys_list:{}", fmt::join(public_key_list, ", "));
+          for (size_t i = 0; i < ct.requested_addresses.size(); i++) {
+              public_keys[ct.requested_addresses[i]] = public_key_list[i];
           }
-          std::vector<std::string> decrypted = ct.decrypt_states(tx, public_keys);
+          ct.public_keys = public_keys;
+          std::vector<std::string> decrypted = ct.decrypt_states(tx);
           auto eth_state = make_state(tx);
           execute_mpt(decrypted, ct, tx);
+          ct.save(tx, txTables.cloak_policys);
           return true;
       };
 
