@@ -1,10 +1,12 @@
 #pragma once
 #include "ds/logger.h"
 #include "fmt/core.h"
+#include "fmt/format.h"
 #include "iostream"
 #include "kv/tx.h"
 #include "string"
 #include "tls/key_pair.h"
+#include "tls/pem.h"
 #include "vector"
 #include "../app/utils.h"
 #include "map"
@@ -108,7 +110,10 @@ namespace evm4ccf
         h256 policy_hash;
         h256 old_states_hash;
         std::vector<std::string> old_states;
-        MSGPACK_DEFINE(from, to, verifierAddr, codeHash, function, states, old_states_hash, old_states);
+        std::vector<std::string> requested_addresses;
+        std::map<std::string, std::string> public_keys;
+        MSGPACK_DEFINE(
+            from, to, verifierAddr, codeHash, function, states, old_states_hash, old_states, requested_addresses);
         CloakPolicyTransaction() {}
         CloakPolicyTransaction(
            const PrivacyPolicyTransaction& ppt, const ByteData& name, h256 mpt_hash)
@@ -136,6 +141,11 @@ namespace evm4ccf
                 LOG_AND_THROW("policy hash:{} not found", to);
             }
             policy_hash = p_hash_opt.value();
+        }
+
+        void save(kv::Tx &tx, CloakPolicys& cp) noexcept {
+            auto handler = tx.get_view(cp);
+            handler->put(mpt_hash, *this);
         }
 
         void set_content(const std::vector<policy::MultiInput> &inputs)
@@ -217,73 +227,80 @@ namespace evm4ccf
 
         bool request_public_keys(kv::Tx &tx)
         {
+            // state => address
+            std::map<std::string, std::string> addresses;
+            visit_old_states([this, &addresses](auto id, size_t idx) {
+                if (states[id].type == "address" && states[id].owner == "all") {
+                    addresses[states[id].name] = eevm::to_checksum_address(eevm::to_uint256(old_states[idx+1]));
+                }
+            });
+            for (auto [k, v] : addresses) {
+                CLOAK_DEBUG_FMT("addr:{}, {}", k, v);
+            }
+
+            // get result
             std::vector<std::string> res;
             bool included_tee = false;
-            for (size_t i = 0; i < old_states.size();) {
-                auto id = to_uint256(old_states[i]);
-                auto p = states.at(size_t(id));
-                int factor = 1;
-                CLOAK_DEBUG_FMT("p.info{}", p.info());
-                CLOAK_DEBUG_FMT("old_states[i+3]:{}", to_uint256(old_states[i + 3]));
-                if (p.owner == "tee") {
+            visit_old_states([this, &included_tee, &res, &addresses](size_t id, size_t idx){
+                auto p = states[id];
+                if (p.owner == "all") {
+                    return;
+                } else if (p.owner == "tee") {
                     included_tee = true;
-                    factor = 3;
-                }
-                if (p.owner[0] == 'm') {
+                } else if (p.owner[0] == 'm') {
                     // mapping
                     auto keys = function.get_mapping_keys(p.name);
-                    res.insert(res.end(), {old_states[i], to_hex_string(keys.size())});
+                    res.insert(res.end(), {old_states[idx], to_hex_string(keys.size())});
                     res.insert(res.end(), keys.begin(), keys.end());
-                    factor = 3;
-                }
-                if (p.type[0] == 'm') {
-                    i += i + 2 + to_uint64(old_states[i + 1]) * factor;
                 } else {
-                    i += 1 + 1 * factor;
+                    // identifier
+                    res.push_back(addresses.at(p.owner));
                 }
-                continue;
-            }
+            });
+
             if (res.empty()) {
                 if (included_tee) {
-                    old_states = decrypt_states(tx, {});
+                    old_states = decrypt_states(tx);
                 }
                 return false;
             }
+
+            requested_addresses = res;
+            CLOAK_DEBUG_FMT("requested_addresses:{}", fmt::join(requested_addresses, ", "));
             // function selector
-            std::vector<uint8_t> data = to_bytes("0xa30e2625");
+            std::vector<uint8_t> data = Utils::make_function_selector("getPk(address[])");
             std::vector<void*> codes;
-            abicoder::paramCoder(codes, "read", "uint[]", res);
+            abicoder::paramCoder(codes, "read", "address[]", res);
             auto params = abicoder::pack(codes);
             data.insert(data.end(), params.begin(), params.end());
             nlohmann::json j;
             j["tx_hash"] = to_hex_string(mpt_hash);
             j["data"] = to_hex_string(data);
             j["to"] = to_checksum_address(TeeManager::get_pki_addr(tx));
+            j["from"] = to_checksum_address(TeeManager::tee_addr(tx));
             Utils::cloak_agent_log("request_public_keys", j);
             return true;
         }
 
-        std::vector<std::string> decrypt_states(kv::Tx& tx, const std::map<std::string, std::string>& public_keys)
+        std::vector<std::string> decrypt_states(kv::Tx& tx)
         {
             auto tee_kp = TeeManager::get_tee_kp(tx);
             std::vector<std::string> res;
-            for (size_t i = 0; i < old_states.size();) {
-                res.push_back(old_states[i]);
-                auto p = states.at(to_uint64(old_states[i]));
+            visit_old_states([this, &res, &tee_kp](size_t id, size_t idx) {
+                res.push_back(old_states[idx]);
+                auto p = states.at(id);
                 if (p.owner == "all") {
                     if (p.type[0] == 'm') {
-                        auto size = size_t(to_uint256(old_states[i + 1]));
-                        res.insert(res.end(), old_states.begin() + i + 1, old_states.begin() + i + 1 + size);
-                        i += size + 2;
+                        auto size = size_t(to_uint256(old_states[idx]));
+                        res.insert(res.end(), old_states.begin() + idx + 1, old_states.begin() + idx + 1 + size);
                     } else {
-                        res.push_back(old_states[i + 1]);
-                        i += 2;
+                        res.push_back(old_states[idx + 1]);
                     }
                 } else if (p.owner[0] == 'm') {
                     auto mapping_keys = function.get_mapping_keys(p.name);
-                    res.push_back(old_states[i + 1]);
+                    res.push_back(old_states[idx + 1]);
                     for (size_t j = 0; j < mapping_keys.size(); j++) {
-                        size_t pos = i + 2 + j * 3;
+                        size_t pos = idx + 2 + j * 3;
                         auto pk = public_keys.at(old_states[pos + 2]);
                         // tag and iv
                         auto ti = to_bytes(old_states[pos + 1]);
@@ -291,29 +308,26 @@ namespace evm4ccf
                         data.insert(data.end(), ti.begin(), ti.begin() + crypto::GCM_SIZE_TAG);
                         auto decrypted =
                             Utils::decrypt_data(tee_kp, pk, {ti.begin() + crypto::GCM_SIZE_TAG, ti.end()}, data);
-                        res.insert(res.end(), {mapping_keys[i], to_hex_string(decrypted)});
+                        res.insert(res.end(), {mapping_keys[idx], to_hex_string(decrypted)});
                     }
-                    i += i + 2 + mapping_keys.size() * 3;
-                } else if (p.owner == "tee") {
-                    auto sender_addr = old_states[i + 3];
+                } else {
+                    // tee and identifier
+                    auto sender_addr = to_checksum_address(to_uint256(old_states[idx + 3]));
                     CLOAK_DEBUG_FMT("sender_addr:{}", sender_addr);
                     if (to_uint256(sender_addr) == 0) {
                         res.push_back(to_hex_string(0));
-                    } else {
-                        // tag and iv
-                        auto pk = tee_kp->public_key_pem();
-                        auto&& [tag, iv] = Utils::split_tag_and_iv(to_bytes(old_states[i + 2]));
-                        CLOAK_DEBUG_FMT("tag:{}, iv:{}", tag, iv);
-                        auto data = to_bytes(old_states[i + 1]);
-                        data.insert(data.end(), tag.begin(), tag.end());
-                        auto decrypted = Utils::decrypt_data(tee_kp, pk, iv, data);
-                        res.push_back(to_hex_string(decrypted));
+                        return;
                     }
-                    i += 4;
-                } else {
-                    LOG_AND_THROW("invalid owner:{}", p.owner);
+                    // tag and iv
+                    tls::Pem pk = p.owner == "tee" ? tee_kp->public_key_pem() : tls::Pem(public_keys.at(sender_addr));
+                    auto&& [tag, iv] = Utils::split_tag_and_iv(to_bytes(old_states[idx + 2]));
+                    CLOAK_DEBUG_FMT("tag:{}, iv:{}", tag, iv);
+                    auto data = to_bytes(old_states[idx + 1]);
+                    data.insert(data.end(), tag.begin(), tag.end());
+                    auto decrypted = Utils::decrypt_data(tee_kp, pk, iv, data);
+                    res.push_back(to_hex_string(decrypted));
                 }
-            }
+            });
             CLOAK_DEBUG_FMT("old_states:{}, res:{}", fmt::join(old_states, ", "), fmt::join(res, ", "));
             return res;
         }
@@ -357,6 +371,14 @@ namespace evm4ccf
 
         std::vector<std::string> encrypt_states(kv::Tx &tx, const std::vector<std::string>& new_states)
         {
+            // identifier owner addresses
+            std::map<std::string, std::string> addresses;
+            visit_old_states([this, &addresses](auto id, size_t idx) {
+                if (states[id].type == "address" && states[id].owner == "all") {
+                    addresses[states[id].name] = eevm::to_checksum_address(eevm::to_uint256(old_states[idx+1]));
+                }
+            });
+
             std::vector<std::string> res;
             auto tee_kp = TeeManager::get_tee_kp(tx);
             for (size_t i = 0; i < new_states.size();) {
@@ -366,14 +388,6 @@ namespace evm4ccf
                 auto ps = states[to_uint64(new_states[i])];
                 if (ps.owner == "all") {
                     res.insert(res.end(), {new_states[i], new_states[i + 1]});
-                    i += 2;
-                } else if (ps.owner == "tee") {
-                    auto iv = tls::create_entropy()->random(crypto::GCM_SIZE_IV);
-                    auto&& [encrypted, tag] =
-                        Utils::encrypt_data_s(tee_kp, tee_pk_pem, iv, to_bytes(new_states[i + 1]));
-                    tag.insert(tag.end(), iv.begin(), iv.end());
-                    tag.resize(32, 0);
-                    res.insert(res.end(), {new_states[i], to_hex_string(encrypted), to_hex_string(tag), tee_addr_hex});
                     i += 2;
                 } else if (ps.owner[0] == 'm') {
                     auto mapping_keys = function.get_mapping_keys(ps.name);
@@ -388,10 +402,35 @@ namespace evm4ccf
                     }
                     i += 2 + mapping_keys.size();
                 } else {
-                    LOG_AND_THROW("invalid owner:{}", ps.owner);
+                    // tee and identifier
+                    std::string sender_addr = ps.owner == "tee" ? tee_addr_hex : addresses.at(ps.owner);
+                    tls::Pem pk_pem = ps.owner == "tee" ? tee_pk_pem : tls::Pem(public_keys.at(sender_addr));
+                    auto iv = tls::create_entropy()->random(crypto::GCM_SIZE_IV);
+                    auto&& [encrypted, tag] =
+                        Utils::encrypt_data_s(tee_kp, pk_pem, iv, to_bytes(new_states[i + 1]));
+                    tag.insert(tag.end(), iv.begin(), iv.end());
+                    tag.resize(32, 0);
+                    res.insert(res.end(), {new_states[i], to_hex_string(encrypted), to_hex_string(tag), sender_addr});
+                    i += 2;
                 }
             }
             return res;
+        }
+
+        // f: size_t(the id of states) -> size_t(the index of old_states) -> void
+        void visit_old_states(std::function<void(size_t, size_t)> f)
+        {
+            for (size_t i = 0; i < old_states.size();) {
+                size_t id = to_uint64(old_states[i]);
+                auto state = states[id];
+                f(id, i);
+                int factor = state.owner == "all" ? 1 : 3;
+                if (state.type[0] == 'm') {
+                    i += i + 2 + to_uint64(old_states[i + 1]) * factor;
+                } else {
+                    i += 1 + 1 * factor;
+                }
+            }
         }
 
     private:

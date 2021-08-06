@@ -125,6 +125,10 @@ namespace Utils
         return res;
     }
 
+    inline uint256_t vec32_to_uint256(const std::vector<uint8_t>& data) {
+        return eevm::to_uint256(eevm::to_hex_string(data));
+    }
+
     inline std::vector<std::string> stringToArray(const std::string &s){
         std::vector<std::string> arr;
         for(size_t i=1; i<s.size(); i++) {
@@ -190,7 +194,7 @@ namespace Utils
         size_t c_size = data.size() - crypto::GCM_SIZE_TAG;
         std::vector<uint8_t> res(c_size);
         if (!key_aes_gcm.decrypt(iv, data.data() + c_size, {data.data(), c_size}, {}, res.data())) {
-            CLOAK_DEBUG_FMT("decryption failed, please check your data");
+            LOG_AND_THROW("decryption failed, please check your data");
         }
         return res;
     }

@@ -336,4 +336,7 @@ void paramCoder(vector<void*> &coders, const ByteData &name, const ByteData &typ
 void paramCoder(vector<void*> &coders, const ByteData &name, const ByteData &_type,const ByteData & value);
 
 std::vector<std::string> decode_uint256_array(const std::vector<uint8_t>& states);
+std::string decode_string(const std::vector<uint8_t> &data);
+std::vector<std::string> decode_string_array(const std::vector<uint8_t> &data);
+
 }
