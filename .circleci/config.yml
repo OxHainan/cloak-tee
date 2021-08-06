@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: yingjunhub/circleci-ccf
+      - image: plytools/circleci-cloak-tee:v0.2.0
     working_directory: ~/cloak-tee
     steps:
       - setup_remote_docker:
