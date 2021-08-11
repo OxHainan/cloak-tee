@@ -1,6 +1,7 @@
 import json
 import os
 import web3
+import time
 
 from utils import *
 import ccf.clients
@@ -173,24 +174,45 @@ def get_balance(ccf_client):
     chaind = w3.eth.estimateGas(params)
     print(chaind)
 
-def read_sum_mpt_data():
-    t1 = """
-    {
-        "function": "sum",
+def read_transfer_mpt_data(to: str) -> str:
+    return f"""
+    {{
+        "function": "transfer",
         "inputs" : [
-            { "name": "_a", "value": "100"}
+            {{"name": "to", "value": "{to}"}},
+            {{"name": "value", "value": "10"}}
         ]
-    }
+    }}
     """
-    t2 = """
-    {
-        "function": "sum",
+
+def read_deposit_mpt_data() -> str:
+    return f"""
+    {{
+        "function": "deposit",
         "inputs" : [
-            { "name": "_b", "value": "100"}
+            {{"name": "value", "value": "10"}}
         ]
-    }
+    }}
     """
-    return t1, t2
+
+def read_multiPartyTransfer_mpt_data(to: str) -> str:
+    v1 = f"""
+    {{
+        "function": "multiPartyTransfer",
+        "inputs" : [
+            {{"name": "value", "value": "10"}}
+        ]
+    }}
+    """
+    v2 = f"""
+    {{
+        "function": "multiPartyTransfer",
+        "inputs" : [
+            {{"name": "to", "value": "{to}"}}
+        ]
+    }}
+    """
+    return v1, v2
 
 def cloak_prepare(ccf_client: ccf.clients.CCFClient, cloak_service_addr: str, pki_addr: str):
     ccf_client.call("/app/cloak_prepare", {"cloak_service_addr": cloak_service_addr, "pki_addr": pki_addr})
@@ -209,7 +231,7 @@ def register_pki(owner: Caller):
     # w3.eth.default_account = acc.address
 
     file_name = "CloakPKI.sol"
-    file_path = f"{os.environ['HOME']}/git/cloak-compiler/test/output/{file_name}"
+    file_path = f"{os.environ['HOME']}/git/cloak-compiler/test/demo_output/{file_name}"
     out, err = subprocess.Popen(
         f"solc --combined-json abi,bin,bin-runtime,hashes --evm-version homestead --optimize {file_path}",
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).communicate()
@@ -218,20 +240,21 @@ def register_pki(owner: Caller):
     abi = j["abi"]
     bi = j["bin"]
 
-    ct = w3.eth.contract(address="0x90aDdf434baCF95dF8E6b6DB7968F159411fc55B", abi=abi)
+    ct = w3.eth.contract(address="0x8Ac2d5446F9583f993A51118F927a0Bdd9043bFd", abi=abi)
     fn = ct.functions.announcePk(get_pk_pem(owner.account.key.hex()))
-    signed = acc.signTransaction(fn.buildTransaction({'nonce': 7, "gas": "0x461fb", "gasPrice": 0}))
+    signed = acc.signTransaction(fn.buildTransaction({'nonce': 0, "gas": "0x461fb", "gasPrice": 0}))
     tx_hash = w3.eth.sendRawTransaction(signed.rawTransaction)
     w3.eth.waitForTransactionReceipt(tx_hash)
     # res = ct.functions.getPk([owner.account.address]).call()
     # print(f"register_pki:{res}")
 
 def test_mpt(ccf_client):
-    compile_dir = os.environ["HOME"] + "/git/cloak-compiler/test/output/"
+    compile_dir = os.environ["HOME"] + "/git/cloak-compiler/test/demo_output/"
     w3 = web3.Web3(provider.CCFProvider(ccf_client))
-    owner_1 = Caller(web3.Account.create(), w3)
+    owner_1 = Caller(web3.Account.from_key("0x55b99466a43e0ccb52a11a42a3b4e10bfba630e8427570035f6db7b5c22f689e"), w3)
     owner_2 = Caller(web3.Account.create(), w3)
     # register_pki(owner_1)
+    register_pki(owner_2)
     print(f"owner_1:{owner_1.account.address}, owner_2:{owner_2.account.address}")
     file_path = compile_dir + "private_contract.sol"
     process = subprocess.Popen(
@@ -240,13 +263,13 @@ def test_mpt(ccf_client):
     out, err = process.communicate()
     print(err)
     cj = json.loads(out)
-    income = cj["contracts"][f"{file_path}:Sum"]
-    abi = income["abi"]
-    bi = income["bin"]
-    print(f"hashs:{income['hashes']}")
+    demo = cj["contracts"][f"{file_path}:Demo"]
+    abi = demo["abi"]
+    bi = demo["bin"]
+    print(f"hashs:{demo['hashes']}")
     codeHash = web3.Web3.keccak(open(file_path, 'rb').read())
     spec = w3.eth.contract(abi=abi, bytecode=bi)
-    deployed_receipt = owner_1.send_signed(spec.constructor())
+    deployed_receipt = owner_1.send_signed(spec.constructor(owner_2.account.address))
     print(f"deployed_addr:{deployed_receipt.contractAddress}")
     contractAddress = web3.Web3.toBytes(hexstr=deployed_receipt.contractAddress)
 
@@ -254,19 +277,38 @@ def test_mpt(ccf_client):
     with open(compile_dir + "policy.json", mode='rb') as f:
         policy = f.read()
     print(f"pt:{type(policy)}, ph:{web3.Web3.keccak(policy).hex()}")
-    verifierAddr = web3.Web3.toBytes(hexstr="0x37dc04c38a5d136e5DBFD1c315Bd05cb42fd9E2d")
+    verifierAddr = web3.Web3.toBytes(hexstr="0x268f81287d34b583968adCE716bd28FaEcfb7459")
     sp = signPrivacy(owner_1.account.key, contractAddress, verifierAddr, codeHash, policy)
     res = owner_1.sendRawPrivacyPolicy(sp)
     print(f"res:{res}")
 
     # mpt
-    mpt_data_1, mpt_data_2 = read_sum_mpt_data()
-    mpt_params = signMpt(owner_1.account.key, contractAddress, mpt_data_1)
-    smptr = owner_1.sendMultiPartyTransaction(mpt_params)
-    print(f"mpt 1 res:{smptr}")
-    mpt_params = signMpt(owner_2.account.key, web3.Web3.toBytes(hexstr=smptr), mpt_data_2)
-    smptr = owner_2.sendMultiPartyTransaction(mpt_params)
-    print(f"mpt 2 res:{smptr}")
+    ## transfer
+    input_data = read_transfer_mpt_data(owner_2.account.address)
+    print(input_data)
+    mpt_params = signMpt(owner_1.account.key, contractAddress, input_data, 2)
+    mpt_hash = owner_1.sendMultiPartyTransaction(mpt_params)
+    print(f"transfer mpt hash:{mpt_hash}")
+    time.sleep(5)
+
+    ## deposit
+    input_data = read_deposit_mpt_data()
+    print(input_data)
+    mpt_params = signMpt(owner_1.account.key, contractAddress, input_data, 2)
+    mpt_hash = owner_1.sendMultiPartyTransaction(mpt_params)
+    print(f"deposit mpt hash:{mpt_hash}")
+    time.sleep(5)
+
+    ## multi party transfer
+    input_data_val, input_data_to = read_multiPartyTransfer_mpt_data(owner_2.account.address)
+    print(input_data)
+    mpt_params_1 = signMpt(owner_1.account.key, contractAddress, input_data_val, 2)
+    mpt_hash = owner_1.sendMultiPartyTransaction(mpt_params_1)
+    mpt_params_2 = signMpt(owner_2.account.key, web3.Web3.toBytes(hexstr=mpt_hash), input_data_to, 2)
+    owner_2.sendMultiPartyTransaction(mpt_params_2)
+    time.sleep(3)
+    mpt_res = ccf_client.call("/app/cloak_get_mpt", {"tx_hash": mpt_hash}, "GET")
+    print(f"multiPartyTransfer mpt hash:{mpt_hash}, mpt res:{mpt_res}")
 
 
 if __name__ == "__main__":
@@ -280,6 +322,7 @@ if __name__ == "__main__":
         )
     # get_balance(ccf_client)
     # test_deploy(ccf_client)
-    # cloak_prepare(ccf_client, "0x029399F5C03E6515Bf2A5E7475c15bfc0E17b199", "0x90aDdf434baCF95dF8E6b6DB7968F159411fc55B")
+    # cloak_prepare(ccf_client, "0x170BD87e16cf4460CE603308BfE8DA109d7754dF", "0x8Ac2d5446F9583f993A51118F927a0Bdd9043bFd")
     test_mpt(ccf_client)
     # test_get_sum(ccf_client)
+

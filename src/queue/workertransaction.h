@@ -41,18 +41,23 @@ namespace evm4ccf
     using CloakPolicys = kv::Map<h256, CloakPolicyTransaction>;
     using CloakDigests = kv::Map<Address, h256>;
 
-    enum Status {
+    enum class Status : uint8_t
+    {
         PENDING,
-        PACKAGE,
+        REQUESTING_OLD_STATES,
+        SYNCING,
+        SYNCED,
+        SYNC_FAILED,
         DROPPED,
-        FAILED
     };
 
-    static std::map<Status,ByteData> statusMap = {
-        {PENDING, "pending"},
-        {PACKAGE, "package"},
-        {DROPPED, "dropped"},
-        {FAILED, "failed"}
+    static std::map<Status, ByteData> statusMap = {
+        {Status::PENDING, "PENDING"},
+        {Status::REQUESTING_OLD_STATES, "REQUESTING_OLD_STATES"},
+        {Status::SYNCING, "SYNCING"},
+        {Status::SYNCED, "SYNCED"},
+        {Status::SYNC_FAILED, "SYNC_FAILED"},
+        {Status::DROPPED, "DROPPED"},
     };
 
     struct MultiPartyTransaction
@@ -112,8 +117,9 @@ namespace evm4ccf
         std::vector<std::string> old_states;
         std::vector<std::string> requested_addresses;
         std::map<std::string, std::string> public_keys;
+        uint8_t status = 0;
         MSGPACK_DEFINE(
-            from, to, verifierAddr, codeHash, function, states, old_states_hash, old_states, requested_addresses);
+            from, to, verifierAddr, codeHash, function, states, old_states_hash, old_states, requested_addresses, status);
         CloakPolicyTransaction() {}
         CloakPolicyTransaction(
            const PrivacyPolicyTransaction& ppt, const ByteData& name, h256 mpt_hash)
@@ -141,6 +147,18 @@ namespace evm4ccf
                 LOG_AND_THROW("policy hash:{} not found", to);
             }
             policy_hash = p_hash_opt.value();
+        }
+
+        void set_status(Status status) {
+            this->status = uint8_t(status);
+        }
+
+        Status get_status() const {
+            return Status(status);
+        }
+
+        std::string get_status_str() const {
+            return statusMap[Status(status)];
         }
 
         void save(kv::Tx &tx, CloakPolicys& cp) noexcept {
@@ -173,12 +191,9 @@ namespace evm4ccf
                     continue;
                 }
                 read.push_back(to_hex_string(i));
-                auto keys = function.get_mapping_keys(state.name);
+                auto keys = function.get_mapping_keys(from, state.name);
                 read.push_back(to_hex_string(keys.size()));
-                for (auto&& k : keys)
-                {
-                    read.push_back(k);
-                }
+                read.insert(read.end(), keys.begin(), keys.end());
             }
             CLOAK_DEBUG_FMT("read:{}", fmt::join(read, ", "));
             return read;
@@ -191,7 +206,7 @@ namespace evm4ccf
                 if (state.type[0] != 'm') {
                     res += encrypted && state.owner != "all" ? 4 : 2;
                 } else {
-                    auto keys = function.get_mapping_keys(state.name);
+                    auto keys = function.get_mapping_keys(from, state.name);
                     res += encrypted && state.owner != "all" ? 2 + 4 * keys.size() : 2 + 2 * keys.size();
                 }
             }
@@ -216,6 +231,7 @@ namespace evm4ccf
 
         void request_old_state(kv::Tx& tx)
         {
+            set_status(Status::REQUESTING_OLD_STATES);
             auto data = get_states_call_data(true);
             nlohmann::json j;
             j["from"] = to_checksum_address(TeeManager::tee_addr(tx));
@@ -229,7 +245,7 @@ namespace evm4ccf
         {
             // state => address
             std::map<std::string, std::string> addresses;
-            visit_old_states([this, &addresses](auto id, size_t idx) {
+            visit_states(old_states, true, [this, &addresses](auto id, size_t idx) {
                 if (states[id].type == "address" && states[id].owner == "all") {
                     addresses[states[id].name] = eevm::to_checksum_address(eevm::to_uint256(old_states[idx+1]));
                 }
@@ -241,7 +257,7 @@ namespace evm4ccf
             // get result
             std::vector<std::string> res;
             bool included_tee = false;
-            visit_old_states([this, &included_tee, &res, &addresses](size_t id, size_t idx){
+            visit_states(old_states, true, [this, &included_tee, &res, &addresses](size_t id, size_t) {
                 auto p = states[id];
                 if (p.owner == "all") {
                     return;
@@ -249,8 +265,7 @@ namespace evm4ccf
                     included_tee = true;
                 } else if (p.owner[0] == 'm') {
                     // mapping
-                    auto keys = function.get_mapping_keys(p.name);
-                    res.insert(res.end(), {old_states[idx], to_hex_string(keys.size())});
+                    auto keys = function.get_mapping_keys(from, p.name);
                     res.insert(res.end(), keys.begin(), keys.end());
                 } else {
                     // identifier
@@ -286,29 +301,36 @@ namespace evm4ccf
         {
             auto tee_kp = TeeManager::get_tee_kp(tx);
             std::vector<std::string> res;
-            visit_old_states([this, &res, &tee_kp](size_t id, size_t idx) {
+            visit_states(old_states, true, [this, &res, &tee_kp](size_t id, size_t idx) {
                 res.push_back(old_states[idx]);
                 auto p = states.at(id);
+                // TODO: better type checking
                 if (p.owner == "all") {
                     if (p.type[0] == 'm') {
-                        auto size = size_t(to_uint256(old_states[idx]));
-                        res.insert(res.end(), old_states.begin() + idx + 1, old_states.begin() + idx + 1 + size);
+                        auto size = size_t(to_uint256(old_states[idx+1]));
+                        res.insert(res.end(), old_states.begin() + idx + 1, old_states.begin() + idx + 2 + size * 2);
                     } else {
                         res.push_back(old_states[idx + 1]);
                     }
                 } else if (p.owner[0] == 'm') {
-                    auto mapping_keys = function.get_mapping_keys(p.name);
+                    auto mapping_keys = function.get_mapping_keys(from, p.name);
                     res.push_back(old_states[idx + 1]);
                     for (size_t j = 0; j < mapping_keys.size(); j++) {
-                        size_t pos = idx + 2 + j * 3;
-                        auto pk = public_keys.at(old_states[pos + 2]);
+                        res.push_back(mapping_keys[j]);
+                        size_t data_pos = idx + 3 + j * 4;
+                        auto sender_addr = to_uint256(old_states[data_pos + 2]);
+                        CLOAK_DEBUG_FMT("sender_addr:{}", to_checksum_address(sender_addr));
+                        if (sender_addr == 0) {
+                            res.push_back("0x0");
+                            continue;
+                        }
+                        auto pk = public_keys.at(to_checksum_address(sender_addr));
                         // tag and iv
-                        auto ti = to_bytes(old_states[pos + 1]);
-                        auto data = to_bytes(old_states[pos]);
-                        data.insert(data.end(), ti.begin(), ti.begin() + crypto::GCM_SIZE_TAG);
-                        auto decrypted =
-                            Utils::decrypt_data(tee_kp, pk, {ti.begin() + crypto::GCM_SIZE_TAG, ti.end()}, data);
-                        res.insert(res.end(), {mapping_keys[idx], to_hex_string(decrypted)});
+                        auto&& [tag, iv] = Utils::split_tag_and_iv(to_bytes(old_states[data_pos + 1]));
+                        auto data = to_bytes(old_states[data_pos]);
+                        data.insert(data.end(), tag.begin(), tag.end());
+                        auto decrypted = Utils::decrypt_data(tee_kp, pk, iv, data);
+                        res.push_back(to_hex_string(decrypted));
                     }
                 } else {
                     // tee and identifier
@@ -359,6 +381,7 @@ namespace evm4ccf
             nlohmann::json j;
             j["tx_hash"] = to_hex_string(mpt_hash);
             j["data"] = to_hex_string(signed_data);
+            set_status(Status::SYNCING);
             Utils::cloak_agent_log("sync_result", j);
         }
 
@@ -373,7 +396,7 @@ namespace evm4ccf
         {
             // identifier owner addresses
             std::map<std::string, std::string> addresses;
-            visit_old_states([this, &addresses](auto id, size_t idx) {
+            visit_states(new_states, false, [this, &addresses](auto id, size_t idx) {
                 if (states[id].type == "address" && states[id].owner == "all") {
                     addresses[states[id].name] = eevm::to_checksum_address(eevm::to_uint256(old_states[idx+1]));
                 }
@@ -381,54 +404,57 @@ namespace evm4ccf
 
             std::vector<std::string> res;
             auto tee_kp = TeeManager::get_tee_kp(tx);
-            for (size_t i = 0; i < new_states.size();) {
+            visit_states(new_states, false, [this, &res, &addresses, &tee_kp, &new_states](size_t id, size_t idx){
                 // policy state
-                auto tee_addr_hex = to_hex_string(TeeManager::tee_addr(tx));
+                auto tee_addr_hex = to_hex_string(get_addr_from_kp(tee_kp));
                 auto tee_pk_pem = tee_kp->public_key_pem();
-                auto ps = states[to_uint64(new_states[i])];
+                auto ps = states[id];
+                res.push_back(to_hex_string(id));
                 if (ps.owner == "all") {
-                    res.insert(res.end(), {new_states[i], new_states[i + 1]});
-                    i += 2;
-                } else if (ps.owner[0] == 'm') {
-                    auto mapping_keys = function.get_mapping_keys(ps.name);
-                    res.insert(res.end(), {new_states[i], new_states[i + 1]});
-                    for (size_t j = 0; j < mapping_keys.size(); j++) {
-                        size_t pos = i + 2 + j;
-                        auto iv = tls::create_entropy()->random(crypto::GCM_SIZE_IV);
-                        auto&& [decrypted, tag] =
-                            Utils::encrypt_data_s(tee_kp, tls::Pem(mapping_keys[j]), iv, to_bytes(new_states[pos]));
-                        tag.insert(tag.end(), iv.begin(), iv.end());
-                        res.insert(res.end(), {to_hex_string(decrypted), to_hex_string(tag), tee_addr_hex});
+                    if (ps.type[0] == 'm') {
+                        auto size = to_uint64(new_states[idx + 1]);
+                        res.insert(res.end(), new_states.begin() + idx + 1, new_states.begin() + idx + 2 + 2 * size);
+                    } else {
+                        res.push_back(new_states[idx + 1]);
                     }
-                    i += 2 + mapping_keys.size();
+                } else if (ps.owner[0] == 'm') {
+                    auto mapping_keys = function.get_mapping_keys(from, ps.name);
+                    res.push_back(new_states[idx + 1]);
+                    for (size_t j = 0; j < mapping_keys.size(); j++) {
+                        auto iv = tls::create_entropy()->random(crypto::GCM_SIZE_IV);
+                        auto&& [encrypted, tag] = Utils::encrypt_data_s(
+                            tee_kp, tls::Pem(public_keys.at(mapping_keys[j])), iv, to_bytes(new_states[idx + 3 + j * 2]));
+                        tag.insert(tag.end(), iv.begin(), iv.end());
+                        tag.resize(32, 0);
+                        res.insert(res.end(), {mapping_keys[j], to_hex_string(encrypted), to_hex_string(tag), mapping_keys[j]});
+                    }
                 } else {
                     // tee and identifier
+                    CLOAK_DEBUG_FMT("id:{}, owner:{}", id, ps.owner);
                     std::string sender_addr = ps.owner == "tee" ? tee_addr_hex : addresses.at(ps.owner);
                     tls::Pem pk_pem = ps.owner == "tee" ? tee_pk_pem : tls::Pem(public_keys.at(sender_addr));
                     auto iv = tls::create_entropy()->random(crypto::GCM_SIZE_IV);
-                    auto&& [encrypted, tag] =
-                        Utils::encrypt_data_s(tee_kp, pk_pem, iv, to_bytes(new_states[i + 1]));
+                    auto&& [encrypted, tag] = Utils::encrypt_data_s(tee_kp, pk_pem, iv, to_bytes(new_states[idx + 1]));
                     tag.insert(tag.end(), iv.begin(), iv.end());
                     tag.resize(32, 0);
-                    res.insert(res.end(), {new_states[i], to_hex_string(encrypted), to_hex_string(tag), sender_addr});
-                    i += 2;
+                    res.insert(res.end(), {to_hex_string(encrypted), to_hex_string(tag), sender_addr});
                 }
-            }
+            });
             return res;
         }
 
-        // f: size_t(the id of states) -> size_t(the index of old_states) -> void
-        void visit_old_states(std::function<void(size_t, size_t)> f)
+        // f: size_t(the id of states) -> size_t(the index of states) -> void
+        void visit_states(const std::vector<std::string> &v_states, bool is_encryped, std::function<void(size_t, size_t)> f)
         {
-            for (size_t i = 0; i < old_states.size();) {
-                size_t id = to_uint64(old_states[i]);
-                auto state = states[id];
+            for (size_t i = 0; i < v_states.size();) {
+                size_t id = to_uint64(v_states[i]);
                 f(id, i);
-                int factor = state.owner == "all" ? 1 : 3;
+                auto state = states[id];
+                int factor =  is_encryped && state.owner != "all" ? 3 : 1;
                 if (state.type[0] == 'm') {
-                    i += i + 2 + to_uint64(old_states[i + 1]) * factor;
+                    i += 2 + to_uint64(v_states[i + 1]) * (factor + 1);
                 } else {
-                    i += 1 + 1 * factor;
+                    i += 1 + factor;
                 }
             }
         }

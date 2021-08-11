@@ -164,8 +164,9 @@ static std::unordered_map<ByteData, int> contractType = {
       std::vector<stateParams> read;
       std::vector<stateParams> mutate;
       std::vector<Params> outputs;
+      std::vector<uint8_t> raw_outputs;
 
-      MSGPACK_DEFINE(name, signedName, type, inputs, read, mutate, outputs);
+      MSGPACK_DEFINE(name, signedName, type, inputs, read, mutate, outputs, raw_outputs);
 
       ByteData get_signed_name() const
       {
@@ -224,7 +225,6 @@ static std::unordered_map<ByteData, int> contractType = {
             }
           }
 
-          // 检查用户的交易输入，合法性校验
           throw std::logic_error(fmt::format(
               "input params doesn`t match, get {}", p.name
           ));
@@ -247,23 +247,16 @@ static std::unordered_map<ByteData, int> contractType = {
           return s;
       }
 
-      std::vector<std::string> get_mapping_keys(const std::string& name)
-      {
+      std::vector<std::string> get_mapping_keys(eevm::Address msg_sender, const std::string& name, bool from_read) {
           std::vector<std::string> res;
-          for (auto&& x : read) {
+          auto&& ps = from_read ? read : mutate;
+          for (auto&& x : ps) {
               if (x.name == name) {
                   for (auto&& key : x.keys) {
-                      for (auto&& input : inputs) {
-                          if (input.name == key) {
-                              res.push_back(input.value.value());
-                          }
+                      if (key == "msg.sender") {
+                          res.push_back(eevm::to_checksum_address(msg_sender));
+                          continue;
                       }
-                  }
-              }
-          }
-          for (auto&& x : mutate) {
-              if (x.name == name) {
-                  for (auto&& key : x.keys) {
                       for (auto&& input : inputs) {
                           if (input.name == key) {
                               res.push_back(input.value.value());
@@ -273,6 +266,14 @@ static std::unordered_map<ByteData, int> contractType = {
               }
           }
           return res;
+      }
+
+      std::vector<std::string> get_mapping_keys(eevm::Address msg_sender, const std::string& name)
+      {
+          auto&& read_res = get_mapping_keys(msg_sender, name, true);
+          auto&& mutate_res = get_mapping_keys(msg_sender, name, false);
+          read_res.insert(read_res.end(), mutate_res.begin(), mutate_res.end());
+          return read_res;
       }
     };
   }
