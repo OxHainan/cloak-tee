@@ -8,6 +8,7 @@
 #include "ethereum_transaction.h"
 #include "http/http_status.h"
 #include "jsonrpc.h"
+#include "nlohmann/json.hpp"
 #include "tables.h"
 #include "tee_manager.h"
 #include "tls/key_pair.h"
@@ -31,6 +32,7 @@
 // STL/3rd-party
 #include <iostream>
 #include <msgpack/msgpack.hpp>
+#include <stdexcept>
 #include <unistd.h>
 
 namespace evm4ccf
@@ -434,6 +436,19 @@ namespace evm4ccf
           return true;
       };
 
+      auto sync_report = [this](kv::Tx& tx, const nlohmann::json& params) {
+          h256 tx_hash = Utils::to_KeccakHash(params["tx_hash"].get<std::string>());
+          auto result = params["result"].get<std::string>();
+          CloakPolicyTransaction ct(txTables.cloak_policys, txTables.privacy_digests, tx, tx_hash);
+          if (result == "SYNCED") {
+              ct.set_status(Status::SYNCED);
+          } else {
+              ct.set_status(Status::SYNC_FAILED);
+          }
+          ct.save(tx, txTables.cloak_policys);
+          return true;
+      };
+
       auto sync_public_keys = [this](kv::Tx& tx, const nlohmann::json& params) {
           auto tx_hash = Utils::to_KeccakHash(params["tx_hash"].get<std::string>());
           CloakPolicyTransaction ct(txTables.cloak_policys, txTables.privacy_digests, tx, tx_hash);
@@ -452,6 +467,21 @@ namespace evm4ccf
           execute_mpt(decrypted, ct, tx);
           ct.save(tx, txTables.cloak_policys);
           return true;
+      };
+
+      auto get_mpt = [this](ccf::EndpointContext& args) {
+          const auto body_j = nlohmann::json::parse(args.rpc_ctx->get_request_body());
+          auto tx_hash = Utils::to_KeccakHash(body_j["tx_hash"].get<std::string>());
+          try {
+              CloakPolicyTransaction ct(txTables.cloak_policys, txTables.privacy_digests, args.tx, tx_hash);
+              nlohmann::json j;
+              j["status"] = ct.get_status_str();
+              j["output"] = eevm::to_hex_string(ct.function.raw_outputs);
+              args.rpc_ctx->set_response_status(HTTP_STATUS_OK);
+              args.rpc_ctx->set_response_body(jsonrpc::result_response(0, j).dump());
+          } catch (std::logic_error err) {
+              args.rpc_ctx->set_response_status(HTTP_STATUS_NOT_FOUND);
+          }
       };
 
       // Because CCF OpenAPI json module do not support uint256, thus do not use
@@ -502,6 +532,10 @@ namespace evm4ccf
       make_endpoint("eth_sync_public_keys", HTTP_POST, ccf::json_adapter(sync_public_keys)).install();
 
       make_endpoint("cloak_prepare", HTTP_POST, ccf::json_adapter(prepare)).install();
+
+      make_endpoint("cloak_get_mpt", HTTP_GET, get_mpt).install();
+
+      make_endpoint("cloak_sync_report", HTTP_POST, ccf::json_adapter(sync_report)).install();
     }
 
   public:
@@ -693,6 +727,7 @@ namespace evm4ccf
         if (res.er == ExitReason::threw) {
             LOG_AND_THROW("run mpt in evm faild");
         }
+        ct.function.raw_outputs = res.output;
 
         // == get new states ==
         MessageCall get_new_states_mc;
@@ -710,7 +745,7 @@ namespace evm4ccf
             to_hex_string(get_new_states_res.output),
             get_new_states_res.exmsg);
         if (get_new_states_res.er == ExitReason::threw) {
-            LOG_AND_THROW("get new states in evm faild:{}", res.exmsg);
+            LOG_AND_THROW("get new states in evm faild");
         }
 
         // == Sync new states ==

@@ -62,8 +62,8 @@ namespace evm4ccf
                     ));
                 }
                 cpt_opt->mpt_hash = target_digest;
-                if (cpt_opt->function.complete()) {
-                    LOG_AND_THROW("mpt has been completed");
+                if (cpt_opt->get_status() != Status::PENDING) {
+                    LOG_AND_THROW("mpt is not PENDING");
                 }
                 cpt_opt->set_content(mpt.params.inputs);
                 cp->put(target_digest, cpt_opt.value());
