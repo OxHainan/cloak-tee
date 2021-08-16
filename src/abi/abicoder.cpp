@@ -1,6 +1,7 @@
 #include "abicoder.h"
 #include "ds/logger.h"
 #include "vector"
+#include <stdexcept>
 #include <cstddef>
 #include <eEVM/util.h>
 
@@ -10,9 +11,15 @@ void abicoder::insert(UINT8ARRAY &coder,const UINT8ARRAY &input, size_t offset) 
     }
 }
 
-
 UINT8ARRAY abicoder::to_bytes(const std::string& _s, size_t offset, bool boolean) {
     auto s = eevm::strip(_s);
+    if (s.size() > 64) {
+        throw std::logic_error(fmt::format(
+            "Invalid length, want {} but get {}",
+            32,
+            s.size()
+        ));
+    }
     UINT8ARRAY h(32);
     if(!boolean)
         h.resize(ceil(s.size() / 2.0));
@@ -22,6 +29,12 @@ UINT8ARRAY abicoder::to_bytes(const std::string& _s, size_t offset, bool boolean
     }
         
     for(size_t  x = 0; x < s.size(); offset++, x+=2) {
+        if (offset >= h.size())
+        {
+            throw std::logic_error(fmt::format(
+                "Handle encoding string to uint8 array error, offset out of maximum range 32"
+            ));
+        }
         h.at(offset) = strtol(s.substr(x, 2).c_str(),0,16);          
     }
     return h;
@@ -117,7 +130,7 @@ UINT8ARRAY abicoder::CoderArray::encode() {
     auto data = pack(coders);
     if (Dynamic)
     {
-        auto result = UintNumber().encode(to_string(value.size()));
+        auto result = uint256Coder(value.size());
         result.insert(result.end(),data.begin(), data.end());
         return result;
     }
@@ -129,7 +142,7 @@ void abicoder::paramCoder(vector<void*> &coders, const ByteData &name, const Byt
     auto [type, length, boolean] = Parsing(_type).result();
     if(boolean) {
         // size_t len = length > 1 ? length : value.size();
-        CoderArray* array = new CoderArray(name, type, length, length == 0);
+        CoderArray* array = new CoderArray(name, type, length, !length);
         array->setValue(value);
         coders.push_back(array);
         return;
@@ -143,7 +156,7 @@ void abicoder::paramCoder(vector<void*> &coders, const ByteData &name, const Byt
     if(boolean) {
         // array
         size_t len = length > 1 ? length : value.size();
-        CoderArray* array = new CoderArray(name, type, len, length == 0);
+        CoderArray* array = new CoderArray(name, type, len, !length);
         array->setValue(value);
         coders.push_back(array);
         return;
@@ -197,62 +210,5 @@ void abicoder::paramCoder(vector<void*> &coders, const ByteData &name, const Byt
     default:
         break;
     }
-
-}
-
-std::vector<std::string> abicoder::decode_uint256_array(const std::vector<uint8_t>& states)
-{
-    CLOAK_DEBUG_FMT("raw data:{}", states);
-    if (states.size() < 64) {
-        LOG_AND_THROW("decode_uint256_array error, states length:{} is to short", states.size());
-    }
-    std::vector<uint8_t> count_vec(states.begin() + 32, states.begin() + 64);
-    size_t count = size_t(eevm::to_uint256(eevm::to_hex_string(count_vec)));
-    CLOAK_DEBUG_FMT("count:{}", count);
-    std::vector<std::string> res;
-    for (size_t i = 0; i < count; i++) {
-        auto it = states.begin() + 64 + i * 32;
-        std::vector<uint8_t> state(it, it + 32);
-        res.push_back(eevm::to_hex_string(state));
-    }
-    CLOAK_DEBUG_FMT("res:{}", fmt::join(res, ", "));
-    return res;
-}
-
-std::string abicoder::decode_string(const std::vector<uint8_t>& data) {
-    CLOAK_DEBUG_FMT("decode_string, raw:{}", data);
-    if (data.size() < 32) {
-        LOG_DEBUG_FMT("decode_string error, data length:{} is to short", data.size());
-    }
-    std::vector<uint8_t> len_vec(data.begin(), data.begin() + 32);
-    // NOTICE: string length can't greater than 2**64
-    size_t len = size_t(eevm::to_uint256(eevm::to_hex_string(len_vec)));
-    std::string res;
-    if (len == 0) {
-        return res;
-    }
-    size_t block_count = len / 32 + 1;
-    size_t last_block_size = len % 32;
-    for (size_t i = 0; i < block_count - 1; i++) {
-        res.append(data.begin() + 32 * (i + 1), data.begin() + 32 * (i + 2));
-    }
-    res.append(data.begin() + 32 * block_count, data.begin() + 32 * block_count + last_block_size);
-    CLOAK_DEBUG_FMT("decode_string, res:{}", res);
-    return res;
-}
-
-std::vector<std::string> abicoder::decode_string_array(const std::vector<uint8_t> &data) {
-    if (data.size() < 32) {
-        LOG_DEBUG_FMT("decode_string error, data length:{} is to short", data.size());
-    }
-    size_t count = size_t(Utils::vec32_to_uint256({data.begin(), data.begin() + 32}));
-    CLOAK_DEBUG_FMT("count:{}", count);
-    std::vector<std::string> res;
-    for (size_t i = 0; i < count; i++) {
-        size_t offset = size_t(Utils::vec32_to_uint256({data.begin() + 32 * (i + 1), data.begin() + 32 * (i + 2)}));
-        // TODO: better end
-        res.push_back(decode_string({data.begin()+32+offset, data.end()}));
-    }
-    return res;
 }
 

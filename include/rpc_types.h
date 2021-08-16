@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 #pragma once
 
+#include <cstddef>
 #include <eEVM/address.h>
 #include <eEVM/bigint.h>
 #include <eEVM/transaction.h>
@@ -18,9 +19,11 @@
 // STL
 #include <array>
 #include "unordered_map"
+#include <optional>
 #include <vector>
 
 #include "../src/abi/abicoder.h"
+#include "../src/abi/bytecode.h"
 #include "../src/abi/parsing.h"
 namespace evm4ccf
 {
@@ -96,6 +99,7 @@ namespace evm4ccf
       ByteData name() const {
         return function;
       }
+
     };
 
     struct Params {
@@ -159,13 +163,14 @@ static std::unordered_map<ByteData, int> contractType = {
     public:
       ByteData type;
       ByteData name;
+      std::optional<UINT8ARRAY> entry = std::nullopt;
       UINT8ARRAY signedName;
       std::vector<Params> inputs;
       std::vector<stateParams> read;
       std::vector<stateParams> mutate;
       std::vector<Params> outputs;
 
-      MSGPACK_DEFINE(name, signedName, type, inputs, read, mutate, outputs);
+      MSGPACK_DEFINE(name, entry, type, inputs, read, mutate, outputs);
 
       ByteData get_signed_name() const
       {
@@ -183,7 +188,19 @@ static std::unordered_map<ByteData, int> contractType = {
         LOG_DEBUG_FMT("signed name:{}", signed_name);
         return signed_name;
       }
-
+      void check_params()
+      {
+        if (!entry.has_value())
+        {
+          auto bc = Bytecode(name);
+          for (size_t i = 0; i < inputs.size(); i++)
+          {
+            bc.add_inputs(inputs[i].name, inputs[i].type);
+          }
+          entry = bc.encode_function();
+        }
+        CLOAK_DEBUG_FMT("funtion select:{}", eevm::to_hex_string(entry.value()));
+      }
       void sign_function_name() {
         LOG_DEBUG_FMT("original function name:{}", name);
         std::string signed_name = name + "(";

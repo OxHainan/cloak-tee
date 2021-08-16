@@ -130,8 +130,6 @@ public:
     bool getDynamic() const {
         return Dynamic;
     }
-
-
 };
 
 
@@ -333,8 +331,61 @@ void paramCoder(vector<void*> &coders, const ByteData &name, const ByteData &_ty
 void paramCoder(vector<void*> &coders, const ByteData &name, const ByteData &type,const ByteData & value, int length);
 void paramCoder(vector<void*> &coders, const ByteData &name, const ByteData &_type,const ByteData & value);
 
-std::vector<std::string> decode_uint256_array(const std::vector<uint8_t>& states);
-std::string decode_string(const std::vector<uint8_t> &data);
-std::vector<std::string> decode_string_array(const std::vector<uint8_t> &data);
-
+inline std::vector<std::string> decode_uint256_array(const std::vector<uint8_t>& states)
+{
+    CLOAK_DEBUG_FMT("raw data:{}", states);
+    if (states.size() < 64) {
+        LOG_AND_THROW("decode_uint256_array error, states length:{} is to short", states.size());
+    }
+    std::vector<uint8_t> count_vec(states.begin() + 32, states.begin() + 64);
+    std::vector<std::string> res;
+    size_t count = size_t(eevm::to_uint256(eevm::to_hex_string(count_vec)));
+    CLOAK_DEBUG_FMT("count:{}", count);
+    for (size_t i = 0; i < count; i++) {
+        auto it = states.begin() + 64 + i * 32;
+        std::vector<uint8_t> state(it, it + 32);
+        res.push_back(eevm::to_hex_string(state));
+    }
+    CLOAK_DEBUG_FMT("res:{}", fmt::join(res, ", "));
+    return res;
 }
+
+inline std::string decode_string(const std::vector<uint8_t> &data) 
+{
+        CLOAK_DEBUG_FMT("decode_string, raw:{}", data);
+    if (data.size() < 32) {
+        LOG_DEBUG_FMT("decode_string error, data length:{} is to short", data.size());
+    }
+    std::vector<uint8_t> len_vec(data.begin(), data.begin() + 32);
+    // NOTICE: string length can't greater than 2**64
+    size_t len = size_t(eevm::to_uint256(eevm::to_hex_string(len_vec)));
+    std::string res;
+    if (len == 0) {
+        return res;
+    }
+    size_t block_count = len / 32 + 1;
+    size_t last_block_size = len % 32;
+    for (size_t i = 0; i < block_count - 1; i++) {
+        res.append(data.begin() + 32 * (i + 1), data.begin() + 32 * (i + 2));
+    }
+    res.append(data.begin() + 32 * block_count, data.begin() + 32 * block_count + last_block_size);
+    CLOAK_DEBUG_FMT("decode_string, res:{}", res);
+    return res;
+}
+inline std::vector<std::string> decode_string_array(const std::vector<uint8_t> &data)
+{
+        if (data.size() < 32) {
+        LOG_DEBUG_FMT("decode_string error, data length:{} is to short", data.size());
+    }
+    size_t count = size_t(Utils::vec32_to_uint256({data.begin(), data.begin() + 32}));
+    CLOAK_DEBUG_FMT("count:{}", count);
+    std::vector<std::string> res;
+    for (size_t i = 0; i < count; i++) {
+        size_t offset = size_t(Utils::vec32_to_uint256({data.begin() + 32 * (i + 1), data.begin() + 32 * (i + 2)}));
+        // TODO: better end
+        res.push_back(decode_string({data.begin()+32+offset, data.end()}));
+    }
+    return res;
+}
+
+} // namespace abicoder

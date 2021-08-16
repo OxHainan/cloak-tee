@@ -19,9 +19,8 @@
 #include <stdexcept>
 #include <stdint.h>
 #include "ethereum_transaction.h"
-#include "../transaction/bytecode.h"
+#include "../abi/bytecode.h"
 #include "../app/tee_manager.h"
-
 namespace evm4ccf
 {   
     using namespace eevm;
@@ -90,9 +89,9 @@ namespace evm4ccf
         Address             verifierAddr;
         ByteData            codeHash;
         rpcparams::Policy   policy;
-        ByteString          pdata;
         MSGPACK_DEFINE(from, to, verifierAddr, codeHash, policy);
         PrivacyPolicyTransaction(){}
+
     };
 
 
@@ -336,7 +335,7 @@ namespace evm4ccf
         {
             auto tee_kp = TeeManager::get_tee_kp(tx);
             size_t nonce = TeeManager::get_and_incr_nonce(tx);
-            // function selector
+            // function selector    
             std::vector<uint8_t> data =
                 Utils::make_function_selector("set_states(uint256[],uint256,uint256[],uint256[])");
             size_t old_states_len = get_states_return_len(true);
@@ -348,6 +347,14 @@ namespace evm4ccf
             abicoder::paramCoder(codes, "proof", "uint[]", get_proof());
             auto packed = abicoder::pack(codes);
             data.insert(data.end(), packed.begin(), packed.end());
+
+            auto bc = Bytecode("set_states");
+            bc.add_inputs("read", "uint256[]", get_states_read());
+            bc.add_inputs("old_states_len", "uint256", to_hex_string(old_states_len));
+            bc.add_inputs("data", "uint256[]", new_states);
+            bc.add_inputs("proof", "uint256[]",  get_proof());
+            auto data1 = bc.encode();
+            
             MessageCall mc;
             mc.from = get_addr_from_kp(tee_kp);
             mc.to = verifierAddr;
@@ -436,8 +443,8 @@ namespace evm4ccf
     private:
         UINT8ARRAY packed_to_evm_data()
         {
-            auto data = Bytecode(function.get_signed_name(), function.inputs);
-            return data.encode();
+            // auto data = Bytecode(function.get_signed_name(), function.inputs);
+            // return data.encode();
         }
     };
 
