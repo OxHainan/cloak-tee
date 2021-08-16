@@ -6,8 +6,6 @@ jobs:
       - image: plytools/circleci-cloak-tee:v0.2.0
     working_directory: ~/cloak-tee
     steps:
-      - setup_remote_docker:
-          docker_layer_caching: true   
       - checkout
       - run:
           name: Submodele update
