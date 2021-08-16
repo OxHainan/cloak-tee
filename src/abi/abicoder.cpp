@@ -1,6 +1,9 @@
 #include "abicoder.h"
+#include "ds/logger.h"
 #include "vector"
 #include <stdexcept>
+#include <cstddef>
+#include <eEVM/util.h>
 
 void abicoder::insert(UINT8ARRAY &coder,const UINT8ARRAY &input, size_t offset) {
     for(size_t i= offset, x = 0; x< input.size(); x++, i++ ) {

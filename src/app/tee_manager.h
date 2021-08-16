@@ -24,6 +24,9 @@ namespace evm4ccf::TeeManager
         // generate tee kp
         auto handler = tx.get_view(tee_manager);
         auto kp = tls::make_key_pair(tls::CurveImpl::secp256k1_bitcoin);
+        if (handler->get(Const::TEE_MANAGER_KEYS::KP_SK).has_value()) {
+            LOG_AND_THROW("tee has been prepared");
+        }
         handler->put(Const::TEE_MANAGER_KEYS::KP_SK, kp->private_key_pem().str());
 
         // register tee address
