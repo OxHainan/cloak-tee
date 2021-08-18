@@ -50,8 +50,8 @@ class Cloak:
     def run_cloak_tee(self):
         print("start cloak-tee")
         process = subprocess.Popen(
-                "/opt/ccf-0.15.2/bin/sandbox.sh -p libevm4ccf.virtual.so", 
-                cwd=self.args.build_path, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                "/opt/ccf-0.15.2/bin/sandbox.sh -p libevm4ccf.virtual.so".split(),
+                cwd=self.args.build_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         s = select.poll()
         s.register(process.stdout)
         while True:
