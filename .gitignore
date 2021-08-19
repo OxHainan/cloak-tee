@@ -14,3 +14,6 @@ __pycache__/
 getting_started/*.retry
 .clangd/
 compile_commands.json
+
+*.venv
+*.venv_ccf_sandbox
