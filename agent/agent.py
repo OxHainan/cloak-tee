@@ -24,9 +24,9 @@ class Handler(object):
     def handle_sync_result(self, msg):
         try:
             self.w3.eth.send_raw_transaction(msg["data"])
-            self.ccf_client.call("/app/cloak_sync_report", {"tx_hash": msg["tx_hash"], "result": "SYNCED"})
+            self.ccf_client.call("/app/cloak_sync_report", {"id": msg["tx_hash"], "result": "SYNCED"})
         except Exception as err:
-            self.ccf_client.call("/app/cloak_sync_report", {"tx_hash": msg["tx_hash"], "result": "FAILED"})
+            self.ccf_client.call("/app/cloak_sync_report", {"id": msg["tx_hash"], "result": "FAILED"})
             raise
 
     def handle_register_tee_addr(self, msg):
