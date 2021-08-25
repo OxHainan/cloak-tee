@@ -1,16 +1,5 @@
 
-list(APPEND CMAKE_MODULE_PATH ${CCF_DIR}/cmake) 
-include(${CCF_DIR}/cmake/FindMbedTLS.cmake)
-find_package(MbedTLS REQUIRED)
-set(CLIENT_MBEDTLS_INCLUDE_DIR "${MBEDTLS_INCLUDE_DIRS}")
-set(CLIENT_MBEDTLS_LIBRARIES "${MBEDTLS_LIBRARIES}")
-
 list(APPEND LINK_LIBCXX -lc++ -lc++abi -lc++fs -stdlib=libc++)
-
-function(use_client_mbedtls name)
-  target_include_directories(${name} PRIVATE ${CLIENT_MBEDTLS_INCLUDE_DIR})
-  target_link_libraries(${name} PRIVATE ${CLIENT_MBEDTLS_LIBRARIES})
-endfunction()
 
 function(add_uint_test name)
   add_executable(${name} ${ARGN})

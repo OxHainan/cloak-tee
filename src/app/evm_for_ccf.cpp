@@ -13,7 +13,7 @@
 #include "enclave/app_interface.h"
 #include "node/quote.h"
 #include "node/rpc/user_frontend.h"
-#include "include/rpc_types.h"
+#include "rpc_types.h"
 #include <msgpack/msgpack.hpp>
 
 // eEVM
@@ -440,7 +440,7 @@ namespace evm4ccf
       };
 
       auto sync_report = [this](kv::Tx& tx, const nlohmann::json& params) {
-          h256 tx_hash = Utils::to_KeccakHash(params["tx_hash"].get<std::string>());
+          h256 tx_hash = Utils::to_KeccakHash(params["id"].get<std::string>());
           auto result = params["result"].get<std::string>();
           CloakPolicyTransaction ct(txTables.cloak_policys, txTables.privacy_digests, tx, tx_hash);
           if (result == "SYNCED") {
@@ -474,7 +474,7 @@ namespace evm4ccf
 
       auto get_mpt = [this](ccf::EndpointContext& args) {
           const auto body_j = nlohmann::json::parse(args.rpc_ctx->get_request_body());
-          auto tx_hash = Utils::to_KeccakHash(body_j["tx_hash"].get<std::string>());
+          auto tx_hash = Utils::to_KeccakHash(body_j["id"].get<std::string>());
           try {
               CloakPolicyTransaction ct(txTables.cloak_policys, txTables.privacy_digests, args.tx, tx_hash);
               nlohmann::json j;

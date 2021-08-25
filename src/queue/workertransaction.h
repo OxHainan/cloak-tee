@@ -370,12 +370,12 @@ namespace evm4ccf
             auto packed = abicoder::pack(codes);
             data.insert(data.end(), packed.begin(), packed.end());
 
-            auto bc = Bytecode("set_states");
-            bc.add_inputs("read", "uint256[]", get_states_read());
-            bc.add_inputs("old_states_len", "uint256", to_hex_string(old_states_len));
-            bc.add_inputs("data", "uint256[]", new_states);
-            bc.add_inputs("proof", "uint256[]",  get_proof());
-            auto data1 = bc.encode();
+            // auto bc = Bytecode("set_states");
+            // bc.add_inputs("read", "uint256[]", get_states_read());
+            // bc.add_inputs("old_states_len", "uint256", to_hex_string(old_states_len));
+            // bc.add_inputs("data", "uint256[]", new_states);
+            // bc.add_inputs("proof", "uint256[]",  get_proof());
+            // auto data1 = bc.encode();
             
             MessageCall mc;
             mc.from = get_addr_from_kp(tee_kp);
