@@ -15,11 +15,11 @@ jobs:
           command: mkdir build
       - run:
           name: CMake build
-          command: cmake .. -GNinja -DCMAKE_BUILD_TYPE=Debug -L
+          command: cmake .. -DCMAKE_BUILD_TYPE=Debug -L
           working_directory: build
       - run:
           name: Build resources
-          command: ninja -j 4
+          command: make
           working_directory: build
       - run:
           name: Test case
