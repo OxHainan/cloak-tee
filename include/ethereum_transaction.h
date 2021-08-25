@@ -10,6 +10,7 @@
 #include <eEVM/rlp.h>
 #include <eEVM/util.h>
 #include <stdexcept>
+#include <stdint.h>
 
 namespace evm4ccf
 {
@@ -27,7 +28,7 @@ namespace evm4ccf
 
   // TODO: This may become constexpr, determined at compile time. For now it
   // is malleable.
-  static size_t current_chain_id = ChainIDs::pre_eip_155;
+  static size_t current_chain_id = ChainIDs::ethereum_mainnet;
 
   static constexpr size_t pre_155_v_start = 27;
   static constexpr size_t post_155_v_start = 35;
@@ -69,17 +70,15 @@ namespace evm4ccf
       return v - pre_155_v_start;
     }
 
-    // 20201229 测试chainId时此部分代码报错
-    // 20210615 测试使用chainId最低为1
-    // constexpr auto min_valid_v = 37u;
-    // if (v < min_valid_v)
-    // {
-    //   throw std::logic_error(fmt::format(
-    //     "Expected v to encode a valid chain ID (must be at least {}), but is "
-    //     "{}",
-    //     min_valid_v,
-    //     v));
-    // }
+    constexpr auto min_valid_v = 37u;
+    if (v < min_valid_v)
+    {
+      throw std::logic_error(fmt::format(
+        "Expected v to encode a valid chain ID (must be at least {}), but is "
+        "{}",
+        min_valid_v,
+        v));
+    }
 
     const size_t rec_id = (v - post_155_v_start) % 2;
 
@@ -215,6 +214,11 @@ namespace evm4ccf
       return eevm::keccak_256(encode());
     }
 
+    eevm::KeccakHash to_be_signed_with_chain_id() const
+    {
+        return eevm::keccak_256(eevm::rlp::encode(nonce, gas_price, gas, to, value, data, current_chain_id, 0, 0));
+    }
+
     virtual void to_transaction_call(rpcparams::MessageCall& tc) const
     {
       tc.gas_price = gas_price;
@@ -332,11 +336,16 @@ namespace evm4ccf
   };
 
   inline EthereumTransactionWithSignature sign_transaction(
-    tls::KeyPair_k1Bitcoin& kp, const EthereumTransaction& tx)
+      tls::KeyPair_k1Bitcoin& kp, const EthereumTransaction& tx, bool with_chain_id = false)
   {
-    const auto tbs = tx.to_be_signed();
-    const auto signature = kp.sign_recoverable_hashed({tbs.data(), tbs.size()});
-    return EthereumTransactionWithSignature(tx, signature);
+      eevm::KeccakHash tbs;
+      if (with_chain_id) {
+          tbs = tx.to_be_signed_with_chain_id();
+      } else {
+          tbs = tx.to_be_signed();
+      }
+      const auto signature = kp.sign_recoverable_hashed({tbs.data(), tbs.size()});
+      return EthereumTransactionWithSignature(tx, signature);
   }
 
   inline std::vector<uint8_t> sign_eth_tx(tls::KeyPairPtr kp, const rpcparams::MessageCall& mc, size_t nonce)
@@ -346,9 +355,13 @@ namespace evm4ccf
           CLOAK_DEBUG_FMT("tee_kp is not k1Bitcoin");
           throw std::logic_error("internal error");
       }
-      auto ethTx = sign_transaction(*bkp, evm4ccf::EthereumTransaction(nonce, mc));
-      rpcparams::MessageCall mm;
-      ethTx.to_transaction_call(mm);
+
+      if (!mc.to.has_value()) {
+          CLOAK_DEBUG_FMT("mc.to is empty");
+          throw std::logic_error("internal error");
+      }
+
+      auto ethTx = sign_transaction(*bkp, evm4ccf::EthereumTransaction(nonce, mc), true);
       return ethTx.encode();
   }
 
