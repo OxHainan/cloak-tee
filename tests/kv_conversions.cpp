@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 #include "../src/app/tables.h"
-#include "kv/kvserialiser.h"
-
+#include "kv/kv_serialiser.h"
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 #include <random>
 

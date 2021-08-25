@@ -233,7 +233,7 @@ static std::unordered_map<ByteData, int> contractType = {
       }
 
       void padding(const MultiInput &p) {
-          if(complete()) return false;
+          if(complete()) return;
           
           for(int i=0; i<inputs.size(); i++) {
             if(inputs[i].name == p.name) {

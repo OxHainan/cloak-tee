@@ -1,6 +1,28 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+
+// STL/3rd-party
+#include <unistd.h>
+#include <stdexcept>
+#include <iostream>
+
+
+// CCF
+#include "ds/hash.h"
+#include "enclave/app_interface.h"
+#include "node/quote.h"
+#include "node/rpc/user_frontend.h"
+#include "include/rpc_types.h"
+#include <msgpack/msgpack.hpp>
+
+// eEVM
+#include <eEVM/address.h>
+#include <eEVM/bigint.h>
+#include <eEVM/processor.h>
+#include <eEVM/rlp.h>
+#include <eEVM/util.h>
+
 // EVM-for-CCF
 #include "account_proxy.h"
 #include "ds/logger.h"
@@ -15,25 +37,6 @@
 #include "utils.h"
 #include "../transaction/generator.h"
 
-// CCF
-#include "ds/hash.h"
-#include "enclave/app_interface.h"
-#include "node/quote.h"
-#include "node/rpc/user_frontend.h"
-#include "rpc_types.h"
-
-// eEVM
-#include <eEVM/address.h>
-#include <eEVM/bigint.h>
-#include <eEVM/processor.h>
-#include <eEVM/rlp.h>
-#include <eEVM/util.h>
-
-// STL/3rd-party
-#include <iostream>
-#include <msgpack/msgpack.hpp>
-#include <stdexcept>
-#include <unistd.h>
 
 namespace evm4ccf
 {

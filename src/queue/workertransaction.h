@@ -467,11 +467,11 @@ namespace evm4ccf
         }
 
     private:
-        UINT8ARRAY packed_to_evm_data()
-        {
+        // UINT8ARRAY packed_to_evm_data()
+        // {
             // auto data = Bytecode(function.get_signed_name(), function.inputs);
             // return data.encode();
-        }
+        // }
     };
 
 

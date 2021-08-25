@@ -13,6 +13,7 @@
 #include "tls/key_pair.h"
 #include "tls/pem.h"
 #include "vector"
+#include <utility>
 // eEVM
 #include <eEVM/address.h>
 #include <eEVM/bigint.h>
@@ -131,12 +132,12 @@ namespace Utils
 
     inline std::vector<std::string> stringToArray(const std::string &s){
         std::vector<std::string> arr;
-        for(size_t i=1; i<s.size(); i++) {
+        for(size_t i = 1; i < s.size(); i++) {
             size_t j = i;
-            for(; j<s.size(); j++) {
-                if(s[j] == ',' || s[j]==']') break;
+            for(; j < s.size(); j++) {
+                if(s[j] == ',' || s[j] == ']') break;
             }
-            arr.push_back(std::string(s.substr(i+1,j-i-2)));
+            arr.push_back(std::string(s.substr(i + 1, j - i - 2)));
             i = j;
         }
         return arr;

@@ -21,3 +21,7 @@ jobs:
           name: Build resources
           command: ninja -j 4
           working_directory: build
+      - run:
+          name: Test case
+          command: ctest -VV
+          working_directory: build

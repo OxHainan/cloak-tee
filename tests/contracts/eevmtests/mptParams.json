@@ -1,7 +1,0 @@
-{
-    "function": "getSum",
-    "inputs" : [
-        { "name": "_a", "value": "100"}, 
-        { "name": "_b", "value": "201"}
-    ]
-}
