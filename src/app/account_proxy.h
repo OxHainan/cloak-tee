@@ -12,8 +12,7 @@
 namespace evm4ccf
 {
   // This implements both eevm::Account and eevm::Storage via ccf's KV
-  struct AccountProxy : public eevm::Account, public eevm::Storage
-  {
+struct AccountProxy : public eevm::Account, public eevm::Storage {
     eevm::Address address;
     mutable tables::Accounts::Views accounts_views;
     tables::Storage::TxView& storage;

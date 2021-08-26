@@ -1,3 +1,17 @@
+// Copyright (c) 2020 Oxford-Hainan Blockchain Research Institute
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//     http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 #include "crypto/symmetric_key.h"
 #include "fmt/core.h"
@@ -13,6 +27,7 @@
 #include "tls/key_pair.h"
 #include "tls/pem.h"
 #include "vector"
+#include <utility>
 // eEVM
 #include <eEVM/address.h>
 #include <eEVM/bigint.h>
@@ -78,17 +93,13 @@ namespace Utils
             for (size_t j = 0; j < 2; j++)
             {
                 char cCur = strHex[2 * i + j];
-                if (cCur >= '0' && cCur <= '9')
-                {
+                if (cCur >= '0' && cCur <= '9') {
                     cTemp = (cTemp << 4) + (cCur - '0');
-                } else if (cCur >= 'a' && cCur <= 'f')
-                {
+                } else if (cCur >= 'a' && cCur <= 'f') {
                     cTemp = (cTemp << 4) + (cCur - 'a' + 10);
-                } else if (cCur >= 'A' && cCur <= 'F')
-                {
+                } else if (cCur >= 'A' && cCur <= 'F') {
                     cTemp = (cTemp << 4) + (cCur - 'A' + 10);
-                } else
-                {
+                } else {
                     return "";
                 }
             }
@@ -131,12 +142,12 @@ namespace Utils
 
     inline std::vector<std::string> stringToArray(const std::string &s){
         std::vector<std::string> arr;
-        for(size_t i=1; i<s.size(); i++) {
+        for(size_t i = 1; i < s.size(); i++) {
             size_t j = i;
-            for(; j<s.size(); j++) {
-                if(s[j] == ',' || s[j]==']') break;
+            for(; j < s.size(); j++) {
+                if(s[j] == ',' || s[j] == ']') break;
             }
-            arr.push_back(std::string(s.substr(i+1,j-i-2)));
+            arr.push_back(std::string(s.substr(i + 1, j - i - 2)));
             i = j;
         }
         return arr;
@@ -204,4 +215,4 @@ namespace Utils
         Bytes iv{ti.begin() + crypto::GCM_SIZE_TAG, ti.begin() + crypto::GCM_SIZE_TAG + crypto::GCM_SIZE_IV};
         return {tag, iv};
     }
-}
+} // namespace Utils

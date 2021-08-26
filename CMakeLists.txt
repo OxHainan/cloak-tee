@@ -35,3 +35,10 @@ if(CLOAK_DEBUG_LOGGING)
 endif()
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/evm4ccf.app.cmake)
+
+option(test "Build all tests. " ON)
+
+if (test)
+  enable_testing()
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/evm4ccf.tests.cmake)
+endif()

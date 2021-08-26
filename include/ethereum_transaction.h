@@ -26,7 +26,7 @@ namespace evm4ccf
     static constexpr size_t geth_private_default = 1337;
   };
 
-  // TODO: This may become constexpr, determined at compile time. For now it
+  // TODO(DUMMY): This may become constexpr, determined at compile time. For now it
   // is malleable.
   static size_t current_chain_id = ChainIDs::ethereum_mainnet;
 

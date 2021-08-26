@@ -1,3 +1,17 @@
+// Copyright (c) 2020 Oxford-Hainan Blockchain Research Institute
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//     http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 #include "iostream"
 #include "vector"
@@ -58,10 +72,12 @@ UINT8ARRAY to_bytes(const std::string& _s, size_t offset = 0, bool boolean = tru
 
 UINT8ARRAY fixed_to_bytes(const std::string &_s);
 
-UINT8ARRAY string_to_bytes(const std::string& _s);
+std::vector<uint8_t> string_to_bytes(const std::string& _s);
 
 class Coder {
 public:
+    static const size_t MAX_BIT_LENGTH = 256;
+    static const size_t MAX_BYTE_LENGTH = MAX_BIT_LENGTH / 8;
     virtual UINT8ARRAY encode() = 0;
     virtual void setValue(const ByteData & _value) = 0;
     virtual bool getDynamic() const = 0;
@@ -96,7 +112,6 @@ public:
         to_array(result, (uint8_t)boolean, 31);
         return result;
     }
-
 
 private:
     ByteData name;
@@ -311,7 +326,7 @@ private:
     vector<ByteData> value;
 };
 
-enum Type  {
+enum paramsType  {
       ADDRESS,
       UINT,
       INT,
@@ -382,7 +397,7 @@ inline std::vector<std::string> decode_string_array(const std::vector<uint8_t> &
     std::vector<std::string> res;
     for (size_t i = 0; i < count; i++) {
         size_t offset = size_t(Utils::vec32_to_uint256({data.begin() + 32 * (i + 1), data.begin() + 32 * (i + 2)}));
-        // TODO: better end
+        // TODO(MUMMY): better end
         res.push_back(decode_string({data.begin()+32+offset, data.end()}));
     }
     return res;

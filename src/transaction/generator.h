@@ -1,3 +1,17 @@
+// Copyright (c) 2020 Oxford-Hainan Blockchain Research Institute
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//     http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 #include "tables.h"
 #include "signature.h"
@@ -71,7 +85,7 @@ namespace evm4ccf
                     cpt_opt->request_old_state(tx);
                 }
                 return target_digest;
-                // TODO: add_multi_party
+                // TODO(DUMMY): add_multi_party
             }
             
             Address to = eevm::from_big_endian(mpt.to.data(), 20u);
@@ -83,8 +97,7 @@ namespace evm4ccf
             if (!nonce.has_value())
             {
                 an->put(mpt.from, 0);
-            } else if (nonce.value() > mpt.nonce)
-            {
+            } else if (nonce.value() > mpt.nonce) {
                 throw std::logic_error(fmt::format("nonce too low"));
             }
 

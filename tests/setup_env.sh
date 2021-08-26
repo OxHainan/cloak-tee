@@ -11,9 +11,11 @@ fi
 
 source env/bin/activate
 
-pip install wheel
-pip install -U -r ../tests/requirements.txt
+# pip install wheel
+# pip install -U -r ../tests/requirements.txt
 
 
 export EVM4CCF_HOME=/project/evm4ccf
 export CONTRACTS_DIR=${EVM4CCF_HOME}/cmake/../tests/contracts
+
+ctest "$@"

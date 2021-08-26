@@ -233,7 +233,7 @@ static std::unordered_map<ByteData, int> contractType = {
       }
 
       void padding(const MultiInput &p) {
-          if(complete()) return false;
+          if(complete()) return;
           
           for(int i=0; i<inputs.size(); i++) {
             if(inputs[i].name == p.name) {
@@ -293,7 +293,7 @@ static std::unordered_map<ByteData, int> contractType = {
           return read_res;
       }
     };
-  }
+  } // namespace policy
 
   namespace rpcparams
   {
@@ -552,7 +552,7 @@ static std::unordered_map<ByteData, int> contractType = {
     };
 
     DECLARE_JSON_TYPE(GetTransactionCountTest::In);
-    // TODO: adding 'address' and complete add_schema_components functin
+    // TODO(DUMMY): adding 'address' and complete add_schema_components functin
     // in eEVM/bigint.h
     DECLARE_JSON_REQUIRED_FIELDS(GetTransactionCountTest::In, block_id);
     DECLARE_JSON_TYPE(GetTransactionCountTest::Out);
