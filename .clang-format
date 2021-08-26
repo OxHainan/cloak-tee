@@ -21,9 +21,9 @@ AlwaysBreakTemplateDeclarations: true
 BinPackArguments: false
 BinPackParameters: false
 BreakBeforeBinaryOperators: None
-BreakBeforeInheritanceComma: true
-BreakBeforeTernaryOperators: true
-BreakConstructorInitializersBeforeComma: true
+BreakBeforeInheritanceComma: false
+BreakBeforeTernaryOperators: false
+BreakConstructorInitializersBeforeComma: false
 BreakConstructorInitializers: AfterColon
 BreakAfterJavaFieldAnnotations: false
 BreakStringLiterals: true
@@ -90,7 +90,7 @@ TabWidth:        4
 UseTab:          Never
 BraceWrapping:
   AfterClass:      true
-  AfterControlStatement: true
+  AfterControlStatement: false
   AfterEnum:       true
   AfterFunction:   true
   AfterNamespace:  true
@@ -98,7 +98,7 @@ BraceWrapping:
   AfterStruct:     true
   AfterUnion:      true
   BeforeCatch:     true
-  BeforeElse:      true
+  BeforeElse:      false
   IndentBraces:    false
 BreakBeforeBraces: Custom
 ...
