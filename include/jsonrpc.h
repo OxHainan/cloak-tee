@@ -366,4 +366,4 @@ namespace jsonrpc
 
     return {true, rpc};
   }
-}
+} // namespace jsonrpc

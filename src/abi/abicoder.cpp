@@ -1,3 +1,17 @@
+// Copyright (c) 2020 Oxford-Hainan Blockchain Research Institute
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//     http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "abicoder.h"
 #include "ds/logger.h"
 #include "vector"
@@ -53,7 +67,7 @@ UINT8ARRAY abicoder::fixed_to_bytes(const std::string &_s) {
     return h;
 }
 
-UINT8ARRAY abicoder::string_to_bytes(const std::string& _s) {
+std::vector<uint8_t> abicoder::string_to_bytes(const std::string& _s) {
     auto s = Utils::BinaryToHex(_s);
     UINT8ARRAY h(ceil(s.size() / 2.0));
     if(s.empty()) return h;
@@ -103,7 +117,7 @@ UINT8ARRAY abicoder::pack(const std::vector<void*>& coders) {
     vector<abicoder::PackParams> parts;
     Coder* coder;
     for(size_t i=0; i<coders.size(); i++) {
-        coder = (Coder*)coders[i];
+        coder = reinterpret_cast<Coder*>(coders[i]);
         parts.push_back({coder->getDynamic(), coder->encode()});
         delete coder;
     }
@@ -114,7 +128,7 @@ UINT8ARRAY abicoder::pack(const std::vector<void*>& coders, const vector<ByteDat
     vector<PackParams> parts;
     Coder* coder;
     for(size_t i=0; i<coders.size(); i++) {
-        coder = (Coder*)coders[i];
+        coder = reinterpret_cast<Coder*>(coders[i]);
         coder->setValue(value[i]);
         parts.push_back({coder->getDynamic(), coder->encode()});
         delete coder;

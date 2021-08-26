@@ -613,7 +613,7 @@ namespace evm4ccf
         return run_in_evm(call_data, es, ignore);
     }
 
-    // TODO: This and similar should take EthereumTransaction, not
+    // TODO(DUMMY): This and similar should take EthereumTransaction, not
     // MessageCall. EthereumTransaction should be fully parsed, then
     // MessageCall can be removed
     pair<bool, nlohmann::json> execute_transaction(

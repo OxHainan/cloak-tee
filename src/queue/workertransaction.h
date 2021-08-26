@@ -1,3 +1,17 @@
+// Copyright (c) 2020 Oxford-Hainan Blockchain Research Institute
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//     http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 #include "ds/logger.h"
 #include "fmt/core.h"
@@ -303,7 +317,7 @@ namespace evm4ccf
             visit_states(old_states, true, [this, &res, &tee_kp](size_t id, size_t idx) {
                 res.push_back(old_states[idx]);
                 auto p = states.at(id);
-                // TODO: better type checking
+                // TODO(SVENFENG): better type checking
                 if (p.owner == "all") {
                     if (p.type[0] == 'm') {
                         auto size = size_t(to_uint256(old_states[idx+1]));
@@ -381,7 +395,7 @@ namespace evm4ccf
             mc.from = get_addr_from_kp(tee_kp);
             mc.to = verifierAddr;
             mc.data = to_hex_string(data);
-            // TODO: choose a better value based on concrete contract
+            // TODO(SVENFENG): choose a better value based on concrete contract
             mc.gas = 0x34abf;
             CLOAK_DEBUG_FMT("data:{}", mc.data);
             auto signed_data = sign_eth_tx(tee_kp, mc, nonce);

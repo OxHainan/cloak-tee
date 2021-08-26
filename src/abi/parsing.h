@@ -1,3 +1,17 @@
+// Copyright (c) 2020 Oxford-Hainan Blockchain Research Institute
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//     http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 #include "iostream"
 #include "string"
@@ -19,10 +33,10 @@ static string patternNumber = "^(u?int)([0-9]*)$";
 static string patternArray = "^(.*)\\[([0-9]*)\\]$";  
 class Parsing
 {
-private:
+ private:
     string str;
 
-public:
+ public:
     Parsing() {}
     Parsing(string _str): str(_str) {}
 
@@ -72,16 +86,14 @@ public:
         try
         {
             len = stoi(match[2]);
-        }
-        catch(const std::exception& e)
-        {
+        } catch(const std::exception& e) {
             len = 0;
         }
         return std::make_tuple(match[1], len, true);
     }
     throw std::logic_error(fmt::format("{} can`t parsing", str));
     }
-    ~Parsing() {};
+    ~Parsing() {}
 };
 
 
