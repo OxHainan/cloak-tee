@@ -1,0 +1,6 @@
+set(HOOKS ${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks)
+if ( NOT EXISTS  ${HOOKS}/pre-commit)
+  MESSAGE("intall pre-commit")
+  execute_process(COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/.tools/pre-commit ${HOOKS})
+  execute_process(COMMAND chmod u+x ${HOOKS}/pre-commit)
+endif()
