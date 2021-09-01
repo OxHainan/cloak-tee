@@ -11,7 +11,7 @@
     <img src="https://img.shields.io/badge/c%2B%2B-11/14/17/20-blue.svg" alt="Standard" />
   </a>
   <a href="https://github.com/OxHainan/cloak-tee/blob/cloak/LICENSE">
-    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="Cloak TEE is released under the MIT license." />
+    <img src="https://img.shields.io/badge/license-Apache%202-blue" alt="Cloak TEE is released under the MIT license." />
   </a>
   <a href="https://circleci.com/gh/OxHainan/cloak-tee">
     <img src="https://circleci.com/gh/OxHainan/cloak-tee/tree/cloak.svg?style=shield" alt="Current CircleCI build status." />
