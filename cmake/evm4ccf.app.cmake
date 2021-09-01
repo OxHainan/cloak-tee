@@ -57,6 +57,7 @@ add_ccf_app(evm4ccf
     ${EVM_CPP_FILES}
   INCLUDE_DIRS
     ${CMAKE_CURRENT_LIST_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${EVM_DIR}/include
   LINK_LIBS_ENCLAVE
     intx::intx
@@ -102,6 +103,7 @@ target_include_directories(
   /opt/openenclave/include
   ${CMAKE_CURRENT_LIST_DIR}/../include
   ${EVM_DIR}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/src
   ${CCF_DIR}/3rdparty
   ${OE_LIBCXX_INCLUDE_DIR}
   ${OE_LIBC_INCLUDE_DIR}
