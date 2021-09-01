@@ -1,5 +1,7 @@
+<img  width="280" src="https://oxhainan-cloak-docs.readthedocs-hosted.com/en/latest/_static/logo.png" alt="cloak-logo" align="left">
+
 <h1 align="center">
-  <a>
+    <a>
     Cloak TEE
   </a>
 </h1>
@@ -59,7 +61,7 @@ docker pull plytools/circleci-cloak-tee:v0.2.0
 
 ## 🎉 Building your first Cloak TEE app
 
-### Building the Source
+### Building the source code
 
 ```
 git clone --recurse-submodules https://github.com/OxHainan/cloak-tee.git
