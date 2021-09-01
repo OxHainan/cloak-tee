@@ -1,25 +1,69 @@
-# EVM for CCF
+<h1 align="center">
+  <a>
+    Cloak TEE
+  </a>
+</h1>
 
-This repository is based on [EVM-for-CCF](https://github.com/microsoft/EVM-for-CCF). It contains a sample application for the Confidential Consortium Framework ([CCF](https://github.com/Microsoft/CCF)) running an Ethereum Virtual Machine ([EVM](https://github.com/Microsoft/eEVM/)).
+<p align="center">
+  <a href="https://en.wikipedia.org/wiki/C%2B%2B#Standardization">
+    <img src="https://img.shields.io/badge/c%2B%2B-11/14/17/20-blue.svg" alt="Standard" />
+  </a>
+  <a href="https://github.com/OxHainan/cloak-tee/blob/cloak/LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="Cloak TEE is released under the MIT license." />
+  </a>
+  <a href="https://circleci.com/gh/OxHainan/cloak-tee">
+    <img src="https://circleci.com/gh/OxHainan/cloak-tee/tree/cloak.svg?style=shield" alt="Current CircleCI build status." />
+  </a>
+  <a href="https://www.codefactor.io/repository/github/oxhainan/cloak-tee">
+    <img src="https://www.codefactor.io/repository/github/oxhainan/cloak-tee/badge" alt="CodeFactor." />
+  </a>
+  <a href="https://oxhainan-cloak-docs.readthedocs-hosted.com/en/latest/started/contribute.html">
+    <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs welcome!" />
+  </a>
+</p>
 
-The app exposes API endpoints based on the [Ethereum JSON RPC](https://github.com/ethereum/wiki/wiki/JSON-RPC) specification (eg - `eth_sendRawTransaction`, `eth_getTransactionReceipt`), so some standard Ethereum tooling can be reused by merely modifying the transport layer to communicate with CCF.
+Cloak TEE is based on [EVM-for-CCF][evm-for-ccf]. It contains a sample application for the Confidential Consortium Framework([CCF][ccf]), running at Ethereum Virtual Machine([EVM][evm]).
+
+[evm-for-ccf]: https://github.com/microsoft/EVM-for-CCF
+[ccf]: https://github.com/Microsoft/CCF
+[evm]: https://github.com/Microsoft/eEVM/
+
+Cloak TEE is the core component in the [**Cloak Networks**][cloak-networks], and it runs the CCF framework to provide high-performance, fully-confidential distributed services, hosting a user-defined application and it also deals with Ethereum and Cloak transaction from users and synchronizes the results to Block chain. 
+In this case the user-defined application is an interpreter for Ethereum bytecode, executing smart contracts entirely inside a [TEE][tee].
+
+This service looks in many ways like a traditional Ethereum node, but has some fundamental differences:
+- Consensus is deterministic rather than probabilistic. Since we trust the executing node, we do not need to re-execute on every node or wait for multiple block commits. There is a single transaction history, with no forks.
+- There are no local nodes. Users do not run their own node, trusting it with key access and potentially private state. Instead all nodes run inside enclaves, maintaining privacy and guaranteeing execution integrity, regardless of where those enclaves are actually hosted.
+- State is confidential, and that confidentiality is entirely controlled by smart contract logic. The app does not produce a public log of all transactions, and it does not reveal the resulting state to all users. The only access to state is by calling methods on smart contracts, where arbitrarily complex and dynamic restrictions can be applied.
+
+[cloak-networks]: https://oxhainan-cloak-docs.readthedocs-hosted.com/en/latest/tee-blockchain-architecture/cloak-network.html#cloak-network
+[tee]: https://en.wikipedia.org/wiki/Trusted_execution_environment
 
 ## Contents
 
-| File/folder       | Description                                |
-|-------------------|--------------------------------------------|
-| `src`             | Source code for the EVM4CCF app            |
-| `samples`         | End-to-end tests, driving an EVM4CCF instance with standard web3.py tools|
+- [Prerequisites](#-rerequisites)
+- [Building your first Cloak TEE app](#-building-your-first-Cloak-TEE-app)
+- [Documentation](#-documentation)
+- [How to Contribute](#-How-to-Contribute)
+- [License](#-license)
 
-## Prerequisites
+## 📋 Requirements
 
 This sample requires an developing environment of CCF's application. Installation of these requirements is described in [CCF's documentation](https://microsoft.github.io/CCF/ccf-0.15.2/quickstart/build_setup.html).
 
-## Setup
+In order to quickly enter the CLoak-TEE compilation environment, we provide a docker images:
 
 ```
-git clone --recurse-submodules https://github.com/PlyTools/cloak-evm.git
-cd cloak-evm
+docker pull plytools/circleci-cloak-tee:v0.2.0
+```
+
+## 🎉 Building your first Cloak TEE app
+
+### Building the Source
+
+```
+git clone --recurse-submodules https://github.com/OxHainan/cloak-tee.git
+cd cloak-tee
 mkdir build
 cd build
 # if you want to use CLOAK_DEBUG_FMT macro, you need add -DCLOAK_DEBUG_LOGGING=ON option
@@ -27,9 +71,9 @@ cmake .. -GNinja -DTARGET=virtual -DCMAKE_BUILD_TYPE=Debug -L
 ninja
 ```
 
-## Running the sample
+### Running the sample
 
-To run the test case:
+To run the sample:
 
 ```
 cd build
@@ -47,27 +91,60 @@ cd build
 /opt/ccf-0.15.2/bin/sandbox.sh -v -p libevm4ccf.virtual.so -d 0
 ```
 
-User transactions can then be submitted as described in the [CCF documentation](https://microsoft.github.io/CCF/ccf-0.15.2/users/issue_commands.html#issuing-commands), or via [web3.py](https://web3py.readthedocs.io/) with the `CCFProvider` class defined in `samples/provider.py`.
+### Testing the Case
 
-## Key concepts
+To run the test case
 
-CCF is a framework for building fault-tolerant, high-performance, fully-confidential distributed services, hosting a user-defined application. In this case the user-defined application is an interpreter for Ethereum bytecode, executing smart contracts entirely inside a [TEE](https://en.wikipedia.org/wiki/Trusted_execution_environment).
+```
+cd build
+ctest
+```
 
-This service looks in many ways like a traditional Ethereum node, but has some fundamental differences:
-- Consensus is deterministic rather than probabilistic. Since we trust the executing node, we do not need to re-execute on every node or wait for multiple block commits. There is a single transaction history, with no forks.
-- There are no local nodes. Users do not run their own node, trusting it with key access and potentially private state. Instead all nodes run inside enclaves, maintaining privacy and guaranteeing execution integrity, regardless of where those enclaves are actually hosted.
-- State is confidential, and that confidentiality is entirely controlled by smart contract logic. The app does not produce a public log of all transactions, and it does not reveal the resulting state to all users. The only access to state is by calling methods on smart contracts, where arbitrarily complex and dynamic restrictions can be applied.
+User initialize a Cloak Service as described in the [initialize Cloak Network on Blockchain][initialize-cloak-network-on-blockchain], and deploy confidential smart contract to Block chain as described in the [deploy cloak smart contract][deploy-cloak-smart-contract]
 
-## Contributing
+[deploy-cloak-smart-contract]: https://oxhainan-cloak-docs.readthedocs-hosted.com/en/latest/deploy-cloak-smart-contract/deploy.html
+[initialize-cloak-network-on-blockchain]: https://oxhainan-cloak-docs.readthedocs-hosted.com/en/latest/tee-blockchain-architecture/initialize-cloak-network-on-blockchain.html
 
-This project welcomes contributions and suggestions.  Most contributions require you to agree to a
-Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
-the rights to use your contribution. For details, visit https://cla.opensource.microsoft.com.
+## 📖 Documentation
 
-When you submit a pull request, a CLA bot will automatically determine whether you need to provide
-a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions
-provided by the bot. You will only need to do this once across all repos using our CLA.
+The full documentation for Cloak can found on our [Cloak documentation][cloak-docs]
 
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+[cloak-docs]: https://oxhainan-cloak-docs.readthedocs-hosted.com/en/latest/#
+
+## 👏 How to Contribute
+
+The main purpose of this repository is to continue evolving Cloak TEE core. We want to make contributing to this project as easy and transparent as possible, and we are grateful to the community for contributing bug fixes and improvements. 
+Read below to learn how you can take part in improving Cloak TEE.
+
+### [Code of Conduct][code]
+
+Cloak TEE has adopted a Code of Conduct that we expect project participants to adhere to.
+Please read the [full text][code] so that you can understand what actions will and will not be tolerated.
+
+[code]: https://oxhainan-cloak-docs.readthedocs-hosted.com/en/latest/started/contribute.html#documentation-style-guide
+
+### [Contributing Guide][contribute]
+
+Read our [**Call for Contributions**][contribute] to learn about our development process, how to propose bugfixed and improvements, and how to build and test your changes to Cloak.
+
+[contribute]: https://oxhainan-cloak-docs.readthedocs-hosted.com/en/latest/started/contribute.html#all-contributions-counts
+
+### [Open Source Roadmap][roadmap]
+
+You can learn more about our vision for Cloak Networks in the [**Roadmap**][roadmap].
+
+[roadmap]: https://oxhainan-cloak-docs.readthedocs-hosted.com/en/latest/roadmap/index.html#roadmap
+
+### Submit Issues
+
+If you find a bug or have some new idea, please submit it to [**issues**][issues]. This is a great place to get started, gain experience,
+and get familiar with our contribution process.
+
+[issues]: https://github.com/OxHainan/cloak-tee/issues
+
+## 📄 License
+
+cloak-tee is made under the [Apache 2.0][al], as found in the [LICENSE][l] file.
+
+[al]: http://www.apache.org/licenses/LICENSE-2.0
+[l]: https://github.com/OxHainan/cloak-tee/blob/cloak/LICENSE
