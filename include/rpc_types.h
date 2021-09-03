@@ -162,15 +162,6 @@ struct Function {
         LOG_DEBUG_FMT("signed name:{}", signed_name);
         return signed_name;
     }
-    void check_params() {
-        auto bc = Bytecode(name);
-        for (size_t i = 0; i < inputs.size(); i++) {
-            bc.add_inputs(inputs[i].name, inputs[i].type);
-        }
-        entry = bc.encode_function();
-
-        CLOAK_DEBUG_FMT("funtion select:{}", eevm::to_hex_string(entry.value()));
-    }
 
     UINT8ARRAY packed_to_data() {
         UINT8ARRAY sha3 = entry;
