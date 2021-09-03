@@ -23,5 +23,5 @@ jobs:
           working_directory: build
       - run:
           name: Test case
-          command: ctest -VV
+          command: ctest
           working_directory: build

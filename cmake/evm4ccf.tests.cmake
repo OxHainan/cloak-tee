@@ -18,6 +18,7 @@ function(add_uint_test name)
     PRIVATE
     /opt/openenclave/include
     ${CMAKE_CURRENT_LIST_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${EVM_DIR}/include
     ${CCF_DIR}/include/3rdparty
     ${CCF_DIR}/include/ccf

@@ -11,9 +11,7 @@ set(EVM_DIR ${CMAKE_CURRENT_SOURCE_DIR}/eEVM)
 
 include(${CCF_DIR}/cmake/preproject.cmake)
 
-project(evm-for-ccf 
-  LANGUAGES C CXX
-  )
+project(evm-for-ccf LANGUAGES C CXX)
 
 include(${CCF_DIR}/cmake/tools.cmake)
 include(${CCF_DIR}/cmake/ccf.cmake)
@@ -35,10 +33,11 @@ if(CLOAK_DEBUG_LOGGING)
 endif()
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/evm4ccf.app.cmake)
-
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/install.cmake)
 option(test "Build all tests. " ON)
 
 if (test)
   enable_testing()
+  add_compile_definitions(DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/evm4ccf.tests.cmake)
 endif()
