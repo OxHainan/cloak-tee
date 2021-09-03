@@ -138,15 +138,14 @@ struct Function {
  public:
     ByteData type;
     ByteData name;
-    std::optional<UINT8ARRAY> entry = std::nullopt;
-    UINT8ARRAY signedName;
+    UINT8ARRAY entry;
     std::vector<Params> inputs;
     std::vector<stateParams> read;
     std::vector<stateParams> mutate;
     std::vector<Params> outputs;
     std::vector<uint8_t> raw_outputs;
 
-    MSGPACK_DEFINE(name, entry, signedName, type, inputs, read, mutate, outputs, raw_outputs);
+    MSGPACK_DEFINE(name, entry, type, inputs, read, mutate, outputs, raw_outputs);
 
     ByteData get_signed_name() const {
         auto signed_name = name + "(";
@@ -163,36 +162,9 @@ struct Function {
         LOG_DEBUG_FMT("signed name:{}", signed_name);
         return signed_name;
     }
-    void check_params() {
-        if (!entry.has_value()) {
-            auto bc = Bytecode(name);
-            for (size_t i = 0; i < inputs.size(); i++) {
-                bc.add_inputs(inputs[i].name, inputs[i].type);
-            }
-            entry = bc.encode_function();
-        }
-        CLOAK_DEBUG_FMT("funtion select:{}", eevm::to_hex_string(entry.value()));
-    }
-    void sign_function_name() {
-        LOG_DEBUG_FMT("original function name:{}", name);
-        std::string signed_name = name + "(";
-        bool first = true;
-        for (auto&& p : inputs) {
-            if (!first) {
-                signed_name += "," + p.type;
-            } else {
-                signed_name += p.type;
-            }
-            first = false;
-        }
-        signed_name += ")";
-        LOG_DEBUG_FMT("signed name:{}", signed_name);
-        auto sha3 = eevm::keccak_256(signed_name);
-        signedName = UINT8ARRAY(sha3.begin(), sha3.begin() + 4);
-    }
 
     UINT8ARRAY packed_to_data() {
-        UINT8ARRAY sha3 = signedName;
+        UINT8ARRAY sha3 = entry;
         vector<void*> coders;
         for (int i = 0; i < inputs.size(); i++) {
             inputs[i].pack(coders);
@@ -289,12 +261,6 @@ struct Policy {
             }
         }
         throw std::logic_error(fmt::format("doesn't find this {} function in this policy modules", name));
-    }
-
-    void sign_functions_name() {
-        for (auto&& f : functions) {
-            f.sign_function_name();
-        }
     }
 
     std::string info() const {
