@@ -147,7 +147,7 @@ and get familiar with our contribution process.
 
 ## 📄 License
 
-cloak-tee is made under the [Apache 2.0][al], as found in the [LICENSE][l] file.
+The cloak-tee is made under the [Apache 2.0][al], as found in the [LICENSE][l] file.
 
 [al]: http://www.apache.org/licenses/LICENSE-2.0
 [l]: https://github.com/OxHainan/cloak-tee/blob/cloak/LICENSE
