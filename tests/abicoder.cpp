@@ -148,7 +148,7 @@ TEST_CASE("Test uint") {
     test_basic(&uint_2, move(correct));
 
     // to_uint64
-    CHECK_EQ(NumericType(correct).to_uint64() == 69);
+    CHECK(NumericType(correct).to_uint64() == 69);  // NOLINT
 }
 
 TEST_CASE("Test dynamic array") {
