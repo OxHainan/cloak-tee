@@ -43,11 +43,12 @@ This service looks in many ways like a traditional Ethereum node, but has some f
 
 ## Contents
 
-- [Prerequisites](#-rerequisites)
-- [Building your first Cloak TEE app](#-building-your-first-Cloak-TEE-app)
+- [Requirements](#-requirements)
+- [Building your first Cloak TEE app](#-building-your-first-cloak-tee-app)
 - [Documentation](#-documentation)
-- [How to Contribute](#-How-to-Contribute)
+- [How to Contribute](#-how-to-contribute)
 - [License](#-license)
+- [Warning](#-warning)
 
 ## 📋 Requirements
 
@@ -146,7 +147,11 @@ and get familiar with our contribution process.
 
 ## 📄 License
 
-cloak-tee is made under the [Apache 2.0][al], as found in the [LICENSE][l] file.
+The cloak-tee is made under the [Apache 2.0][al], as found in the [LICENSE][l] file.
 
 [al]: http://www.apache.org/licenses/LICENSE-2.0
 [l]: https://github.com/OxHainan/cloak-tee/blob/cloak/LICENSE
+
+## ❗️ Warning
+
+Cloak is an ongoing project. The security of our implementation has not been systematically reviewed yet! Do not use Cloak in a productive system or to process sensitive confidential data now. We will keep working on Cloak, making it cool and practical step-by-step. 
