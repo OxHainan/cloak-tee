@@ -2,10 +2,14 @@
 // Licensed under the MIT License.
 #pragma once
 
-#include "../src/app/utils.h"
+#include "abi/abicoder.h"
+#include "abi/parsing.h"
+#include "app/utils.h"
 #include "ds/logger.h"
 #include "jsonrpc.h"
+#include "unordered_map"
 
+#include <array>
 #include <cstddef>
 #include <eEVM/address.h>
 #include <eEVM/bigint.h>
@@ -17,15 +21,9 @@
 #include <kv/tx.h>
 #include <kv/tx_view.h>
 #include <node/rpc/serdes.h>
-// STL
-#include "../src/abi/abicoder.h"
-#include "../src/abi/bytecode.h"
-#include "../src/abi/parsing.h"
-#include "unordered_map"
-
-#include <array>
 #include <optional>
 #include <vector>
+
 namespace evm4ccf {
 using Balance = uint256_t;
 using Result = uint64_t;
@@ -106,7 +104,7 @@ struct Params {
 
     void set_value(const ByteData& _v) { value = _v; }
 
-    void pack(vector<void*>& coders) const { abicoder::paramCoder(coders, name, type, getValue()); }
+    // void pack(vector<void*>& coders) const { abicoder::paramCoder(coders, name, type, getValue()); }
 
     std::string info() const {
         std::string s = fmt::format("param name:{}, type:{}, owner:{}", name, type, owner);
@@ -138,7 +136,7 @@ struct Function {
  public:
     ByteData type;
     ByteData name;
-    UINT8ARRAY entry;
+    ByteString entry;
     std::vector<Params> inputs;
     std::vector<stateParams> read;
     std::vector<stateParams> mutate;
@@ -147,32 +145,12 @@ struct Function {
 
     MSGPACK_DEFINE(name, entry, type, inputs, read, mutate, outputs, raw_outputs);
 
-    ByteData get_signed_name() const {
-        auto signed_name = name + "(";
-        bool first = true;
-        for (auto&& p : inputs) {
-            if (!first) {
-                signed_name += "," + p.type;
-            } else {
-                signed_name += p.type;
-            }
-            first = false;
-        }
-        signed_name += ")";
-        LOG_DEBUG_FMT("signed name:{}", signed_name);
-        return signed_name;
-    }
-
-    UINT8ARRAY packed_to_data() {
-        UINT8ARRAY sha3 = entry;
-        vector<void*> coders;
+    ByteString packed_to_data() {
+        auto encoder = abicoder::Encoder();
         for (int i = 0; i < inputs.size(); i++) {
-            inputs[i].pack(coders);
+            encoder.add_inputs(inputs[i].name, inputs[i].type, inputs[i].getValue());
         }
-        auto data = abicoder::pack(coders);
-        // abicoder::insert(data, sha3);
-        sha3.insert(sha3.end(), data.begin(), data.end());
-        return sha3;
+        return encoder.encode(entry);
     }
 
     void padding(const MultiInput& p) {

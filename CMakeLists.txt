@@ -41,3 +41,8 @@ if (test)
   add_compile_definitions(DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/evm4ccf.tests.cmake)
 endif()
+
+option(CLANG_FORMAT "Enable clang format" OFF)
+if(CLANG_FORMAT)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/install.cmake)
+endif()

@@ -46,9 +46,6 @@ set(EVM_CPP_FILES
 
 set(EVM4CCF_FILE
   ${CMAKE_CURRENT_LIST_DIR}/../src/app/evm_for_ccf.cpp
-  # ${CMAKE_CURRENT_LIST_DIR}/../src/queue/workerqueue.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/../src/abi/abicoder.cpp
-
 )
 # Build app
 add_ccf_app(evm4ccf
