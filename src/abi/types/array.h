@@ -26,7 +26,7 @@
 namespace abicoder {
 
 Type* entry_identity(const std::string& rawType);
-
+Type* generate_coders(const std::string& rawType, const std::string& value);
 class ArrayType : public Type {
  protected:
     ArrayType() {}
@@ -51,8 +51,7 @@ class ArrayType : public Type {
 
     std::vector<uint8_t> encode() override {
         for (size_t i = 0; i < value.size(); i++) {
-            auto parameter = entry_identity(type);
-            parameter->set_value(value[i]);
+            auto parameter = generate_coders(type, value[i]);
             parameters.push_back(parameter);
         }
 
@@ -170,10 +169,7 @@ class StaticArray : public ArrayType {
 
     bool dynamicType() override { return false; }
 
-    size_t offset() override {
-        // return value.size();
-        return 64;
-    }
+    size_t offset() override { return expectedSize * MAX_BYTE_LENGTH; }
 
     std::string getTypeAsString() override {
         return ArrayType::getTypeAsString() + "[" + to_string(expectedSize) + "]";
@@ -249,7 +245,6 @@ Type* entry_identity(const std::string& rawType) {
 
 Type* generate_coders(const std::string& rawType, const std::string& value) {
     auto [type, expectedSize, boolean] = Parsing(rawType).result();
-    CLOAK_DEBUG_FMT("type: {} expected size: {} isArray: {}", type, expectedSize, boolean);
     if (boolean) {
         if (expectedSize > 0) {
             return new StaticArray(type, expectedSize, value);
