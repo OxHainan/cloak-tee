@@ -13,7 +13,32 @@
 // limitations under the License.
 
 #pragma once
+#include "iostream"
+#include "vector"
+// eEVM
+#include <eEVM/bigint.h>
+#include <eEVM/util.h>
 
-#include "abi/common.h"
-#include "abi/decoder.h"
-#include "abi/encoder.h"
+namespace abicoder {
+using uint256 = intx::uint256;
+
+static constexpr auto ADDRESS = "address";
+static constexpr auto UINT = "uint";
+static constexpr auto INT = "int";
+static constexpr auto BOOL = "bool";
+static constexpr auto STRING = "string";
+static constexpr auto BYTES = "bytes";
+static constexpr auto FIXED = "fixed";
+static constexpr auto UFIXED = "ufixed";
+
+struct PackParams {
+    bool Dynamic;
+    std::vector<uint8_t> data;
+};
+
+struct abiParams {
+    std::string name;
+    std::string type;
+};
+
+}  // namespace abicoder

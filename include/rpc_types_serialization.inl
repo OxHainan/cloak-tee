@@ -63,7 +63,7 @@ inline void require_array(const nlohmann::json& j) {
 template <typename T>
 inline void from_array_to_object(const nlohmann::json& j, const std::string& s, T& v) {
     const auto it = j.find(s);
-    if (!it->is_null() && it != j.end()) {
+    if (it != j.end() && !it->is_null()) {
         require_array(*it);
         auto tem = it->get<T>();
         for (int i = 0; i < tem.size(); i++) {

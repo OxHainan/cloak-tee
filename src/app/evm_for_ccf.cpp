@@ -23,7 +23,7 @@
 #include <eEVM/util.h>
 
 // EVM-for-CCF
-#include "../transaction/generator.h"
+#include "abi/abicoder.h"
 #include "account_proxy.h"
 #include "ds/logger.h"
 #include "ethereum_state.h"
@@ -34,6 +34,7 @@
 #include "tables.h"
 #include "tee_manager.h"
 #include "tls/key_pair.h"
+#include "transaction/generator.h"
 #include "utils.h"
 
 namespace evm4ccf {
@@ -336,9 +337,9 @@ class EVMHandlers : public UserEndpointRegistry {
         auto sync_old_states = [this](kv::Tx& tx, const nlohmann::json& params) {
             auto old_states = abicoder::decode_uint256_array(to_bytes(params["data"].get<std::string>()));
             h256 tx_hash = Utils::to_KeccakHash(params["tx_hash"].get<std::string>());
-            std::vector<void*> codes;
-            abicoder::paramCoder(codes, "oldStates", "uint[]", old_states);
-            auto old_states_packed = abicoder::pack(codes);
+            auto encoder = abicoder::Encoder();
+            encoder.add_inputs("oldStates", "uint[]", old_states);
+            auto old_states_packed = encoder.encode();
             auto old_states_hash = eevm::keccak_256(old_states_packed);
 
             CloakPolicyTransaction ct(txTables.cloak_policys, txTables.privacy_digests, tx, tx_hash);
@@ -585,9 +586,10 @@ class EVMHandlers : public UserEndpointRegistry {
     void execute_mpt(const std::vector<std::string>& decryped_states, CloakPolicyTransaction& ct, kv::Tx& tx) {
         auto tee_addr = TeeManager::tee_addr(tx);
         MessageCall set_states_mc;
-        std::vector<void*> codes;
-        abicoder::paramCoder(codes, "set_states", "uint[]", decryped_states);
-        auto decryped_states_packed = abicoder::pack(codes);
+
+        auto encoder = abicoder::Encoder();
+        encoder.add_inputs("set_states", "uint[]", decryped_states);
+        auto decryped_states_packed = encoder.encode();
         // function selector
         auto set_states_call_data = Utils::make_function_selector("set_states(uint256[])");
         CLOAK_DEBUG_FMT("decryped_states:{}", fmt::join(decryped_states, ", "));

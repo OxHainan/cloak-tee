@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://en.wikipedia.org/wiki/C%2B%2B#Standardization">
-    <img src="https://img.shields.io/badge/c%2B%2B-11/14/17/20-blue.svg" alt="Standard" />
+    <img src="https://img.shields.io/badge/c%2B%2B-17-blue.svg" alt="Standard" />
   </a>
   <a href="https://github.com/OxHainan/cloak-tee/blob/cloak/LICENSE">
     <img src="https://img.shields.io/badge/license-Apache%202-blue" alt="Cloak TEE is released under the Apache license." />
@@ -72,26 +72,6 @@ cd build
 # if you want to use CLOAK_DEBUG_FMT macro, you need add -DCLOAK_DEBUG_LOGGING=ON option
 cmake .. -GNinja -DTARGET=virtual -DCMAKE_BUILD_TYPE=Debug -L
 ninja
-```
-
-### Running the sample
-
-To run the sample:
-
-```
-cd build
-/opt/ccf-0.15.2/bin/sandbox.sh -v -p libevm4ccf.virtual.so
-
-export EVM4CCF_HOME=<the path to evm4ccf>
-export CONTRACTS_DIR=${EVM4CCF_HOME}//tests/contracts
-python3 "${EVM4CCF_HOME}/samples/evmtest_deploy_and_transfer.py"
-```
-
-To launch a local instance for manual testing:
-
-```
-cd build
-/opt/ccf-0.15.2/bin/sandbox.sh -v -p libevm4ccf.virtual.so -d 0
 ```
 
 ### Testing the Case

@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #pragma once
-#include "../abi/bytecode.h"
-#include "../app/tee_manager.h"
-#include "../app/utils.h"
+#include "abi/abicoder.h"
+#include "app/tee_manager.h"
+#include "app/utils.h"
 #include "ds/logger.h"
 #include "ethereum_transaction.h"
 #include "fmt/core.h"
@@ -29,13 +29,10 @@
 #include "tls/pem.h"
 #include "vector"
 
-#include <cctype>
-#include <cstddef>
 #include <eEVM/bigint.h>
 #include <eEVM/rlp.h>
 #include <eEVM/util.h>
-#include <stdexcept>
-#include <stdint.h>
+
 namespace evm4ccf {
 using namespace eevm;
 using namespace rpcparams;
@@ -204,10 +201,11 @@ struct CloakPolicyTransaction {
         CLOAK_DEBUG_FMT("get_states_call_data, return_len:{}, read:{}", return_len, fmt::join(read, ", "));
         // function selector
         std::vector<uint8_t> data = Utils::make_function_selector("get_states(uint256[],uint256)");
-        std::vector<void*> codes;
-        abicoder::paramCoder(codes, "read", "uint[]", read);
-        abicoder::paramCoder(codes, "return_len", "uint", to_hex_string(return_len));
-        auto packed = abicoder::pack(codes);
+
+        auto encoder = abicoder::Encoder();
+        encoder.add_inputs("read", "uint[]", read);
+        encoder.add_inputs("return_len", "uint", to_hex_string(return_len));
+        auto packed = encoder.encode();
         data.insert(data.end(), packed.begin(), packed.end());
         return data;
     }
@@ -265,9 +263,11 @@ struct CloakPolicyTransaction {
         CLOAK_DEBUG_FMT("requested_addresses:{}", fmt::join(requested_addresses, ", "));
         // function selector
         std::vector<uint8_t> data = Utils::make_function_selector("getPk(address[])");
-        std::vector<void*> codes;
-        abicoder::paramCoder(codes, "read", "address[]", res);
-        auto params = abicoder::pack(codes);
+
+        auto encoder = abicoder::Encoder();
+        encoder.add_inputs("read", "address[]", res);
+        auto params = encoder.encode();
+
         data.insert(data.end(), params.begin(), params.end());
         nlohmann::json j;
         j["tx_hash"] = to_hex_string(mpt_hash);
@@ -341,20 +341,15 @@ struct CloakPolicyTransaction {
         std::vector<uint8_t> data = Utils::make_function_selector("set_states(uint256[],uint256,uint256[],uint256[])");
         size_t old_states_len = get_states_return_len(true);
         CLOAK_DEBUG_FMT("old_states_hash:{}", to_hex_string(old_states_hash));
-        std::vector<void*> codes;
-        abicoder::paramCoder(codes, "read", "uint[]", get_states_read());
-        abicoder::paramCoder(codes, "old_states_len", "uint", to_hex_string(old_states_len));
-        abicoder::paramCoder(codes, "data", "uint[]", new_states);
-        abicoder::paramCoder(codes, "proof", "uint[]", get_proof());
-        auto packed = abicoder::pack(codes);
-        data.insert(data.end(), packed.begin(), packed.end());
 
-        // auto bc = Bytecode("set_states");
-        // bc.add_inputs("read", "uint256[]", get_states_read());
-        // bc.add_inputs("old_states_len", "uint256", to_hex_string(old_states_len));
-        // bc.add_inputs("data", "uint256[]", new_states);
-        // bc.add_inputs("proof", "uint256[]",  get_proof());
-        // auto data1 = bc.encode();
+        auto encoder = abicoder::Encoder();
+        encoder.add_inputs("read", "uint[]", get_states_read());
+        encoder.add_inputs("old_states_len", "uint", to_hex_string(old_states_len));
+        encoder.add_inputs("data", "uint[]", new_states);
+        encoder.add_inputs("proof", "uint[]", get_proof());
+        auto packed = encoder.encode();
+
+        data.insert(data.end(), packed.begin(), packed.end());
 
         MessageCall mc;
         mc.from = get_addr_from_kp(tee_kp);
