@@ -26,8 +26,8 @@
 
 namespace abicoder {
 class Encoder;
-Type* entry_identity(const std::string& rawType);
-Type* generate_coders(const std::string& rawType, const std::string& value);
+TypePrt entry_identity(const std::string& rawType);
+TypePrt generate_coders(const std::string& rawType, const std::string& value);
 class ArrayType : public Type {
  protected:
     ArrayType() {}
@@ -95,15 +95,6 @@ class ArrayType : public Type {
 
     size_t offset() override { return MAX_BYTE_LENGTH; }
 
-    virtual ~ArrayType() {
-        for (auto parameter : parameters) {
-            if (parameter != nullptr) {
-                delete parameter;
-                parameter = nullptr;
-            }
-        }
-    }
-
     std::vector<uint8_t> get_value() override {
         std::vector<uint8_t> data;
         for (auto parameter : parameters) {
@@ -124,7 +115,7 @@ class ArrayType : public Type {
     }
 
     std::vector<std::string> value;
-    std::vector<Type*> parameters;
+    std::vector<TypePrt> parameters;
 
  private:
     bool valid(const std::string& _type, const std::vector<std::string>& _value) {
@@ -195,68 +186,67 @@ class StaticArray : public ArrayType {
     size_t expectedSize;
 };
 
-Type* check_paramter(const std::string& rawType, const size_t& length) {
+TypePrt check_paramter(const std::string& rawType, const size_t& length) {
     if (!rawType.find(UINT)) {
-        return new Uint(length);
+        return std::make_shared<Uint>(length);
     } else if (!rawType.find(INT)) {
-        return new Int(length);
+        return std::make_shared<Int>(length);
     } else if (!rawType.find(ADDRESS)) {
-        return new Address();
+        return std::make_shared<Address>();
     } else if (!rawType.find(STRING)) {
-        return new Utf8String();
+        return std::make_shared<Utf8String>();
     } else if (!rawType.find(BOOL)) {
-        return new Boolean();
+        return std::make_shared<Boolean>();
     } else if (!rawType.find(BYTES)) {
         if (std::strcmp(rawType.c_str(), BYTES) == 0)
-            return new DynamicBytes();
-        return new Bytes(length);
+            return std::make_shared<DynamicBytes>();
+        return std::make_shared<Bytes>(length);
     } else if (!rawType.find(FIXED) || !rawType.find(UFIXED)) {
         throw std::logic_error(fmt::format("Unsupported type: {}", rawType));
     }
     throw std::logic_error(fmt::format("Unrecognized type: {}", rawType));
 }
 
-Type* generate_coders(const std::string& rawType, const size_t& length, const std::string& value) {
+TypePrt generate_coders(const std::string& rawType, const size_t& length, const std::string& value) {
     if (!rawType.find(UINT)) {
-        return new Uint(value, length);
+        return std::make_shared<Uint>(value, length);
     } else if (!rawType.find(INT)) {
-        return new Int(value, length);
+        return std::make_shared<Int>(value, length);
     } else if (!rawType.find(ADDRESS)) {
-        return new Address(value);
+        return std::make_shared<Address>(value);
     } else if (!rawType.find(STRING)) {
-        return new Utf8String(value);
+        return std::make_shared<Utf8String>(value);
     } else if (!rawType.find(BOOL)) {
-        return new Boolean(value);
+        return std::make_shared<Boolean>(value);
     } else if (!rawType.find(BYTES)) {
         if (std::strcmp(rawType.c_str(), BYTES) == 0 && length == 0)
-            return new DynamicBytes(value);
-        return new Bytes(length, value);
+            return std::make_shared<DynamicBytes>(value);
+        return std::make_shared<Bytes>(length, value);
     } else if (!rawType.find(FIXED) || !rawType.find(UFIXED)) {
         throw std::logic_error(fmt::format("Unsupported type: {}", rawType));
     }
     throw std::logic_error(fmt::format("Unrecognized type: {}", rawType));
 }
 
-Type* entry_identity(const std::string& rawType) {
+TypePrt entry_identity(const std::string& rawType) {
     auto [type, expectedSize, boolean] = Parsing(rawType).result();
     if (boolean) {
         if (expectedSize > 0) {
             // dynamic type
-            return new StaticArray(type, expectedSize);
+            return std::make_shared<StaticArray>(type, expectedSize);
         }
-        return new DynamicArray(type);
+        return std::make_shared<DynamicArray>(type);
     }
     return check_paramter(type, expectedSize);
 }
 
-Type* generate_coders(const std::string& rawType, const std::string& value) {
+TypePrt generate_coders(const std::string& rawType, const std::string& value) {
     auto [type, expectedSize, boolean] = Parsing(rawType).result();
     if (boolean) {
         if (expectedSize > 0) {
-            return new StaticArray(type, expectedSize, value);
+            return std::make_shared<StaticArray>(type, expectedSize, value);
         }
-
-        return new DynamicArray(type, value);
+        return std::make_shared<DynamicArray>(type, value);
     }
 
     return generate_coders(type, expectedSize, value);
