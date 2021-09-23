@@ -205,7 +205,23 @@ inline std::vector<uint8_t> decrypt_data(tls::KeyPairPtr kp,
 
 inline std::pair<Bytes, Bytes> split_tag_and_iv(const Bytes& ti) {
     Bytes tag{ti.begin(), ti.begin() + crypto::GCM_SIZE_TAG};
-    Bytes iv{ti.begin() + crypto::GCM_SIZE_TAG, ti.begin() + crypto::GCM_SIZE_TAG + crypto::GCM_SIZE_IV};
+    Bytes iv{ti.begin() + crypto::GCM_SIZE_TAG, ti.end()};
     return {tag, iv};
 }
+
+std::vector<std::string> split_string(const std::string &str, const std::string &delim) {
+    size_t pos_start = 0;
+    std::string token;
+    std::vector<std::string> res;
+
+    for (size_t pos_end = str.find(delim, pos_start); pos_end != std::string::npos;) {
+        token = str.substr(pos_start, pos_end - pos_start);
+        pos_start = pos_end + delim.size();
+        res.push_back(token);
+    }
+
+    res.push_back(str.substr(pos_start));
+    return res;
+}
+
 }  // namespace Utils

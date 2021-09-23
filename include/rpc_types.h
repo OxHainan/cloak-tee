@@ -92,7 +92,8 @@ struct Params {
  public:
     ByteData name = {};
     ByteData type = {};
-    ByteData owner = {};
+    nlohmann::json structural_type;
+    nlohmann::json owner;
     std::optional<ByteData> value = std::nullopt;
 
     MSGPACK_DEFINE(name, type, owner, value);
@@ -183,19 +184,25 @@ struct Function {
         return s;
     }
 
-    std::vector<std::string> get_mapping_keys(eevm::Address msg_sender, const std::string& name, bool from_read) {
+    std::vector<std::string> get_mapping_keys(eevm::Address msg_sender, const std::string& name, bool from_read, int pos = -1) {
         std::vector<std::string> res;
         auto&& ps = from_read ? read : mutate;
         for (auto&& x : ps) {
             if (x.name == name) {
                 for (auto&& key : x.keys) {
-                    if (key == "msg.sender") {
-                        res.push_back(eevm::to_checksum_address(msg_sender));
-                        continue;
+                    std::vector<std::string> nested_keys = Utils::split_string(key, ":");
+                    if (pos != -1) {
+                        nested_keys = {nested_keys.at(pos)};
                     }
-                    for (auto&& input : inputs) {
-                        if (input.name == key) {
-                            res.push_back(input.value.value());
+                    for (auto&& single_key : nested_keys) {
+                        if (single_key == "msg.sender") {
+                            res.push_back(eevm::to_checksum_address(msg_sender));
+                            continue;
+                        }
+                        for (auto&& input : inputs) {
+                            if (input.name == single_key) {
+                                res.push_back(input.value.value());
+                            }
                         }
                     }
                 }
@@ -204,9 +211,20 @@ struct Function {
         return res;
     }
 
-    std::vector<std::string> get_mapping_keys(eevm::Address msg_sender, const std::string& name) {
-        auto&& read_res = get_mapping_keys(msg_sender, name, true);
-        auto&& mutate_res = get_mapping_keys(msg_sender, name, false);
+    size_t get_keys_size(const std::string& name) {
+        auto ps = read;
+        ps.insert(ps.end(), mutate.begin(), mutate.end());
+        for (auto&& x : ps) {
+            if (x.name == name) {
+                return x.keys.size();
+            }
+        }
+        return 0;
+    }
+
+    std::vector<std::string> get_mapping_keys(eevm::Address msg_sender, const std::string& name, int pos = -1) {
+        auto&& read_res = get_mapping_keys(msg_sender, name, true, pos);
+        auto&& mutate_res = get_mapping_keys(msg_sender, name, false, pos);
         read_res.insert(read_res.end(), mutate_res.begin(), mutate_res.end());
         return read_res;
     }

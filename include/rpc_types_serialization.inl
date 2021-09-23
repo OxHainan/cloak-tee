@@ -100,9 +100,9 @@ namespace policy {
 inline void from_json(const nlohmann::json& j, Params& s) {
     require_object(j);
     from_to_str(j, "name", s.name);
-    from_to_str(j, "owner", s.owner);
     from_to_str(j, "type", s.type);
-    // Parsing().check(s.type);
+    s.structural_type = j["structural_type"];
+    s.owner = j["owner"];
 }
 
 inline void to_json(nlohmann::json& j, const Params& s) {
@@ -113,6 +113,7 @@ inline void to_json(nlohmann::json& j, const Params& s) {
     if (s.value.has_value()) {
         j["value"] = s.value.value();
     }
+    j["structural_type"] = s.structural_type;
 }
 
 inline void from_json(const nlohmann::json& j, stateParams& s) {
