@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "ethereum_state.h"
 #include "execute_transaction.h"
 #include "rpc_types.h"
 
@@ -26,7 +27,6 @@ namespace eevm {
 
 using MessageCall = evm4ccf::rpcparams::MessageCall;
 using EthereumState = evm4ccf::EthereumState;
-using namespace evm4ccf;
 
 class AbstractEVM {
  protected:
