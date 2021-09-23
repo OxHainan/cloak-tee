@@ -46,7 +46,7 @@ using TypePrt = std::shared_ptr<Type>;
 class Address : public Type {
  public:
     Address() {}
-    explicit Address(const std::string& _value) value(to_bytes(_value, LENGTH)) {}
+    explicit Address(const std::string& _value) : value(to_bytes(_value, LENGTH)) {}
 
     std::vector<uint8_t> encode() override { return value; }
 
