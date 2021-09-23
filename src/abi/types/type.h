@@ -41,10 +41,12 @@ class Type {
     virtual ~Type() {}
 };
 
+using TypePrt = std::shared_ptr<Type>;
+
 class Address : public Type {
  public:
     Address() {}
-    explicit Address(const std::string& _value) { value = to_bytes(_value, LENGTH); }
+    explicit Address(const std::string& _value) : value(to_bytes(_value, LENGTH)) {}
 
     std::vector<uint8_t> encode() override { return value; }
 
@@ -77,9 +79,9 @@ class NumericType : public Type {
     NumericType() {}
     explicit NumericType(const std::vector<uint8_t>& val) { value = eevm::from_big_endian(val.data(), val.size()); }
 
-    NumericType(const std::string& _type, const intx::uint256& _value) : type(_type), value(_value) {}
+    NumericType(const std::string& _type, const intx::uint256& _value) : value(_value), type(_type) {}
 
-    NumericType(const std::string& _type, const std::string& _value) : type(_type), value(eevm::to_uint256(_value)) {}
+    NumericType(const std::string& _type, const std::string& _value) : value(eevm::to_uint256(_value)), type(_type) {}
 
     explicit NumericType(const size_t& length) : value(eevm::to_uint256(std::to_string(length))) {}
 
@@ -140,7 +142,8 @@ class IntType : public NumericType {
                 "Bitsize must be 8 bit aligned, and in range 0 < bitSize <= 256, and in valid range.");
         }
 
-        if (typePrefix.empty()) return typePrefix;
+        if (typePrefix.empty())
+            return typePrefix;
         return typePrefix + std::to_string(bitSize);
     }
 
@@ -238,9 +241,9 @@ class Boolean : public Type {
     bool value;
 };
 
-uint64_t decode_to_uint64(const std::vector<uint8_t>& inputs) { return NumericType(inputs).to_uint64(); }
+inline uint64_t decode_to_uint64(const std::vector<uint8_t>& inputs) { return NumericType(inputs).to_uint64(); }
 
-uint64_t decode_to_uint64(const std::vector<uint8_t>& inputs, const size_t& begin, const size_t& offset = 32u) {
+inline uint64_t decode_to_uint64(const std::vector<uint8_t>& inputs, const size_t& begin, const size_t& offset = 32u) {
     auto val = sub_vector(inputs, begin, offset);
     if (val.size() != 32u) {
         throw std::logic_error(fmt::format("Cant't convert to uint64, want {} but get {}", 32u, val.size()));
@@ -249,7 +252,7 @@ uint64_t decode_to_uint64(const std::vector<uint8_t>& inputs, const size_t& begi
     return decode_to_uint64(val);
 }
 
-std::vector<uint8_t> encode_to_vector(const size_t& value) { return NumericType(value).encode(); }
+inline std::vector<uint8_t> encode_to_vector(const size_t& value) { return NumericType(value).encode(); }
 
 class BytesType : public Type {
  public:

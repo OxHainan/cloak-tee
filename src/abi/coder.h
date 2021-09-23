@@ -20,8 +20,9 @@ namespace abicoder {
 
 class Coder {
  public:
-    static std::vector<uint8_t> pack(const std::vector<Type*>& coders) {
-        if (coders.size() < 1) return {};
+    static std::vector<uint8_t> pack(const std::vector<TypePrt>& coders) {
+        if (coders.size() < 1)
+            return {};
         std::vector<PackParams> parts;
         parts.resize(coders.size());
         for (size_t i = 0; i < coders.size(); i++) {
@@ -36,9 +37,9 @@ class Coder {
         for (auto part : parts) {
             if (part.Dynamic) {
                 staticSize += 32;
-                dynamicSize += abicoder::alignSize(part.data.size());
+                dynamicSize += alignSize(part.data.size());
             } else {
-                staticSize += abicoder::alignSize(part.data.size());
+                staticSize += alignSize(part.data.size());
             }
         }
 
@@ -47,13 +48,13 @@ class Coder {
 
         for (auto part : parts) {
             if (part.Dynamic) {
-                abicoder::to_array(data, encode_to_vector(dynamicOffset), offset);
+                to_array(data, encode_to_vector(dynamicOffset), offset);
                 offset += 32u;
-                abicoder::to_array(data, part.data, dynamicOffset);
-                dynamicOffset += abicoder::alignSize(part.data.size());
+                to_array(data, part.data, dynamicOffset);
+                dynamicOffset += alignSize(part.data.size());
             } else {
-                abicoder::to_array(data, part.data, offset);
-                offset += abicoder::alignSize(part.data.size());
+                to_array(data, part.data, offset);
+                offset += alignSize(part.data.size());
             }
         }
         return data;

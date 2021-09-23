@@ -334,7 +334,6 @@ struct RpcBuilder {
         In in;
         in.id = n;
         in.method = TTag::name;
-        std::cout << "rpc-types: " << in.method << std::endl;
         return in;
     }
 };
@@ -389,24 +388,6 @@ struct GetTransactionCountTag {
     static constexpr auto name = "eth_getTransactionCount";
 };
 using GetTransactionCount = RpcBuilder<GetTransactionCountTag, rpcparams::GetTransactionCount, size_t>;
-
-struct GetTransactionCountTest {
-    static constexpr auto name = GetTransactionCountTag::name;
-    struct In {
-        eevm::Address address = {};
-        BlockID block_id = DefaultBlockID;
-    };
-    struct Out {
-        size_t result;
-    };
-};
-
-DECLARE_JSON_TYPE(GetTransactionCountTest::In);
-// TODO(DUMMY): adding 'address' and complete add_schema_components functin
-// in eEVM/bigint.h
-DECLARE_JSON_REQUIRED_FIELDS(GetTransactionCountTest::In, block_id);
-DECLARE_JSON_TYPE(GetTransactionCountTest::Out);
-DECLARE_JSON_REQUIRED_FIELDS(GetTransactionCountTest::Out, result);
 
 struct GetTransactionReceiptTag {
     static constexpr auto name = "eth_getTransactionReceipt";
