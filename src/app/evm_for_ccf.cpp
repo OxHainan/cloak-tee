@@ -54,7 +54,7 @@ class EVMHandlers : public UserEndpointRegistry {
     tables::Results tx_results;
     TransactionTables txTables;
 
-    Tables table;
+    CloakTables cloakTables;
     EthereumState make_state(kv::Tx& tx) { return EthereumState(accounts.get_views(tx), tx.get_view(storage)); }
     void install_standard_rpcs() {
         auto get_chainId = [](CloakContext&) {
@@ -167,19 +167,6 @@ class EVMHandlers : public UserEndpointRegistry {
             return response;
         };
 
-        auto get_transaction_count_test = [this](kv::Tx& tx, const nlohmann::json& params) {
-            auto gtcp = params.get<ethrpc::GetTransactionCountTest::In>();
-
-            if (gtcp.block_id != "latest") {
-                return ccf::make_error(HTTP_STATUS_BAD_REQUEST, "Can only request latest block");
-            }
-
-            auto es = make_state(tx);
-            auto account_state = es.get(gtcp.address);
-
-            return ccf::make_success(ethrpc::GetTransactionCountTest::Out{account_state.acc.get_nonce()});
-        };
-
         auto prepare = [](CloakContext& ctx, const nlohmann::json& params) {
             auto addr = params.get<TeePrepare>();
             TeeManager::prepare(ctx.tx, addr.cloak_service_addr, addr.pki_addr);
@@ -262,50 +249,51 @@ class EVMHandlers : public UserEndpointRegistry {
         // Because CCF OpenAPI json module do not support uint256, thus do not use
         // ccf::json_adapter(call) or add_auto_schema(...)
 
-        make_endpoint(ethrpc::GetBalance::name, HTTP_GET, evm4ccf::cloak_json_adapter(get_balance, table)).install();
+        make_endpoint(ethrpc::GetBalance::name, HTTP_GET, evm4ccf::cloak_json_adapter(get_balance, cloakTables))
+            .install();
 
-        make_endpoint(ethrpc::GetChainId::name, HTTP_GET, evm4ccf::cloak_json_adapter(get_chainId, table)).install();
-        make_endpoint(ethrpc::GetGasPrice::name, HTTP_GET, evm4ccf::cloak_json_adapter(get_gasPrice, table)).install();
-        make_endpoint(ethrpc::GetCode::name, HTTP_GET, evm4ccf::cloak_json_adapter(get_code, table)).install();
-        make_endpoint(
-            ethrpc::GetTransactionCount::name, HTTP_GET, evm4ccf::cloak_json_adapter(get_transaction_count, table))
+        make_endpoint(ethrpc::GetChainId::name, HTTP_GET, evm4ccf::cloak_json_adapter(get_chainId, cloakTables))
+            .install();
+        make_endpoint(ethrpc::GetGasPrice::name, HTTP_GET, evm4ccf::cloak_json_adapter(get_gasPrice, cloakTables))
+            .install();
+        make_endpoint(ethrpc::GetCode::name, HTTP_GET, evm4ccf::cloak_json_adapter(get_code, cloakTables)).install();
+        make_endpoint(ethrpc::GetTransactionCount::name,
+                      HTTP_GET,
+                      evm4ccf::cloak_json_adapter(get_transaction_count, cloakTables))
             .install();
 
         make_read_only_endpoint(ethrpc::GetTransactionReceipt::name,
                                 HTTP_GET,
-                                evm4ccf::cloak_json_read_only_adapter(get_transaction_receipt, table))
+                                evm4ccf::cloak_json_read_only_adapter(get_transaction_receipt, cloakTables))
             .install();
 
         make_endpoint(
-            ethrpc::SendRawTransaction::name, HTTP_POST, evm4ccf::cloak_json_adapter(send_raw_transaction, table))
+            ethrpc::SendRawTransaction::name, HTTP_POST, evm4ccf::cloak_json_adapter(send_raw_transaction, cloakTables))
             .install();
 
         make_endpoint(ethrpc::SendRawPrivacyTransaction::name,
                       HTTP_POST,
-                      evm4ccf::cloak_json_adapter(send_raw_privacy_policy_transaction, table))
+                      evm4ccf::cloak_json_adapter(send_raw_privacy_policy_transaction, cloakTables))
             .install();
 
         make_endpoint(ethrpc::SendRawMultiPartyTransaction::name,
                       HTTP_POST,
-                      evm4ccf::cloak_json_adapter(send_raw_multiPartyTransaction, table))
+                      evm4ccf::cloak_json_adapter(send_raw_multiPartyTransaction, cloakTables))
             .install();
 
-        make_endpoint("eth_getTransactionCount_Test", HTTP_GET, ccf::json_adapter(get_transaction_count_test))
-            .set_auto_schema<ethrpc::GetTransactionCountTest>()
+        make_endpoint("eth_sync_old_states", HTTP_POST, evm4ccf::cloak_json_adapter(sync_old_states, cloakTables))
             .install();
 
-        make_endpoint("eth_sync_old_states", HTTP_POST, evm4ccf::cloak_json_adapter(sync_old_states, table)).install();
-
-        make_endpoint("eth_sync_public_keys", HTTP_POST, evm4ccf::cloak_json_adapter(sync_public_keys, table))
+        make_endpoint("eth_sync_public_keys", HTTP_POST, evm4ccf::cloak_json_adapter(sync_public_keys, cloakTables))
             .install();
 
-        make_endpoint("cloak_prepare", HTTP_POST, evm4ccf::cloak_json_adapter(prepare, table)).install();
+        make_endpoint("cloak_prepare", HTTP_POST, evm4ccf::cloak_json_adapter(prepare, cloakTables)).install();
 
-        make_read_only_endpoint("cloak_get_mpt", HTTP_GET, evm4ccf::cloak_json_read_only_adapter(get_mpt, table))
+        make_read_only_endpoint("cloak_get_mpt", HTTP_GET, evm4ccf::cloak_json_read_only_adapter(get_mpt, cloakTables))
             .set_auto_schema<MPT_CALL>()
             .install();
 
-        make_endpoint("cloak_sync_report", HTTP_POST, evm4ccf::cloak_json_adapter(sync_report, table)).install();
+        make_endpoint("cloak_sync_report", HTTP_POST, evm4ccf::cloak_json_adapter(sync_report, cloakTables)).install();
     }
 
  public:
@@ -321,7 +309,7 @@ class EVMHandlers : public UserEndpointRegistry {
           storage("eth.storage"),
           tx_results("eth.txresults"),
           txTables(*nwt.tables),
-          table{txTables, accounts, storage, tx_results} {
+          cloakTables{txTables, accounts, storage, tx_results} {
         // SNIPPET_END: initialization
         context.get_historical_state();
         install_standard_rpcs();
