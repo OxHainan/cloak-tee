@@ -80,13 +80,7 @@ TEST_CASE("Test Bool") {
 
     SUBCASE("When paramters value is 0x10") {
         string src = "0x10";
-        auto correct = to_bytes(src, 31u);
-        try {
-            auto boolean = Boolean(src);
-            test_basic(&boolean, move(correct));
-        } catch (const std::exception& e) {
-            CHECK(true);
-        }
+        CHECK_THROWS(Boolean(src));
     }
 }
 

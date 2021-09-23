@@ -51,7 +51,7 @@ using PrivacyDigests = kv::Map<Address, h256>;
 using CloakPolicys = kv::Map<h256, CloakPolicyTransaction>;
 using CloakDigests = kv::Map<Address, h256>;
 
-enum class Status : uint8_t {
+enum class Status {
     PENDING,
     REQUESTING_OLD_STATES,
     SYNCING,
@@ -60,14 +60,31 @@ enum class Status : uint8_t {
     DROPPED,
 };
 
-static std::map<Status, ByteData> statusMap = {
-    {Status::PENDING, "PENDING"},
-    {Status::REQUESTING_OLD_STATES, "REQUESTING_OLD_STATES"},
-    {Status::SYNCING, "SYNCING"},
-    {Status::SYNCED, "SYNCED"},
-    {Status::SYNC_FAILED, "SYNC_FAILED"},
-    {Status::DROPPED, "DROPPED"},
+DECLARE_JSON_ENUM(Status,
+                  {
+                      {Status::PENDING, "PENDING"},
+                      {Status::REQUESTING_OLD_STATES, "REQUESTING_OLD_STATES"},
+                      {Status::SYNCING, "SYNCING"},
+                      {Status::SYNCED, "SYNCED"},
+                      {Status::SYNC_FAILED, "SYNC_FAILED"},
+                      {Status::DROPPED, "DROPPED"},
+                  })
+struct MPT_CALL {
+    struct In {
+        std::string id = {};
+    };
+
+    struct Out {
+        Status status = {};
+        std::string output = {};
+    };
 };
+
+DECLARE_JSON_TYPE(MPT_CALL::In)
+DECLARE_JSON_REQUIRED_FIELDS(MPT_CALL::In, id)
+
+DECLARE_JSON_TYPE(MPT_CALL::Out)
+DECLARE_JSON_REQUIRED_FIELDS(MPT_CALL::Out, status, output)
 
 struct MultiPartyTransaction {
     size_t nonce;
@@ -77,8 +94,10 @@ struct MultiPartyTransaction {
     MSGPACK_DEFINE(nonce, from, to, params);
 
     bool check_transaction_type() {
-        if (to.size() == 20u) return false;
-        if (to.size() == 32u) return true;
+        if (to.size() == 20u)
+            return false;
+        if (to.size() == 32u)
+            return true;
         throw std::logic_error(
             fmt::format("Unsupported transaction type, to length should be {} or {}, but is {}", 20u, 32u, to.size()));
     }
@@ -145,8 +164,6 @@ struct CloakPolicyTransaction {
     void set_status(Status status) { this->status = uint8_t(status); }
 
     Status get_status() const { return Status(status); }
-
-    std::string get_status_str() const { return statusMap[Status(status)]; }
 
     void save(kv::Tx& tx, CloakPolicys& cp) noexcept {
         auto handler = tx.get_view(cp);

@@ -43,7 +43,7 @@ function(add_uint_test name)
 endfunction()
 
 
-if (test)
+if (BUILD_TESTS)
   file(GLOB TESTS_DIR ${CMAKE_CURRENT_LIST_DIR}/../tests/*.cpp*)
   foreach(FILE_PATH ${TESTS_DIR})
     STRING(REGEX REPLACE ".+/(.+)\\..*" "\\1" FILE_NAME ${FILE_PATH})

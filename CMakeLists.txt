@@ -34,9 +34,9 @@ endif()
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/evm4ccf.app.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/install.cmake)
-option(test "Build all tests. " ON)
+option(BUILD_TESTS "Build tests" OFF)
 
-if (test)
+if (BUILD_TESTS)
   enable_testing()
   add_compile_definitions(DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/evm4ccf.tests.cmake)

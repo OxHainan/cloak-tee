@@ -15,7 +15,7 @@ jobs:
           command: mkdir build
       - run:
           name: CMake build
-          command: cmake .. -DCMAKE_BUILD_TYPE=Debug -L
+          command: cmake .. -DCMAKE_BUILD_TYPE=Debug  -DBUILD_TESTS=ON -L
           working_directory: build
       - run:
           name: Build resources

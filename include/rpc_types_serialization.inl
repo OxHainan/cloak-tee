@@ -24,7 +24,8 @@ inline void array_from_hex_string(std::array<uint8_t, N>& a, const std::string& 
 template <typename T>
 inline void from_to_str(const nlohmann::json& j, const std::string& s, T& v) {
     const auto it = j.find(s);
-    if (it == j.end() || it->is_null() || (it->is_string() && it->get<std::string>().empty())) return;
+    if (it == j.end() || it->is_null() || (it->is_string() && it->get<std::string>().empty()))
+        return;
     v = *it;
 }
 
@@ -97,60 +98,6 @@ inline void from_json(const nlohmann::json& j, BlockHeader& s) {
 }
 
 namespace policy {
-inline void from_json(const nlohmann::json& j, Params& s) {
-    require_object(j);
-    from_to_str(j, "name", s.name);
-    from_to_str(j, "type", s.type);
-    s.structural_type = j["structural_type"];
-    s.owner = j["owner"];
-}
-
-inline void to_json(nlohmann::json& j, const Params& s) {
-    j = nlohmann::json::object();
-    j["name"] = s.name;
-    j["owner"] = s.owner;
-    j["type"] = s.type;
-    if (s.value.has_value()) {
-        j["value"] = s.value.value();
-    }
-    j["structural_type"] = s.structural_type;
-}
-
-inline void from_json(const nlohmann::json& j, stateParams& s) {
-    require_object(j);
-    from_to_str(j, "name", s.name);
-    from_array_to_object(j, "keys", s.keys);
-}
-
-inline void to_json(nlohmann::json& j, const stateParams& s) {
-    j = nlohmann::json::object();
-    j["name"] = s.name;
-    j["keys"] = s.keys;
-}
-
-inline void from_json(const nlohmann::json& j, MultiInput& s) {
-    require_object(j);
-    from_to_str(j, "name", s.name);
-    from_to_str(j, "value", s.value);
-}
-
-inline void to_json(nlohmann::json& j, const MultiInput& s) {
-    j = nlohmann::json::object();
-    j["name"] = s.name;
-    j["value"] = s.value;
-}
-
-inline void from_json(const nlohmann::json& j, MultiPartyParams& s) {
-    require_object(j);
-    from_to_str(j, "function", s.function);
-    from_array_to_object(j, "inputs", s.inputs);
-}
-
-inline void to_json(nlohmann::json& j, const MultiPartyParams& s) {
-    j = nlohmann::json::object();
-    j["function"] = s.function;
-    j["inputs"] = s.inputs;
-}
 
 inline void from_json(const nlohmann::json& j, Function& s) {
     require_object(j);
@@ -304,17 +251,6 @@ inline void from_json(const nlohmann::json& j, GetMultiPartyStatus& s) {
     s.tx_hash = Utils::to_KeccakHash(j[0]);
 }
 
-inline void to_json(nlohmann::json& j, const WorkOrderSubmit& s) {
-    j = nlohmann::json::object();
-    j["responseTimeoutMSecs"] = eevm::to_hex_string(s.workOrder.responseTimeoutMSecs);
-    j["workOrderId"] = eevm::to_checksum_address(s.workOrder.workOrderId);
-}
-
-inline void from_json(const nlohmann::json& j, WorkOrderSubmit& s) {
-    require_object(j);
-    s.workOrder.workOrderId = eevm::to_uint256(j["workOrderId"]);
-    s.workOrder.responseTimeoutMSecs = eevm::to_uint64(j["responseTimeoutMSecs"]);
-}
 //
 inline void to_json(nlohmann::json& j, const SendTransaction& s) {
     j = nlohmann::json::array();
@@ -402,27 +338,9 @@ inline void from_json(const nlohmann::json& j, ReceiptResponse& s) {
     }
 }
 
-inline void to_json(nlohmann::json& j, const ReceiptWorkOrderResponse& s) {
-    if (!s.has_value()) {
-        j = nullptr;
-    } else {
-        j = nlohmann::json::object();
-        j["responseTimeoutMSecs"] = eevm::to_hex_string(s->responseTimeoutMSecs);
-        j["workOrderId"] = eevm::to_checksum_address(s->workOrderId);
-    }
-}
-
-inline void from_json(const nlohmann::json& j, ReceiptWorkOrderResponse& s) {
-    if (j.is_null()) {
-        s = {};
-    } else {
-        require_object(j);
-        s->workOrderId = eevm::to_uint256(j["workOrderId"]);
-        s->responseTimeoutMSecs = eevm::to_uint64(j["responseTimeoutMSecs"]);
-    }
-}
 inline bool to_bool(const std::string& s) {
-    if (s == "true") return true;
+    if (s == "true")
+        return true;
     return false;
 }
 inline std::string from_bool(const bool& s) { return s == true ? "true" : "false"; }
