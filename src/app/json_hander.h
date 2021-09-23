@@ -20,7 +20,7 @@
 namespace evm4ccf {
 using SeqNo = int64_t;
 
-struct Tables {
+struct CloakTables {
     TransactionTables& txTables;
     tables::Accounts& accounts;
     tables::Storage& storage;
@@ -29,16 +29,16 @@ struct Tables {
 
 struct CloakContext {
     kv::Tx& tx;
-    const Tables& table;
+    const CloakTables& cloakTables;
     SeqNo seqno;
-    CloakContext(kv::Tx& _tx, const Tables& _tables) : tx(_tx), table(_tables) {}
+    CloakContext(kv::Tx& tx_, const CloakTables& cloakTables_) : tx(tx_), cloakTables(cloakTables_) {}
 };
 
 struct ReadOnlyCloakContext {
     kv::ReadOnlyTx& tx;
-    const Tables& table;
+    const CloakTables& cloakTables;
     SeqNo seqno;
-    ReadOnlyCloakContext(kv::ReadOnlyTx& _tx, const Tables& _tables) : tx(_tx), table(_tables) {}
+    ReadOnlyCloakContext(kv::ReadOnlyTx& tx_, const CloakTables& cloakTables_) : tx(tx_), cloakTables(cloakTables_) {}
 };
 
 template <typename T>
@@ -78,7 +78,7 @@ static std::pair<serdes::Pack, nlohmann::json> get_json_params(const std::shared
 using HandlerJsonParamsAndForward =
     std::function<ccf::jsonhandler::JsonAdapterResponse(CloakContext& ctx, nlohmann::json&& params)>;
 
-static ccf::EndpointFunction cloak_json_adapter(const HandlerJsonParamsAndForward& f, const Tables& table) {
+static ccf::EndpointFunction cloak_json_adapter(const HandlerJsonParamsAndForward& f, const CloakTables& table) {
     return [f, &table](ccf::EndpointContext& args) {
         auto [packing, params] = get_json_params(args.rpc_ctx);
         ccf::jsonhandler::JsonAdapterResponse result;
@@ -97,7 +97,7 @@ static ccf::EndpointFunction cloak_json_adapter(const HandlerJsonParamsAndForwar
 
 using HandlerTxOnly = std::function<ccf::jsonhandler::JsonAdapterResponse(CloakContext& ctx)>;
 
-static ccf::EndpointFunction cloak_json_adapter(const HandlerTxOnly& f, const Tables& table) {
+static ccf::EndpointFunction cloak_json_adapter(const HandlerTxOnly& f, const CloakTables& table) {
     return [f, &table](ccf::EndpointContext& args) {
         const auto [packing, params] = get_json_params(args.rpc_ctx);
         ccf::jsonhandler::JsonAdapterResponse result;
@@ -117,7 +117,7 @@ using ReadOnlyHandlerWithJson =
     std::function<ccf::jsonhandler::JsonAdapterResponse(ReadOnlyCloakContext& ctx, nlohmann::json&& params)>;
 
 static ccf::ReadOnlyEndpointFunction cloak_json_read_only_adapter(const ReadOnlyHandlerWithJson& f,
-                                                                  const Tables& table) {
+                                                                  const CloakTables& table) {
     return [f, &table](ccf::ReadOnlyEndpointContext& args) {
         auto [_, params] = get_json_params(args.rpc_ctx);
         ccf::jsonhandler::JsonAdapterResponse result;
