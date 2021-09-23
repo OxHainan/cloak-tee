@@ -14,13 +14,13 @@
 
 #pragma once
 
-#include "../app/tables.h"
-#include "../app/utils.h"
-#include "../queue/workertransaction.h"
+#include "app/tables.h"
+#include "app/utils.h"
 #include "ethereum_transaction.h"
 #include "kv/map.h"
 #include "kv/store.h"
-#include "signature_abstract.h"
+#include "queue/workertransaction.h"
+#include "transaction/signature_abstract.h"
 
 #include <eEVM/util.h>
 namespace evm4ccf {
@@ -95,7 +95,8 @@ struct PrivacyTransactionWithSignature : public SignatureAbstract, public Privac
     eevm::rlp::ByteString encode() const { return eevm::rlp::encode(to, verifierAddr, codeHash, data, v, r, s); }
 
     eevm::KeccakHash to_be_signed() const override {
-        if (is_pre_eip_155(v)) return PrivacyTransaction::to_be_signed();
+        if (is_pre_eip_155(v))
+            return PrivacyTransaction::to_be_signed();
 
         return eevm::keccak_256(eevm::rlp::encode(to, verifierAddr, codeHash, data, current_chain_id, 0, 0));
     }

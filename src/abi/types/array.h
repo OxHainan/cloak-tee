@@ -17,6 +17,7 @@
 #include "abi/common.h"
 #include "abi/parsing.h"
 #include "abi/utils.h"
+// #include "abi/encoder.h"
 #include "type.h"
 
 #include <cstddef>
@@ -24,7 +25,7 @@
 #include <string>
 
 namespace abicoder {
-
+class Encoder;
 Type* entry_identity(const std::string& rawType);
 Type* generate_coders(const std::string& rawType, const std::string& value);
 class ArrayType : public Type {
@@ -55,6 +56,9 @@ class ArrayType : public Type {
             parameters.push_back(parameter);
         }
 
+        // auto encoder = Encoder();
+        // encoder.add_inputs("", type, value);
+        // auto data = encoder.encode();
         std::vector<uint8_t> data = Coder::pack(parameters);
 
         if (isDynamicType) {
@@ -203,7 +207,8 @@ Type* check_paramter(const std::string& rawType, const size_t& length) {
     } else if (!rawType.find(BOOL)) {
         return new Boolean();
     } else if (!rawType.find(BYTES)) {
-        if (std::strcmp(rawType.c_str(), BYTES) == 0) return new DynamicBytes();
+        if (std::strcmp(rawType.c_str(), BYTES) == 0)
+            return new DynamicBytes();
         return new Bytes(length);
     } else if (!rawType.find(FIXED) || !rawType.find(UFIXED)) {
         throw std::logic_error(fmt::format("Unsupported type: {}", rawType));
@@ -223,7 +228,8 @@ Type* generate_coders(const std::string& rawType, const size_t& length, const st
     } else if (!rawType.find(BOOL)) {
         return new Boolean(value);
     } else if (!rawType.find(BYTES)) {
-        if (std::strcmp(rawType.c_str(), BYTES) == 0 && length == 0) return new DynamicBytes(value);
+        if (std::strcmp(rawType.c_str(), BYTES) == 0 && length == 0)
+            return new DynamicBytes(value);
         return new Bytes(length, value);
     } else if (!rawType.find(FIXED) || !rawType.find(UFIXED)) {
         throw std::logic_error(fmt::format("Unsupported type: {}", rawType));

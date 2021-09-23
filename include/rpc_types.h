@@ -51,14 +51,6 @@ struct BlockHeader {
     BlockHash block_hash = {};
 };
 
-struct WorkOrder {
-    uint64_t responseTimeoutMSecs = {};
-    ByteData payloadFormat = {};
-    ByteData resultUri = {};
-    ByteData notifyUri = {};
-    uint256_t workOrderId = {};
-};
-
 inline bool operator==(const BlockHeader& l, const BlockHeader& r) {
     return l.number == r.number && l.difficulty == r.difficulty && l.gas_limit == r.gas_limit &&
            l.gas_used == r.gas_used && l.timestamp == r.timestamp && l.miner == r.miner && l.block_hash == r.block_hash;
@@ -80,6 +72,9 @@ struct MultiInput {
     MSGPACK_DEFINE(name, value);
 };
 
+DECLARE_JSON_TYPE(MultiInput)
+DECLARE_JSON_REQUIRED_FIELDS(MultiInput, name, value)
+
 struct MultiPartyParams {
     ByteData function = {};
     std::vector<MultiInput> inputs = {};
@@ -87,6 +82,9 @@ struct MultiPartyParams {
 
     ByteData name() const { return function; }
 };
+
+DECLARE_JSON_TYPE(MultiPartyParams)
+DECLARE_JSON_REQUIRED_FIELDS(MultiPartyParams, function, inputs)
 
 struct Params {
  public:
@@ -97,41 +95,25 @@ struct Params {
 
     MSGPACK_DEFINE(name, type, owner, value);
 
-    ByteData getValue() const {
-        if (!value.has_value()) return "";
-        return value.value();
-    }
+    ByteData getValue() const { return value.value_or(""); }
 
     void set_value(const ByteData& _v) { value = _v; }
-
-    // void pack(vector<void*>& coders) const { abicoder::paramCoder(coders, name, type, getValue()); }
-
-    std::string info() const {
-        std::string s = fmt::format("param name:{}, type:{}, owner:{}", name, type, owner);
-        if (value.has_value()) {
-            s.append(fmt::format(", value:{}", value.value()));
-        }
-        s.append("\n");
-        return s;
-    }
 };
+
+DECLARE_JSON_TYPE_WITH_OPTIONAL_FIELDS(Params)
+DECLARE_JSON_OPTIONAL_FIELDS(Params, name, value)
+DECLARE_JSON_REQUIRED_FIELDS(Params, type, owner)
 
 struct stateParams {
     ByteData name = {};
     std::vector<ByteData> keys = {};
-
     MSGPACK_DEFINE(name, keys);
 };
 
-enum Type { ADDRESS, UINT, INT, BYTES, STRING, BOOL };
-static std::unordered_map<ByteData, int> contractType = {
-    {"string", STRING},
-    {"bytes", BYTES},
-    {"bool", BOOL},
-    {"address", ADDRESS},
-    {"uint", UINT},
-    {"int", INT},
-};
+DECLARE_JSON_TYPE_WITH_OPTIONAL_FIELDS(stateParams)
+DECLARE_JSON_OPTIONAL_FIELDS(stateParams, keys)
+DECLARE_JSON_REQUIRED_FIELDS(stateParams, name)
+
 struct Function {
  public:
     ByteData type;
@@ -154,7 +136,8 @@ struct Function {
     }
 
     void padding(const MultiInput& p) {
-        if (complete()) return;
+        if (complete())
+            return;
 
         for (int i = 0; i < inputs.size(); i++) {
             if (inputs[i].name == p.name) {
@@ -173,14 +156,6 @@ struct Function {
             }
         }
         return true;
-    }
-
-    std::string info() const {
-        std::string s = fmt::format("name:{}, type:{}\n", name, type);
-        for (auto&& i : inputs) {
-            s.append(i.info());
-        }
-        return s;
     }
 
     std::vector<std::string> get_mapping_keys(eevm::Address msg_sender, const std::string& name, bool from_read) {
@@ -211,7 +186,15 @@ struct Function {
         return read_res;
     }
 };
+
 }  // namespace policy
+struct TeePrepare {
+    eevm::Address pki_addr;
+    eevm::Address cloak_service_addr;
+};
+
+DECLARE_JSON_TYPE(TeePrepare)
+DECLARE_JSON_REQUIRED_FIELDS(TeePrepare, pki_addr, cloak_service_addr)
 
 namespace rpcparams {
 struct MessageCall {
@@ -239,14 +222,6 @@ struct Policy {
             }
         }
         throw std::logic_error(fmt::format("doesn't find this {} function in this policy modules", name));
-    }
-
-    std::string info() const {
-        std::string s = fmt::format("contract: {}, \n", contract);
-        for (auto&& v : functions) {
-            s.append(fmt::format("function: {}\n", v.info()));
-        }
-        return s;
     }
 };
 
@@ -297,9 +272,6 @@ struct SendMultiPartyTransaction {
     ByteData params = {};
 };
 
-struct WorkOrderSubmit {
-    WorkOrder workOrder = {};
-};
 }  // namespace rpcparams
 
 namespace rpcresults {
@@ -319,14 +291,6 @@ struct TxReceipt {
     uint256_t status = {};
 };
 
-struct WorkOrderReceipt {
-    uint64_t responseTimeoutMSecs = {};
-    ByteData payloadFormat = {};
-    ByteData resultUri = {};
-    ByteData notifyUri = {};
-    eevm::Address workOrderId = {};
-};
-
 struct MultiPartyReceipt {
     bool state = {};
     ByteData progress = {};
@@ -334,7 +298,6 @@ struct MultiPartyReceipt {
 
 // "A transaction receipt object, or null when no receipt was found"
 using ReceiptResponse = std::optional<TxReceipt>;
-using ReceiptWorkOrderResponse = std::optional<WorkOrderReceipt>;
 using MultiPartyReceiptResponse = std::optional<MultiPartyReceipt>;
 }  // namespace rpcresults
 
@@ -353,6 +316,7 @@ struct RpcBuilder {
         In in;
         in.id = n;
         in.method = TTag::name;
+        std::cout << "rpc-types: " << in.method << std::endl;
         return in;
     }
 };
@@ -457,12 +421,6 @@ struct SendTransactionTag {
     static constexpr auto name = "eth_sendTransaction";
 };
 using SendTransaction = RpcBuilder<SendTransactionTag, rpcparams::SendTransaction, TxHash>;
-
-struct WorkOrderSubmitTag {
-    static constexpr auto name = "cloak_workOrderSubmit";
-};
-using WorkOrderSubmit =
-    RpcBuilder<WorkOrderSubmitTag, rpcparams::WorkOrderSubmit, rpcresults::ReceiptWorkOrderResponse>;
 
 }  // namespace ethrpc
 }  // namespace evm4ccf

@@ -22,14 +22,14 @@
 namespace abicoder {
 using uint256 = intx::uint256;
 
-static constexpr auto ADDRESS = "address";
-static constexpr auto UINT = "uint";
-static constexpr auto INT = "int";
-static constexpr auto BOOL = "bool";
-static constexpr auto STRING = "string";
-static constexpr auto BYTES = "bytes";
-static constexpr auto FIXED = "fixed";
-static constexpr auto UFIXED = "ufixed";
+inline constexpr auto ADDRESS = "address";
+inline constexpr auto UINT = "uint";
+inline constexpr auto INT = "int";
+inline constexpr auto BOOL = "bool";
+inline constexpr auto STRING = "string";
+inline constexpr auto BYTES = "bytes";
+inline constexpr auto FIXED = "fixed";
+inline constexpr auto UFIXED = "ufixed";
 
 struct PackParams {
     bool Dynamic;
