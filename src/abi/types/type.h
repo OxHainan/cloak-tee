@@ -256,7 +256,7 @@ inline std::vector<uint8_t> encode_to_vector(const size_t& value) { return Numer
 
 class BytesType : public Type {
  public:
-    BytesType() {}
+    explicit BytesType(const std::string& _type) : type(_type) {}
     BytesType(const std::string& _type, const std::vector<uint8_t>& src) : type(_type), value(src) {}
 
     std::vector<uint8_t> encode() override {
@@ -296,8 +296,7 @@ class BytesType : public Type {
 // static bytes, likes bytes8, bytes32
 class Bytes : public BytesType {
  public:
-    Bytes() {}
-    explicit Bytes(const size_t& byteSize) : Bytes(byteSize, std::vector<uint8_t>(byteSize)) {}
+    explicit Bytes(const size_t& byteSize = 32) : Bytes(byteSize, std::vector<uint8_t>(byteSize)) {}
 
     Bytes(const size_t& byteSize, const std::vector<uint8_t>& _value)
         : BytesType(BYTES + std::to_string(_value.size()), _value), length(byteSize) {
@@ -340,12 +339,19 @@ class Bytes : public BytesType {
     size_t length;
 };
 
+const std::vector<uint8_t> bytes_strip(const std::string& src) {
+    if (src.size() >= 2 && src[1] == 'x') {
+        return eevm::to_bytes(src);
+    }
+    return std::vector<uint8_t>(src.begin(), src.end());
+}
+
 class DynamicBytes : public BytesType {
  public:
-    DynamicBytes() {}
+    DynamicBytes() : BytesType(BYTES) {}
     explicit DynamicBytes(const std::vector<uint8_t>& _value) : BytesType(BYTES, _value) {}
 
-    explicit DynamicBytes(const std::string& src) : DynamicBytes(std::vector<uint8_t>(src.begin(), src.end())) {}
+    explicit DynamicBytes(const std::string& src) : DynamicBytes(bytes_strip(src)) {}
 
     bool dynamicType() override { return true; }
 };
