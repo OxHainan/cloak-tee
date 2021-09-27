@@ -29,6 +29,7 @@
 #include "tls/pem.h"
 #include "vector"
 
+#include <abi/utils.h>
 #include <eEVM/bigint.h>
 #include <eEVM/rlp.h>
 #include <eEVM/util.h>
@@ -183,9 +184,9 @@ struct CloakPolicyTransaction {
             if (state.structural_type["type"] != "mapping") {
                 continue;
             }
-            read.push_back(to_hex_string(i));
-            auto keys = function.get_mapping_keys(from, state.name);
-            read.push_back(to_hex_string(keys.size() / state.structural_type["depth"].get<size_t>()));
+            read.push_back(to_hex_string_fixed(i));
+            auto keys = function.get_mapping_keys(eevm::to_checksum_address(from), state.name);
+            read.push_back(to_hex_string_fixed(function.get_keys_size(state.name)));
             read.insert(read.end(), keys.begin(), keys.end());
         }
         CLOAK_DEBUG_FMT("read:{}", fmt::join(read, ", "));
@@ -214,12 +215,13 @@ struct CloakPolicyTransaction {
         size_t return_len = get_states_return_len(encrypted);
         CLOAK_DEBUG_FMT("get_states_call_data, return_len:{}, read:{}", return_len, fmt::join(read, ", "));
         // function selector
-        std::vector<uint8_t> data = Utils::make_function_selector("get_states(uint256[],uint256)");
+        std::vector<uint8_t> data = Utils::make_function_selector("get_states(bytes[],uint256)");
 
         auto encoder = abicoder::Encoder();
         encoder.add_inputs("read", "bytes[]", read);
         encoder.add_inputs("return_len", "uint", to_hex_string(return_len));
         auto packed = encoder.encode();
+        CLOAK_DEBUG_FMT("encoded:{}", fmt::join(abicoder::split_abi_data(packed), "\n"));
         data.insert(data.end(), packed.begin(), packed.end());
         return data;
     }
@@ -263,7 +265,7 @@ struct CloakPolicyTransaction {
                 if (key_var_pos == -1) {
                     res.push_back(addresses.at(p.owner["var"].get<std::string>()));
                 } else {
-                    auto keys = function.get_mapping_keys(from, p.name, key_var_pos);
+                    auto keys = function.get_mapping_keys(eevm::to_checksum_address(from), p.name, key_var_pos);
                     res.insert(res.end(), keys.begin(), keys.end());
                 }
             } else {
@@ -313,9 +315,9 @@ struct CloakPolicyTransaction {
                     res.push_back(old_states[idx + 1]);
                 }
             } else if (owner == "mapping") {
-                auto mapping_keys = function.get_mapping_keys(from, p.name);
+                auto mapping_keys = function.get_mapping_keys(eevm::to_checksum_address(from), p.name, -1, false);
                 size_t depth = p.structural_type["depth"].get<size_t>();
-                size_t keys_size = mapping_keys.size() / depth;
+                size_t keys_size = function.get_keys_size(p.name);
                 auto it = mapping_keys.begin();
                 res.push_back(old_states[idx + 1]);
                 for (size_t j = 0; j < keys_size; j++) {
@@ -419,9 +421,9 @@ struct CloakPolicyTransaction {
                     res.push_back(new_states[idx + 1]);
                 }
             } else if (ps.owner["owner"] == "mapping") {
-                auto mapping_keys = function.get_mapping_keys(from, ps.name);
+                auto mapping_keys = function.get_mapping_keys(eevm::to_checksum_address(from), ps.name, -1, false);
                 size_t depth = ps.structural_type["depth"].get<size_t>();
-                size_t keys_size = mapping_keys.size() / depth;
+                size_t keys_size = function.get_keys_size(ps.name);
                 res.push_back(new_states[idx + 1]);
                 auto it = mapping_keys.begin();
                 for (size_t j = 0; j < keys_size; j++) {

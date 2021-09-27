@@ -21,6 +21,7 @@
 #include "string"
 
 #include <algorithm>
+#include <app/utils.h>
 #include <iostream>
 #include <sys/types.h>
 #include <vector>
@@ -345,7 +346,7 @@ class DynamicBytes : public BytesType {
     DynamicBytes() {}
     explicit DynamicBytes(const std::vector<uint8_t>& _value) : BytesType(BYTES, _value) {}
 
-    explicit DynamicBytes(const std::string& src) : DynamicBytes(std::vector<uint8_t>(src.begin(), src.end())) {}
+    explicit DynamicBytes(const std::string& src) : DynamicBytes(eevm::to_bytes(src)) {}
 
     bool dynamicType() override { return true; }
 };

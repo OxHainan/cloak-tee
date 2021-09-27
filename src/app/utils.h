@@ -209,7 +209,7 @@ inline std::pair<Bytes, Bytes> split_tag_and_iv(const Bytes& ti) {
     return {tag, iv};
 }
 
-std::vector<std::string> split_string(const std::string &str, const std::string &delim) {
+inline std::vector<std::string> split_string(const std::string &str, const std::string &delim) {
     size_t pos_start = 0;
     std::string token;
     std::vector<std::string> res;
@@ -221,6 +221,15 @@ std::vector<std::string> split_string(const std::string &str, const std::string 
     }
 
     res.push_back(str.substr(pos_start));
+    return res;
+}
+
+template <typename T>
+inline std::vector<T> vector_filter(const std::vector<T> &vec, std::function<T(T&&)> f) {
+    std::vector<T> res(vec.size());
+    for (size_t i = 0; i < vec.size(); i++) {
+        res[i] = f(vec[i]);
+    }
     return res;
 }
 

@@ -147,4 +147,15 @@ inline std::vector<std::string> decode_string_array(const std::vector<uint8_t> &
     }
     return res;
 }
+
+inline std::vector<std::string> split_abi_data(const std::vector<uint8_t>& data) {
+    std::vector<std::string> res;
+    size_t count = data.size() / 32;
+    for (size_t i = 0; i < count; i++) {
+        res.push_back(eevm::to_hex_string({data.begin() + i * 32, data.begin() + (i + 1) * 32}));
+    }
+    res.push_back(eevm::to_hex_string({data.begin() + count * 32, data.end()}));
+    return res;
+}
+
 }  // namespace abicoder

@@ -94,7 +94,7 @@ struct Params {
     nlohmann::json owner;
     std::optional<ByteData> value = std::nullopt;
 
-    MSGPACK_DEFINE(name, type, owner, value);
+    MSGPACK_DEFINE(name, type, structural_type, owner, value);
 
     ByteData getValue() const { return value.value_or(""); }
 
@@ -102,7 +102,7 @@ struct Params {
 };
 
 DECLARE_JSON_TYPE_WITH_OPTIONAL_FIELDS(Params)
-DECLARE_JSON_OPTIONAL_FIELDS(Params, name, value)
+DECLARE_JSON_OPTIONAL_FIELDS(Params, name, value, structural_type)
 DECLARE_JSON_REQUIRED_FIELDS(Params, type, owner)
 
 struct stateParams {
@@ -159,9 +159,13 @@ struct Function {
         return true;
     }
 
-    std::vector<std::string> get_mapping_keys(eevm::Address msg_sender, const std::string& name, bool from_read, int pos = -1) {
+    std::vector<std::string> get_mapping_keys(const std::string &msg_sender,
+                                              const std::string& name,
+                                              int pos = -1,
+                                              bool encoded = true) {
         std::vector<std::string> res;
-        auto&& ps = from_read ? read : mutate;
+        auto ps = read;
+        ps.insert(ps.end(), mutate.begin(), mutate.end());
         for (auto&& x : ps) {
             if (x.name == name) {
                 for (auto&& key : x.keys) {
@@ -171,12 +175,21 @@ struct Function {
                     }
                     for (auto&& single_key : nested_keys) {
                         if (single_key == "msg.sender") {
-                            res.push_back(eevm::to_checksum_address(msg_sender));
+                            if (encoded) {
+                                res.push_back(eevm::to_hex_string(abicoder::Address(msg_sender).encode()));
+                            } else {
+                                res.push_back(msg_sender);
+                            }
                             continue;
                         }
                         for (auto&& input : inputs) {
                             if (input.name == single_key) {
-                                res.push_back(input.value.value());
+                                if (encoded) {
+                                    auto data = abicoder::Encoder::encode(input.type, input.value.value());
+                                    res.push_back(eevm::to_hex_string(data));
+                                } else {
+                                    res.push_back(input.value.value());
+                                }
                             }
                         }
                     }
@@ -195,13 +208,6 @@ struct Function {
             }
         }
         return 0;
-    }
-
-    std::vector<std::string> get_mapping_keys(eevm::Address msg_sender, const std::string& name, int pos = -1) {
-        auto&& read_res = get_mapping_keys(msg_sender, name, true, pos);
-        auto&& mutate_res = get_mapping_keys(msg_sender, name, false, pos);
-        read_res.insert(read_res.end(), mutate_res.begin(), mutate_res.end());
-        return read_res;
     }
 };
 

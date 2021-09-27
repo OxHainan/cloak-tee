@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 
 // STL/3rd-party
+#include <abi/decoder.h>
+#include <abi/utils.h>
 #include <iostream>
 #include <stdexcept>
 #include <unistd.h>
@@ -183,7 +185,8 @@ class EVMHandlers : public UserEndpointRegistry {
             }
 
             auto data = to_bytes(params["data"].get<std::string>());
-            auto old_states = abicoder::decode_uint256_array(data);
+            CLOAK_DEBUG_FMT("encoded old_states:{}", fmt::join(abicoder::split_abi_data(data), "\n"));
+            auto old_states = abicoder::Decoder::decode_bytes_array(data);
             auto old_states_hash = eevm::keccak_256(data);
             ct.old_states = old_states;
             ct.old_states_hash = old_states_hash;
@@ -318,10 +321,10 @@ class EVMHandlers : public UserEndpointRegistry {
         MessageCall set_states_mc;
 
         auto encoder = abicoder::Encoder();
-        encoder.add_inputs("set_states", "uint[]", decryped_states);
+        encoder.add_inputs("set_states", "bytes[]", decryped_states);
         auto decryped_states_packed = encoder.encode();
         // function selector
-        auto set_states_call_data = Utils::make_function_selector("set_states(uint256[])");
+        auto set_states_call_data = Utils::make_function_selector("set_states(bytes[])");
         CLOAK_DEBUG_FMT("decryped_states:{}", fmt::join(decryped_states, ", "));
         set_states_call_data.insert(
             set_states_call_data.end(), decryped_states_packed.begin(), decryped_states_packed.end());
@@ -366,7 +369,7 @@ class EVMHandlers : public UserEndpointRegistry {
                         get_new_states_res.exmsg);
 
         // == Sync new states ==
-        std::vector<std::string> new_states = abicoder::decode_uint256_array(get_new_states_res.output);
+        std::vector<std::string> new_states = abicoder::Decoder::decode_bytes_array(get_new_states_res.output);
         auto encrypted = ct.encrypt_states(tx, new_states);
         CLOAK_DEBUG_FMT("encrypted:{}", fmt::join(encrypted, ", "));
         ct.sync_result(tx, encrypted);

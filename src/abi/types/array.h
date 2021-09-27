@@ -33,17 +33,17 @@ class ArrayType : public Type {
     ArrayType() {}
 
     ArrayType(const std::string& _type, const std::vector<std::string> _value, bool _dynamicType)
-        : type(_type), isDynamicType(_dynamicType), value(_value) {
-        if (!valid(_type, _value)) {
+        : value(_value), isDynamicType(_dynamicType), type(_type) {
+        if (!valid(_type)) {
             throw std::logic_error("If empty vector is provided, use empty array instance");
         }
     }
 
-    ArrayType(const std::string& _type, bool _dynamicType) : type(_type), isDynamicType(_dynamicType) {}
+    ArrayType(const std::string& _type, bool _dynamicType) : isDynamicType(_dynamicType), type(_type) {}
 
     ArrayType(const std::string& _type, const std::string& _value, bool _isDynamicType)
-        : type(_type), isDynamicType(_isDynamicType), value(Utils::stringToArray(_value)) {
-        if (!valid(_type, _value)) {
+        : value(Utils::stringToArray(_value)), isDynamicType(_isDynamicType), type(_type) {
+        if (!valid(_type)) {
             throw std::logic_error("If empty string value is provided, use empty array instance");
         }
     }
@@ -118,11 +118,7 @@ class ArrayType : public Type {
     std::vector<TypePrt> parameters;
 
  private:
-    bool valid(const std::string& _type, const std::vector<std::string>& _value) {
-        return !_type.empty() && _value.size() != 0;
-    }
-
-    bool valid(const std::string& _type, const std::string& _value) { return !_type.empty(); }
+    bool valid(const std::string& _type) { return !_type.empty(); }
 
     bool isDynamicType;
     std::string type;
@@ -186,7 +182,7 @@ class StaticArray : public ArrayType {
     size_t expectedSize;
 };
 
-TypePrt check_paramter(const std::string& rawType, const size_t& length) {
+inline TypePrt check_paramter(const std::string& rawType, const size_t& length) {
     if (!rawType.find(UINT)) {
         return std::make_shared<Uint>(length);
     } else if (!rawType.find(INT)) {
@@ -207,7 +203,7 @@ TypePrt check_paramter(const std::string& rawType, const size_t& length) {
     throw std::logic_error(fmt::format("Unrecognized type: {}", rawType));
 }
 
-TypePrt generate_coders(const std::string& rawType, const size_t& length, const std::string& value) {
+inline TypePrt generate_coders(const std::string& rawType, const size_t& length, const std::string& value) {
     if (!rawType.find(UINT)) {
         return std::make_shared<Uint>(value, length);
     } else if (!rawType.find(INT)) {
@@ -228,7 +224,7 @@ TypePrt generate_coders(const std::string& rawType, const size_t& length, const 
     throw std::logic_error(fmt::format("Unrecognized type: {}", rawType));
 }
 
-TypePrt entry_identity(const std::string& rawType) {
+inline TypePrt entry_identity(const std::string& rawType) {
     auto [type, expectedSize, boolean] = Parsing(rawType).result();
     if (boolean) {
         if (expectedSize > 0) {
@@ -240,7 +236,7 @@ TypePrt entry_identity(const std::string& rawType) {
     return check_paramter(type, expectedSize);
 }
 
-TypePrt generate_coders(const std::string& rawType, const std::string& value) {
+inline TypePrt generate_coders(const std::string& rawType, const std::string& value) {
     auto [type, expectedSize, boolean] = Parsing(rawType).result();
     if (boolean) {
         if (expectedSize > 0) {
