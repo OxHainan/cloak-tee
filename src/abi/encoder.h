@@ -38,6 +38,12 @@ class Encoder {
 
     std::vector<uint8_t> encode() { return Coder::pack(coders); }
 
+    static std::vector<uint8_t> encode(const std::string& type, const std::string& value) {
+        Encoder encoder;
+        encoder.add_inputs("", type, value);
+        return encoder.encode();
+    }
+
     std::vector<uint8_t> encode(const std::vector<uint8_t>& _signature_function) {
         auto sha3 = std::vector<uint8_t>(_signature_function.begin(), _signature_function.begin() + 4);
         auto data = encode();
@@ -58,15 +64,6 @@ class Encoder {
         return std::vector<uint8_t>(sha3.begin(), sha3.begin() + 4);
     }
 
-    ~Encoder() {
-        // delete coders;
-        for (size_t i = 0; i < coders.size(); i++) {
-            if (coders[i] != nullptr) {
-                delete coders[i];
-            }
-        }
-    }
-
  private:
     void paramsCoder(const std::string& _type, const std::string& _value) {
         auto coder = generate_coders(_type, _value);
@@ -75,12 +72,12 @@ class Encoder {
 
     void paramsCoder(const std::string& _type, const std::vector<std::string>& _value) {
         auto [type, expectedSize, boolean] = Parsing(_type).result();
-        Type* coder;
+        TypePrt coder;
         if (boolean) {
             if (expectedSize > 0)
-                coder = new StaticArray(type, _value);
+                coder = std::make_shared<StaticArray>(type, _value);
             else
-                coder = new DynamicArray(type, _value);
+                coder = std::make_shared<DynamicArray>(type, _value);
         } else {
             throw std::logic_error(fmt::format("Hangle type failed, beacuse it doesn't array, get {}", _type));
         }
@@ -105,7 +102,7 @@ class Encoder {
         abi.push_back({name, _type});
     }
 
-    std::vector<Type*> coders;
+    std::vector<TypePrt> coders;
     std::vector<abiParams> abi;
     std::string entry;
 };

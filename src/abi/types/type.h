@@ -21,6 +21,7 @@
 #include "string"
 
 #include <algorithm>
+#include <app/utils.h>
 #include <iostream>
 #include <sys/types.h>
 #include <vector>
@@ -41,10 +42,13 @@ class Type {
     virtual ~Type() {}
 };
 
+using TypePrt = std::shared_ptr<Type>;
+using TypePtrLst = std::vector<TypePrt>;
+
 class Address : public Type {
  public:
     Address() {}
-    explicit Address(const std::string& _value) { value = to_bytes(_value, LENGTH); }
+    explicit Address(const std::string& _value) : value(to_bytes(_value, LENGTH)) {}
 
     std::vector<uint8_t> encode() override { return value; }
 
@@ -77,9 +81,9 @@ class NumericType : public Type {
     NumericType() {}
     explicit NumericType(const std::vector<uint8_t>& val) { value = eevm::from_big_endian(val.data(), val.size()); }
 
-    NumericType(const std::string& _type, const intx::uint256& _value) : type(_type), value(_value) {}
+    NumericType(const std::string& _type, const intx::uint256& _value) : value(_value), type(_type) {}
 
-    NumericType(const std::string& _type, const std::string& _value) : type(_type), value(eevm::to_uint256(_value)) {}
+    NumericType(const std::string& _type, const std::string& _value) : value(eevm::to_uint256(_value)), type(_type) {}
 
     explicit NumericType(const size_t& length) : value(eevm::to_uint256(std::to_string(length))) {}
 
@@ -238,9 +242,9 @@ class Boolean : public Type {
     bool value;
 };
 
-uint64_t decode_to_uint64(const std::vector<uint8_t>& inputs) { return NumericType(inputs).to_uint64(); }
+inline uint64_t decode_to_uint64(const std::vector<uint8_t>& inputs) { return NumericType(inputs).to_uint64(); }
 
-uint64_t decode_to_uint64(const std::vector<uint8_t>& inputs, const size_t& begin, const size_t& offset = 32u) {
+inline uint64_t decode_to_uint64(const std::vector<uint8_t>& inputs, const size_t& begin, const size_t& offset = 32u) {
     auto val = sub_vector(inputs, begin, offset);
     if (val.size() != 32u) {
         throw std::logic_error(fmt::format("Cant't convert to uint64, want {} but get {}", 32u, val.size()));
@@ -249,11 +253,11 @@ uint64_t decode_to_uint64(const std::vector<uint8_t>& inputs, const size_t& begi
     return decode_to_uint64(val);
 }
 
-std::vector<uint8_t> encode_to_vector(const size_t& value) { return NumericType(value).encode(); }
+inline std::vector<uint8_t> encode_to_vector(const size_t& value) { return NumericType(value).encode(); }
 
 class BytesType : public Type {
  public:
-    BytesType() {}
+    explicit BytesType(const std::string& _type) : type(_type) {}
     BytesType(const std::string& _type, const std::vector<uint8_t>& src) : type(_type), value(src) {}
 
     std::vector<uint8_t> encode() override {
@@ -265,11 +269,11 @@ class BytesType : public Type {
     }
 
     void decode(const std::vector<uint8_t>& inputs) override {
-        if (inputs.size() < 2 * MAX_BYTE_LENGTH) {
+        if (inputs.size() < MAX_BYTE_LENGTH) {
             throw std::logic_error("Input value length has no enough space");
         }
 
-        CLOAK_DEBUG_FMT("bytes: {}", eevm::to_hex_string(inputs));
+        // CLOAK_DEBUG_FMT("bytes: {}", eevm::to_hex_string(inputs));
         auto header = decode_to_uint64(inputs, 0, MAX_BYTE_LENGTH);
         value = sub_vector(inputs, MAX_BYTE_LENGTH, MAX_BYTE_LENGTH + header);
     }
@@ -293,8 +297,7 @@ class BytesType : public Type {
 // static bytes, likes bytes8, bytes32
 class Bytes : public BytesType {
  public:
-    Bytes() {}
-    explicit Bytes(const size_t& byteSize) : Bytes(byteSize, std::vector<uint8_t>(byteSize)) {}
+    explicit Bytes(const size_t& byteSize = 32) : Bytes(byteSize, std::vector<uint8_t>(byteSize)) {}
 
     Bytes(const size_t& byteSize, const std::vector<uint8_t>& _value)
         : BytesType(BYTES + std::to_string(_value.size()), _value), length(byteSize) {
@@ -337,12 +340,19 @@ class Bytes : public BytesType {
     size_t length;
 };
 
+const std::vector<uint8_t> bytes_strip(const std::string& src) {
+    if (src.size() >= 2 && src[1] == 'x') {
+        return eevm::to_bytes(src);
+    }
+    return std::vector<uint8_t>(src.begin(), src.end());
+}
+
 class DynamicBytes : public BytesType {
  public:
-    DynamicBytes() {}
+    DynamicBytes() : BytesType(BYTES) {}
     explicit DynamicBytes(const std::vector<uint8_t>& _value) : BytesType(BYTES, _value) {}
 
-    explicit DynamicBytes(const std::string& src) : DynamicBytes(std::vector<uint8_t>(src.begin(), src.end())) {}
+    explicit DynamicBytes(const std::string& src) : DynamicBytes(bytes_strip(src)) {}
 
     bool dynamicType() override { return true; }
 };

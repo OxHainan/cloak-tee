@@ -17,6 +17,8 @@
 #include "abi/types/array.h"
 #include "abi/types/type.h"
 
+#include <eEVM/util.h>
+
 namespace abicoder {
 
 class Decoder {
@@ -29,32 +31,46 @@ class Decoder {
         coders.push_back(coder);
     }
 
-    void decode(const std::vector<uint8_t>& inputs, size_t offset = 0u) {
+    std::vector<TypePrt> decode(const std::vector<uint8_t>& inputs, size_t offset = 0u) {
         for (size_t i = 0; i < coders.size(); i++) {
             if (coders[i]->dynamicType()) {
                 // calc offset
                 auto jump = decode_to_uint64(inputs, offset, 32u + offset);
-                CLOAK_DEBUG_FMT("jump: {}", jump);
                 coders[i]->decode(std::vector<uint8_t>(inputs.begin() + jump, inputs.end()));
             } else {
                 coders[i]->decode(std::vector<uint8_t>(inputs.begin() + offset, inputs.end()));
             }
             offset += coders[i]->offset();
-            CLOAK_DEBUG_FMT("current offset {}", offset);
         }
+
+        return coders;
     }
 
-    ~Decoder() {
-        // delete coders;
-        for (size_t i = 0; i < coders.size(); i++) {
-            if (coders[i] != nullptr) {
-                delete coders[i];
-            }
+    static std::vector<TypePrt> decode(const std::vector<uint8_t>& inputs, const std::vector<std::string>& _type) {
+        Decoder decoder;
+        for (size_t i = 0; i < _type.size(); i++) {
+            decoder.add_params("", _type[i]);
         }
+
+        return decoder.decode(inputs);
+    }
+
+    static std::vector<std::string> decode_bytes_array(const std::vector<uint8_t>& inputs) {
+        std::vector<std::string> res;
+        Decoder decoder;
+        decoder.add_params("", "bytes[]");
+        auto arr_ptr = std::dynamic_pointer_cast<DynamicArray>(decoder.decode(inputs)[0]);
+        if (!arr_ptr) {
+            throw std::logic_error("Internal Error");
+        }
+        for (auto bytes_ptr : arr_ptr->get_parameters()) {
+            res.push_back(eevm::to_hex_string(bytes_ptr->get_value()));
+        }
+        return res;
     }
 
  private:
-    std::vector<Type*> coders;
+    std::vector<TypePrt> coders;
     std::vector<abiParams> abi;
 };
 

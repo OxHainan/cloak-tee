@@ -23,6 +23,7 @@
 #include "vector"
 
 #include <algorithm>
+#include <cstdint>
 #include <iostream>
 #include <mbedtls/hkdf.h>
 #include <mbedtls/md.h>
@@ -205,7 +206,43 @@ inline std::vector<uint8_t> decrypt_data(tls::KeyPairPtr kp,
 
 inline std::pair<Bytes, Bytes> split_tag_and_iv(const Bytes& ti) {
     Bytes tag{ti.begin(), ti.begin() + crypto::GCM_SIZE_TAG};
-    Bytes iv{ti.begin() + crypto::GCM_SIZE_TAG, ti.begin() + crypto::GCM_SIZE_TAG + crypto::GCM_SIZE_IV};
+    Bytes iv{ti.begin() + crypto::GCM_SIZE_TAG, ti.end()};
     return {tag, iv};
 }
+
+inline std::vector<std::string> split_string(const std::string& str, char delim) {
+    std::vector<std::string> res;
+    std::string tmp;
+    for (auto ch : str) {
+        if (ch == delim) {
+            res.push_back(tmp);
+            tmp.clear();
+        } else {
+            tmp.push_back(ch);
+        }
+    }
+
+    res.push_back(tmp);
+    return res;
+}
+
+template <typename T>
+inline std::vector<T> vector_filter(const std::vector<T>& vec, std::function<T(T&&)> f) {
+    std::vector<T> res(vec.size());
+    for (size_t i = 0; i < vec.size(); i++) {
+        res[i] = f(vec[i]);
+    }
+    return res;
+}
+
+// TODO: performance
+inline std::string repeat_hex_string(const std::string& str, size_t n) {
+    std::vector<uint8_t> res;
+    auto tmp = eevm::to_bytes(str);
+    for (size_t i = 0; i < n; i++) {
+        res.insert(res.end(), tmp.begin(), tmp.end());
+    }
+    return eevm::to_hex_string(res);
+}
+
 }  // namespace Utils

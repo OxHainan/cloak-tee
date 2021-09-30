@@ -14,12 +14,12 @@
 
 #pragma once
 
-#include "../app/tables.h"
-#include "../app/utils.h"
-#include "../queue/workertransaction.h"
+#include "app/tables.h"
+#include "app/utils.h"
 #include "ethereum_transaction.h"
 #include "kv/map.h"
 #include "kv/store.h"
+#include "queue/workertransaction.h"
 #include "signature_abstract.h"
 namespace evm4ccf {
 struct TxTables {

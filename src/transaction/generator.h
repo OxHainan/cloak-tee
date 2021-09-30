@@ -16,6 +16,7 @@
 #include "signature.h"
 #include "tables.h"
 
+#include <app/utils.h>
 #include <eEVM/util.h>
 namespace evm4ccf {
 class TransactionGenerator {

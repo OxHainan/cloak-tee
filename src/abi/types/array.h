@@ -17,6 +17,7 @@
 #include "abi/common.h"
 #include "abi/parsing.h"
 #include "abi/utils.h"
+// #include "abi/encoder.h"
 #include "type.h"
 
 #include <cstddef>
@@ -24,25 +25,25 @@
 #include <string>
 
 namespace abicoder {
-
-Type* entry_identity(const std::string& rawType);
-Type* generate_coders(const std::string& rawType, const std::string& value);
+class Encoder;
+TypePrt entry_identity(const std::string& rawType);
+TypePrt generate_coders(const std::string& rawType, const std::string& value);
 class ArrayType : public Type {
  protected:
     ArrayType() {}
 
     ArrayType(const std::string& _type, const std::vector<std::string> _value, bool _dynamicType)
-        : type(_type), isDynamicType(_dynamicType), value(_value) {
-        if (!valid(_type, _value)) {
+        : value(_value), isDynamicType(_dynamicType), type(_type) {
+        if (!valid(_type)) {
             throw std::logic_error("If empty vector is provided, use empty array instance");
         }
     }
 
-    ArrayType(const std::string& _type, bool _dynamicType) : type(_type), isDynamicType(_dynamicType) {}
+    ArrayType(const std::string& _type, bool _dynamicType) : isDynamicType(_dynamicType), type(_type) {}
 
     ArrayType(const std::string& _type, const std::string& _value, bool _isDynamicType)
-        : type(_type), isDynamicType(_isDynamicType), value(Utils::stringToArray(_value)) {
-        if (!valid(_type, _value)) {
+        : value(Utils::stringToArray(_value)), isDynamicType(_isDynamicType), type(_type) {
+        if (!valid(_type)) {
             throw std::logic_error("If empty string value is provided, use empty array instance");
         }
     }
@@ -55,6 +56,9 @@ class ArrayType : public Type {
             parameters.push_back(parameter);
         }
 
+        // auto encoder = Encoder();
+        // encoder.add_inputs("", type, value);
+        // auto data = encoder.encode();
         std::vector<uint8_t> data = Coder::pack(parameters);
 
         if (isDynamicType) {
@@ -67,7 +71,7 @@ class ArrayType : public Type {
     }
 
     void decode(const std::vector<uint8_t>& inputs) override {
-        CLOAK_DEBUG_FMT("dynamic decode: {}", eevm::to_hex_string(inputs));
+        LOG_INFO_FMT("dynamic decode: {}", eevm::to_hex_string(inputs));
         auto length = inputs.size() / MAX_BYTE_LENGTH;
 
         if (length < 2) {
@@ -82,7 +86,6 @@ class ArrayType : public Type {
                 length - 1,
                 header));
         }
-
         size_t offset = MAX_BYTE_LENGTH, end = MAX_BYTE_LENGTH + header * MAX_BYTE_LENGTH;
         while (offset < end) {
             basic_decode(inputs, offset);
@@ -90,15 +93,6 @@ class ArrayType : public Type {
     }
 
     size_t offset() override { return MAX_BYTE_LENGTH; }
-
-    virtual ~ArrayType() {
-        for (auto parameter : parameters) {
-            if (parameter != nullptr) {
-                delete parameter;
-                parameter = nullptr;
-            }
-        }
-    }
 
     std::vector<uint8_t> get_value() override {
         std::vector<uint8_t> data;
@@ -114,20 +108,23 @@ class ArrayType : public Type {
  protected:
     void basic_decode(const std::vector<uint8_t>& inputs, size_t& offset) {
         auto parameter = entry_identity(type);
-        parameter->decode(sub_vector(inputs, offset, offset + MAX_BYTE_LENGTH));
+
+        if (parameter->dynamicType()) {
+            auto offDst = decode_to_uint64(inputs, offset, offset + MAX_BYTE_LENGTH);
+            parameter->decode(std::vector<uint8_t>(inputs.begin() + offDst + MAX_BYTE_LENGTH, inputs.end()));
+        } else {
+            parameter->decode(sub_vector(inputs, offset, offset + MAX_BYTE_LENGTH));
+        }
+
         parameters.push_back(parameter);
         offset += MAX_BYTE_LENGTH;
     }
 
     std::vector<std::string> value;
-    std::vector<Type*> parameters;
+    std::vector<TypePrt> parameters;
 
  private:
-    bool valid(const std::string& _type, const std::vector<std::string>& _value) {
-        return !_type.empty() && _value.size() != 0;
-    }
-
-    bool valid(const std::string& _type, const std::string& _value) { return !_type.empty(); }
+    bool valid(const std::string& _type) { return !_type.empty(); }
 
     bool isDynamicType;
     std::string type;
@@ -143,6 +140,8 @@ class DynamicArray : public ArrayType {
         : ArrayType(_type, _value, dynamicType()) {}
 
     bool dynamicType() override { return true; }
+
+    TypePtrLst get_parameters() { return parameters; }
 };
 
 class StaticArray : public ArrayType {
@@ -191,66 +190,65 @@ class StaticArray : public ArrayType {
     size_t expectedSize;
 };
 
-Type* check_paramter(const std::string& rawType, const size_t& length) {
+inline TypePrt check_paramter(const std::string& rawType, const size_t& length) {
     if (!rawType.find(UINT)) {
-        return new Uint(length);
+        return std::make_shared<Uint>(length);
     } else if (!rawType.find(INT)) {
-        return new Int(length);
+        return std::make_shared<Int>(length);
     } else if (!rawType.find(ADDRESS)) {
-        return new Address();
+        return std::make_shared<Address>();
     } else if (!rawType.find(STRING)) {
-        return new Utf8String();
+        return std::make_shared<Utf8String>();
     } else if (!rawType.find(BOOL)) {
-        return new Boolean();
+        return std::make_shared<Boolean>();
     } else if (!rawType.find(BYTES)) {
-        if (std::strcmp(rawType.c_str(), BYTES) == 0) return new DynamicBytes();
-        return new Bytes(length);
+        if (std::strcmp(rawType.c_str(), BYTES) == 0) return std::make_shared<DynamicBytes>();
+        return std::make_shared<Bytes>(length);
     } else if (!rawType.find(FIXED) || !rawType.find(UFIXED)) {
         throw std::logic_error(fmt::format("Unsupported type: {}", rawType));
     }
     throw std::logic_error(fmt::format("Unrecognized type: {}", rawType));
 }
 
-Type* generate_coders(const std::string& rawType, const size_t& length, const std::string& value) {
+inline TypePrt generate_coders(const std::string& rawType, const size_t& length, const std::string& value) {
     if (!rawType.find(UINT)) {
-        return new Uint(value, length);
+        return std::make_shared<Uint>(value, length);
     } else if (!rawType.find(INT)) {
-        return new Int(value, length);
+        return std::make_shared<Int>(value, length);
     } else if (!rawType.find(ADDRESS)) {
-        return new Address(value);
+        return std::make_shared<Address>(value);
     } else if (!rawType.find(STRING)) {
-        return new Utf8String(value);
+        return std::make_shared<Utf8String>(value);
     } else if (!rawType.find(BOOL)) {
-        return new Boolean(value);
+        return std::make_shared<Boolean>(value);
     } else if (!rawType.find(BYTES)) {
-        if (std::strcmp(rawType.c_str(), BYTES) == 0 && length == 0) return new DynamicBytes(value);
-        return new Bytes(length, value);
+        if (std::strcmp(rawType.c_str(), BYTES) == 0 && length == 0) return std::make_shared<DynamicBytes>(value);
+        return std::make_shared<Bytes>(length, value);
     } else if (!rawType.find(FIXED) || !rawType.find(UFIXED)) {
         throw std::logic_error(fmt::format("Unsupported type: {}", rawType));
     }
     throw std::logic_error(fmt::format("Unrecognized type: {}", rawType));
 }
 
-Type* entry_identity(const std::string& rawType) {
+inline TypePrt entry_identity(const std::string& rawType) {
     auto [type, expectedSize, boolean] = Parsing(rawType).result();
     if (boolean) {
         if (expectedSize > 0) {
             // dynamic type
-            return new StaticArray(type, expectedSize);
+            return std::make_shared<StaticArray>(type, expectedSize);
         }
-        return new DynamicArray(type);
+        return std::make_shared<DynamicArray>(type);
     }
     return check_paramter(type, expectedSize);
 }
 
-Type* generate_coders(const std::string& rawType, const std::string& value) {
+inline TypePrt generate_coders(const std::string& rawType, const std::string& value) {
     auto [type, expectedSize, boolean] = Parsing(rawType).result();
     if (boolean) {
         if (expectedSize > 0) {
-            return new StaticArray(type, expectedSize, value);
+            return std::make_shared<StaticArray>(type, expectedSize, value);
         }
-
-        return new DynamicArray(type, value);
+        return std::make_shared<DynamicArray>(type, value);
     }
 
     return generate_coders(type, expectedSize, value);
