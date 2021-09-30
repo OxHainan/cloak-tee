@@ -137,8 +137,7 @@ struct Function {
     }
 
     void padding(const MultiInput& p) {
-        if (complete())
-            return;
+        if (complete()) return;
 
         for (int i = 0; i < inputs.size(); i++) {
             if (inputs[i].name == p.name) {
@@ -159,17 +158,19 @@ struct Function {
         return true;
     }
 
-    std::vector<std::string> get_mapping_keys(const std::string &msg_sender,
+    std::vector<std::string> get_mapping_keys(const std::string& msg_sender,
                                               const std::string& name,
                                               int pos = -1,
                                               bool encoded = true) {
         std::vector<std::string> res;
         auto ps = read;
         ps.insert(ps.end(), mutate.begin(), mutate.end());
+        CLOAK_DEBUG_FMT("get_mapping_keys, msg_sender:{}, name:{}", msg_sender, name);
         for (auto&& x : ps) {
             if (x.name == name) {
                 for (auto&& key : x.keys) {
-                    std::vector<std::string> nested_keys = Utils::split_string(key, ":");
+                    std::vector<std::string> nested_keys = Utils::split_string(key, ':');
+                    CLOAK_DEBUG_FMT("key:{}, nested_keys:{}", key, fmt::join(nested_keys, ", "));
                     if (pos != -1) {
                         nested_keys = {nested_keys.at(pos)};
                     }

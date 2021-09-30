@@ -71,7 +71,7 @@ class ArrayType : public Type {
     }
 
     void decode(const std::vector<uint8_t>& inputs) override {
-        CLOAK_DEBUG_FMT("dynamic decode: {}", eevm::to_hex_string(inputs));
+        LOG_INFO_FMT("dynamic decode: {}", eevm::to_hex_string(inputs));
         auto length = inputs.size() / MAX_BYTE_LENGTH;
 
         if (length < 2) {
@@ -86,7 +86,6 @@ class ArrayType : public Type {
                 length - 1,
                 header));
         }
-
         size_t offset = MAX_BYTE_LENGTH, end = MAX_BYTE_LENGTH + header * MAX_BYTE_LENGTH;
         while (offset < end) {
             basic_decode(inputs, offset);
@@ -109,7 +108,14 @@ class ArrayType : public Type {
  protected:
     void basic_decode(const std::vector<uint8_t>& inputs, size_t& offset) {
         auto parameter = entry_identity(type);
-        parameter->decode(sub_vector(inputs, offset, offset + MAX_BYTE_LENGTH));
+
+        if (parameter->dynamicType()) {
+            auto offDst = decode_to_uint64(inputs, offset, offset + MAX_BYTE_LENGTH);
+            parameter->decode(std::vector<uint8_t>(inputs.begin() + offDst + MAX_BYTE_LENGTH, inputs.end()));
+        } else {
+            parameter->decode(sub_vector(inputs, offset, offset + MAX_BYTE_LENGTH));
+        }
+
         parameters.push_back(parameter);
         offset += MAX_BYTE_LENGTH;
     }
@@ -134,6 +140,8 @@ class DynamicArray : public ArrayType {
         : ArrayType(_type, _value, dynamicType()) {}
 
     bool dynamicType() override { return true; }
+
+    TypePtrLst get_parameters() { return parameters; }
 };
 
 class StaticArray : public ArrayType {
@@ -194,8 +202,7 @@ inline TypePrt check_paramter(const std::string& rawType, const size_t& length) 
     } else if (!rawType.find(BOOL)) {
         return std::make_shared<Boolean>();
     } else if (!rawType.find(BYTES)) {
-        if (std::strcmp(rawType.c_str(), BYTES) == 0)
-            return std::make_shared<DynamicBytes>();
+        if (std::strcmp(rawType.c_str(), BYTES) == 0) return std::make_shared<DynamicBytes>();
         return std::make_shared<Bytes>(length);
     } else if (!rawType.find(FIXED) || !rawType.find(UFIXED)) {
         throw std::logic_error(fmt::format("Unsupported type: {}", rawType));
@@ -215,8 +222,7 @@ inline TypePrt generate_coders(const std::string& rawType, const size_t& length,
     } else if (!rawType.find(BOOL)) {
         return std::make_shared<Boolean>(value);
     } else if (!rawType.find(BYTES)) {
-        if (std::strcmp(rawType.c_str(), BYTES) == 0 && length == 0)
-            return std::make_shared<DynamicBytes>(value);
+        if (std::strcmp(rawType.c_str(), BYTES) == 0 && length == 0) return std::make_shared<DynamicBytes>(value);
         return std::make_shared<Bytes>(length, value);
     } else if (!rawType.find(FIXED) || !rawType.find(UFIXED)) {
         throw std::logic_error(fmt::format("Unsupported type: {}", rawType));

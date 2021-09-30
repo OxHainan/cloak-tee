@@ -16,6 +16,7 @@
 
 #include "abi/types/array.h"
 #include "abi/types/type.h"
+
 #include <eEVM/util.h>
 
 namespace abicoder {
@@ -58,8 +59,12 @@ class Decoder {
         std::vector<std::string> res;
         Decoder decoder;
         decoder.add_params("", "bytes[]");
-        for (auto ptr : decoder.decode(inputs)) {
-            res.push_back(eevm::to_hex_string(ptr->get_value()));
+        auto arr_ptr = std::dynamic_pointer_cast<DynamicArray>(decoder.decode(inputs)[0]);
+        if (!arr_ptr) {
+            throw std::logic_error("Internal Error");
+        }
+        for (auto bytes_ptr : arr_ptr->get_parameters()) {
+            res.push_back(eevm::to_hex_string(bytes_ptr->get_value()));
         }
         return res;
     }

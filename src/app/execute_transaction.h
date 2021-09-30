@@ -17,6 +17,7 @@
 #include "execute_transaction.h"
 #include "rpc_types.h"
 
+#include <app/utils.h>
 #include <eEVM/address.h>
 #include <eEVM/bigint.h>
 #include <eEVM/processor.h>
@@ -69,7 +70,6 @@ class AbstractEVM {
     std::pair<ExecResult, AccountState> run(Address& to) {
         Transaction eth_tx(call_data.from, log_handler);
         auto account_state = es.get(to);
-        CLOAK_DEBUG_FMT("code: {}", account_state.acc.get_code());
         CLOAK_DEBUG_FMT("call_data: {}", nlohmann::json(call_data).dump());
 #ifdef RECORD_TRACE
         Trace tr;
@@ -127,6 +127,7 @@ class EVMC : public AbstractEVM {
         const auto [exec_result, tx_hash, to_address] = run_in_evm();
 
         if (exec_result.er == ExitReason::threw) {
+            CLOAK_DEBUG_FMT("run in evm error: {}", exec_result.exmsg);
             throw std::logic_error(exec_result.exmsg);
         }
 

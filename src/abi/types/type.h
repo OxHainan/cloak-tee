@@ -43,6 +43,7 @@ class Type {
 };
 
 using TypePrt = std::shared_ptr<Type>;
+using TypePtrLst = std::vector<TypePrt>;
 
 class Address : public Type {
  public:
@@ -143,8 +144,7 @@ class IntType : public NumericType {
                 "Bitsize must be 8 bit aligned, and in range 0 < bitSize <= 256, and in valid range.");
         }
 
-        if (typePrefix.empty())
-            return typePrefix;
+        if (typePrefix.empty()) return typePrefix;
         return typePrefix + std::to_string(bitSize);
     }
 
@@ -257,7 +257,7 @@ inline std::vector<uint8_t> encode_to_vector(const size_t& value) { return Numer
 
 class BytesType : public Type {
  public:
-    BytesType() {}
+    explicit BytesType(const std::string& _type) : type(_type) {}
     BytesType(const std::string& _type, const std::vector<uint8_t>& src) : type(_type), value(src) {}
 
     std::vector<uint8_t> encode() override {
@@ -269,11 +269,11 @@ class BytesType : public Type {
     }
 
     void decode(const std::vector<uint8_t>& inputs) override {
-        if (inputs.size() < 2 * MAX_BYTE_LENGTH) {
+        if (inputs.size() < MAX_BYTE_LENGTH) {
             throw std::logic_error("Input value length has no enough space");
         }
 
-        CLOAK_DEBUG_FMT("bytes: {}", eevm::to_hex_string(inputs));
+        // CLOAK_DEBUG_FMT("bytes: {}", eevm::to_hex_string(inputs));
         auto header = decode_to_uint64(inputs, 0, MAX_BYTE_LENGTH);
         value = sub_vector(inputs, MAX_BYTE_LENGTH, MAX_BYTE_LENGTH + header);
     }
@@ -297,8 +297,7 @@ class BytesType : public Type {
 // static bytes, likes bytes8, bytes32
 class Bytes : public BytesType {
  public:
-    Bytes() {}
-    explicit Bytes(const size_t& byteSize) : Bytes(byteSize, std::vector<uint8_t>(byteSize)) {}
+    explicit Bytes(const size_t& byteSize = 32) : Bytes(byteSize, std::vector<uint8_t>(byteSize)) {}
 
     Bytes(const size_t& byteSize, const std::vector<uint8_t>& _value)
         : BytesType(BYTES + std::to_string(_value.size()), _value), length(byteSize) {
@@ -341,12 +340,19 @@ class Bytes : public BytesType {
     size_t length;
 };
 
+const std::vector<uint8_t> bytes_strip(const std::string& src) {
+    if (src.size() >= 2 && src[1] == 'x') {
+        return eevm::to_bytes(src);
+    }
+    return std::vector<uint8_t>(src.begin(), src.end());
+}
+
 class DynamicBytes : public BytesType {
  public:
-    DynamicBytes() {}
+    DynamicBytes() : BytesType(BYTES) {}
     explicit DynamicBytes(const std::vector<uint8_t>& _value) : BytesType(BYTES, _value) {}
 
-    explicit DynamicBytes(const std::string& src) : DynamicBytes(eevm::to_bytes(src)) {}
+    explicit DynamicBytes(const std::string& src) : DynamicBytes(bytes_strip(src)) {}
 
     bool dynamicType() override { return true; }
 };

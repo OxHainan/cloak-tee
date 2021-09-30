@@ -321,11 +321,13 @@ class EVMHandlers : public UserEndpointRegistry {
         MessageCall set_states_mc;
 
         auto encoder = abicoder::Encoder();
-        encoder.add_inputs("set_states", "bytes[]", decryped_states);
+        encoder.add_inputs("data", "bytes[]", decryped_states);
         auto decryped_states_packed = encoder.encode();
+        CLOAK_DEBUG_FMT("decryped_states_packed:{}", decryped_states_packed);
+        CLOAK_DEBUG_FMT("splited decryped_states_packed:\n{}",
+                        fmt::join(abicoder::split_abi_data(decryped_states_packed), "\n"));
         // function selector
         auto set_states_call_data = Utils::make_function_selector("set_states(bytes[])");
-        CLOAK_DEBUG_FMT("decryped_states:{}", fmt::join(decryped_states, ", "));
         set_states_call_data.insert(
             set_states_call_data.end(), decryped_states_packed.begin(), decryped_states_packed.end());
         set_states_mc.from = tee_addr;
@@ -333,12 +335,7 @@ class EVMHandlers : public UserEndpointRegistry {
         CLOAK_DEBUG_FMT("call_data:{}", eevm::to_hex_string(set_states_call_data));
         set_states_mc.data = eevm::to_hex_string(set_states_call_data);
         auto es = make_state(tx);
-
         auto set_states_res = eevm::EVMC(set_states_mc, es, tx.get_view(tx_results)).run_with_result();
-        if (set_states_res.er == ExitReason::threw) {
-            CLOAK_DEBUG_FMT("set_states execution error: {}", set_states_res.exmsg);
-            return;
-        }
 
         // run in evm
         auto data = ct.function.packed_to_data();
@@ -348,8 +345,6 @@ class EVMHandlers : public UserEndpointRegistry {
         mc.data = to_hex_string(data);
         CLOAK_DEBUG_FMT("ct function data: {}", mc.data);
         const auto res = eevm::EVMC(mc, es, tx.get_view(tx_results)).run_with_result();
-        CLOAK_DEBUG_FMT("run in evm, res: {}, msg: {}\n", res.output, res.exmsg);
-
         ct.function.raw_outputs = res.output;
 
         // == get new states ==
@@ -370,6 +365,8 @@ class EVMHandlers : public UserEndpointRegistry {
 
         // == Sync new states ==
         std::vector<std::string> new_states = abicoder::Decoder::decode_bytes_array(get_new_states_res.output);
+        CLOAK_DEBUG_FMT("splited output:{}\n", abicoder::split_abi_data_to_str(get_new_states_res.output));
+        CLOAK_DEBUG_FMT("splited new_states:{}\n", fmt::join(new_states, "\n"));
         auto encrypted = ct.encrypt_states(tx, new_states);
         CLOAK_DEBUG_FMT("encrypted:{}", fmt::join(encrypted, ", "));
         ct.sync_result(tx, encrypted);

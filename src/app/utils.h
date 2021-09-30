@@ -23,6 +23,7 @@
 #include "vector"
 
 #include <algorithm>
+#include <cstdint>
 #include <iostream>
 #include <mbedtls/hkdf.h>
 #include <mbedtls/md.h>
@@ -209,28 +210,39 @@ inline std::pair<Bytes, Bytes> split_tag_and_iv(const Bytes& ti) {
     return {tag, iv};
 }
 
-inline std::vector<std::string> split_string(const std::string &str, const std::string &delim) {
-    size_t pos_start = 0;
-    std::string token;
+inline std::vector<std::string> split_string(const std::string& str, char delim) {
     std::vector<std::string> res;
-
-    for (size_t pos_end = str.find(delim, pos_start); pos_end != std::string::npos;) {
-        token = str.substr(pos_start, pos_end - pos_start);
-        pos_start = pos_end + delim.size();
-        res.push_back(token);
+    std::string tmp;
+    for (auto ch : str) {
+        if (ch == delim) {
+            res.push_back(tmp);
+            tmp.clear();
+        } else {
+            tmp.push_back(ch);
+        }
     }
 
-    res.push_back(str.substr(pos_start));
+    res.push_back(tmp);
     return res;
 }
 
 template <typename T>
-inline std::vector<T> vector_filter(const std::vector<T> &vec, std::function<T(T&&)> f) {
+inline std::vector<T> vector_filter(const std::vector<T>& vec, std::function<T(T&&)> f) {
     std::vector<T> res(vec.size());
     for (size_t i = 0; i < vec.size(); i++) {
         res[i] = f(vec[i]);
     }
     return res;
+}
+
+// TODO: performance
+inline std::string repeat_hex_string(const std::string& str, size_t n) {
+    std::vector<uint8_t> res;
+    auto tmp = eevm::to_bytes(str);
+    for (size_t i = 0; i < n; i++) {
+        res.insert(res.end(), tmp.begin(), tmp.end());
+    }
+    return eevm::to_hex_string(res);
 }
 
 }  // namespace Utils
