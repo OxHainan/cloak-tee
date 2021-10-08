@@ -53,13 +53,15 @@ struct BlockHeader {
 
 inline bool operator==(const BlockHeader& l, const BlockHeader& r) {
     return l.number == r.number && l.difficulty == r.difficulty && l.gas_limit == r.gas_limit &&
-           l.gas_used == r.gas_used && l.timestamp == r.timestamp && l.miner == r.miner && l.block_hash == r.block_hash;
+        l.gas_used == r.gas_used && l.timestamp == r.timestamp && l.miner == r.miner &&
+        l.block_hash == r.block_hash;
 }
 inline std::string packed_to_hex_string_fixed(const uint256_t& v, size_t min_hex_chars = 64) {
     return fmt::format("{:0>{}}", intx::hex(v), min_hex_chars);
 }
 
-inline std::string packed_to_hex_string_fixed_left(const std::string& _v, size_t min_hex_chars = 64) {
+inline std::string packed_to_hex_string_fixed_left(const std::string& _v,
+                                                   size_t min_hex_chars = 64) {
     auto v = eevm::strip(_v);
     return fmt::format("{:{}}", v, v.size()) + std::string(min_hex_chars - v.size(), '0');
 }
@@ -80,7 +82,9 @@ struct MultiPartyParams {
     std::vector<MultiInput> inputs = {};
     MSGPACK_DEFINE(function, inputs);
 
-    ByteData name() const { return function; }
+    ByteData name() const {
+        return function;
+    }
 };
 
 DECLARE_JSON_TYPE(MultiPartyParams)
@@ -95,9 +99,13 @@ struct Params {
 
     MSGPACK_DEFINE(name, type, owner, value);
 
-    ByteData getValue() const { return value.value_or(""); }
+    ByteData getValue() const {
+        return value.value_or("");
+    }
 
-    void set_value(const ByteData& _v) { value = _v; }
+    void set_value(const ByteData& _v) {
+        value = _v;
+    }
 };
 
 DECLARE_JSON_TYPE_WITH_OPTIONAL_FIELDS(Params)
@@ -158,7 +166,9 @@ struct Function {
         return true;
     }
 
-    std::vector<std::string> get_mapping_keys(eevm::Address msg_sender, const std::string& name, bool from_read) {
+    std::vector<std::string> get_mapping_keys(eevm::Address msg_sender,
+                                              const std::string& name,
+                                              bool from_read) {
         std::vector<std::string> res;
         auto&& ps = from_read ? read : mutate;
         for (auto&& x : ps) {
@@ -187,7 +197,8 @@ struct Function {
     }
 };
 
-}  // namespace policy
+} // namespace policy
+
 struct TeePrepare {
     eevm::Address pki_addr;
     eevm::Address cloak_service_addr;
@@ -195,6 +206,30 @@ struct TeePrepare {
 
 DECLARE_JSON_TYPE(TeePrepare)
 DECLARE_JSON_REQUIRED_FIELDS(TeePrepare, pki_addr, cloak_service_addr)
+
+struct SyncStates {
+    std::string data;
+    std::string tx_hash;
+};
+
+DECLARE_JSON_TYPE(SyncStates)
+DECLARE_JSON_REQUIRED_FIELDS(SyncStates, data, tx_hash)
+
+struct SyncReport {
+    std::string id;
+    std::string result;
+};
+
+DECLARE_JSON_TYPE(SyncReport)
+DECLARE_JSON_REQUIRED_FIELDS(SyncReport, id, result)
+
+struct SyncKeys {
+    std::string tx_hash;
+    std::string data;
+};
+
+DECLARE_JSON_TYPE(SyncKeys)
+DECLARE_JSON_REQUIRED_FIELDS(SyncKeys, data, tx_hash)
 
 namespace rpcparams {
 struct MessageCall {
@@ -221,17 +256,13 @@ struct Policy {
                 return functions[i];
             }
         }
-        throw std::logic_error(fmt::format("doesn't find this {} function in this policy modules", name));
+        throw std::logic_error(
+            fmt::format("doesn't find this {} function in this policy modules", name));
     }
 };
 
 struct AddressWithBlock {
     eevm::Address address = {};
-    BlockID block_id = DefaultBlockID;
-};
-
-struct Call {
-    MessageCall call_data = {};
     BlockID block_id = DefaultBlockID;
 };
 
@@ -244,16 +275,8 @@ struct GetTransactionReceipt {
     TxHash tx_hash = {};
 };
 
-struct GetMultiPartyStatus {
-    eevm::KeccakHash tx_hash = {};
-};
-
 struct SendRawTransaction {
     ByteData raw_transaction = {};
-};
-
-struct SendTransaction {
-    MessageCall call_data = {};
 };
 
 struct EstimateGas {
@@ -272,7 +295,7 @@ struct SendMultiPartyTransaction {
     ByteData params = {};
 };
 
-}  // namespace rpcparams
+} // namespace rpcparams
 
 namespace rpcresults {
 struct TxReceipt {
@@ -298,8 +321,7 @@ struct MultiPartyReceipt {
 
 // "A transaction receipt object, or null when no receipt was found"
 using ReceiptResponse = std::optional<TxReceipt>;
-using MultiPartyReceiptResponse = std::optional<MultiPartyReceipt>;
-}  // namespace rpcresults
+} // namespace rpcresults
 
 template <class TTag, typename TParams, typename TResult>
 struct RpcBuilder {
@@ -322,20 +344,9 @@ struct RpcBuilder {
 
 // Ethereum JSON-RPC
 namespace ethrpc {
-struct BlockNumberTag {
-    static constexpr auto name = "eth_blockNumber";
-};
-using BlockNumber = RpcBuilder<BlockNumberTag, void, ByteData>;
-
-struct CallTag {
-    static constexpr auto name = "eth_call";
-};
-using Call = RpcBuilder<CallTag, rpcparams::Call, ByteData>;
-
 struct GetAccountsTag {
     static constexpr auto name = "eth_accounts";
 };
-
 using GetAccounts = RpcBuilder<GetAccountsTag, void, std::vector<eevm::Address>>;
 
 struct GetChainIdTag {
@@ -369,19 +380,15 @@ using GetCode = RpcBuilder<GetCodeTag, rpcparams::AddressWithBlock, ByteData>;
 struct GetTransactionCountTag {
     static constexpr auto name = "eth_getTransactionCount";
 };
-using GetTransactionCount = RpcBuilder<GetTransactionCountTag, rpcparams::GetTransactionCount, size_t>;
+using GetTransactionCount =
+    RpcBuilder<GetTransactionCountTag, rpcparams::GetTransactionCount, size_t>;
 
 struct GetTransactionReceiptTag {
     static constexpr auto name = "eth_getTransactionReceipt";
 };
-using GetTransactionReceipt =
-    RpcBuilder<GetTransactionReceiptTag, rpcparams::GetTransactionReceipt, rpcresults::ReceiptResponse>;
-
-struct GetMultiPartyStatusTag {
-    static constexpr auto name = "cloak_getMultiPartyStatus";
-};
-using GetMultiPartyStatus =
-    RpcBuilder<GetMultiPartyStatusTag, rpcparams::GetMultiPartyStatus, rpcresults::MultiPartyReceiptResponse>;
+using GetTransactionReceipt = RpcBuilder<GetTransactionReceiptTag,
+                                         rpcparams::GetTransactionReceipt,
+                                         rpcresults::ReceiptResponse>;
 
 struct SendRawTransactionTag {
     static constexpr auto name = "eth_sendRawTransaction";
@@ -391,19 +398,17 @@ using SendRawTransaction = RpcBuilder<SendRawTransactionTag, rpcparams::SendRawT
 struct SendRawPrivacyTransactionTag {
     static constexpr auto name = "cloak_sendRawPrivacyTransaction";
 };
-using SendRawPrivacyTransaction = RpcBuilder<SendRawPrivacyTransactionTag, rpcparams::SendRawTransaction, TxHash>;
+using SendRawPrivacyTransaction =
+    RpcBuilder<SendRawPrivacyTransactionTag, rpcparams::SendRawTransaction, TxHash>;
 
 struct SendRawMultiPartyTransactionTag {
     static constexpr auto name = "cloak_sendRawMultiPartyTransaction";
 };
-using SendRawMultiPartyTransaction = RpcBuilder<SendRawMultiPartyTransactionTag, rpcparams::SendRawTransaction, TxHash>;
+using SendRawMultiPartyTransaction =
+    RpcBuilder<SendRawMultiPartyTransactionTag, rpcparams::SendRawTransaction, TxHash>;
 
-struct SendTransactionTag {
-    static constexpr auto name = "eth_sendTransaction";
-};
-using SendTransaction = RpcBuilder<SendTransactionTag, rpcparams::SendTransaction, TxHash>;
+} // namespace ethrpc
 
-}  // namespace ethrpc
-}  // namespace evm4ccf
+} // namespace evm4ccf
 
 #include "rpc_types_serialization.inl"
