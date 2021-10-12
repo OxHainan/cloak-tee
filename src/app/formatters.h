@@ -14,6 +14,7 @@
 
 #include "fmt/core.h"
 
+#include <eEVM/bigint.h>
 FMT_BEGIN_NAMESPACE
 template <>
 struct formatter<intx::uint256> {
