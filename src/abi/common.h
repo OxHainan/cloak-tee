@@ -31,6 +31,9 @@ inline constexpr auto BYTES = "bytes";
 inline constexpr auto FIXED = "fixed";
 inline constexpr auto UFIXED = "ufixed";
 
+inline constexpr auto ZERO_HEX_STR =
+    "0x0000000000000000000000000000000000000000000000000000000000000000";
+
 struct PackParams {
     bool Dynamic;
     std::vector<uint8_t> data;
@@ -41,4 +44,4 @@ struct abiParams {
     std::string type;
 };
 
-}  // namespace abicoder
+} // namespace abicoder

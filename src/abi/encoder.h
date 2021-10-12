@@ -44,10 +44,23 @@ class Encoder {
         return Coder::pack(coders);
     }
 
+    static std::vector<uint8_t> encode(const std::string& type, const std::string& value) {
+        Encoder encoder;
+        encoder.add_inputs("", type, value);
+        return encoder.encode();
+    }
+
     std::vector<uint8_t> encode(const std::vector<uint8_t>& _signature_function) {
         auto sha3 =
             std::vector<uint8_t>(_signature_function.begin(), _signature_function.begin() + 4);
         auto data = encode();
+        sha3.insert(sha3.end(), data.begin(), data.end());
+        return sha3;
+    }
+
+    std::vector<uint8_t> encodeWithSignatrue() {
+        auto data = encode();
+        auto sha3 = build_method_signature();
         sha3.insert(sha3.end(), data.begin(), data.end());
         return sha3;
     }

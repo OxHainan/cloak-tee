@@ -8,11 +8,11 @@
 // convertible to msgpack
 namespace msgpack {
 MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {
-    namespace adaptor {  // NOLINT
+    namespace adaptor { // NOLINT
 
     // msgpack conversion for eevm::LogEntry
     template <>
-    struct convert<eevm::LogEntry> {  // NOLINT
+    struct convert<eevm::LogEntry> { // NOLINT
         msgpack::object const& operator()(msgpack::object const& o, eevm::LogEntry& v) const {
             auto addr = o.via.array.ptr[0].as<eevm::Address>();
             auto data = o.via.array.ptr[1].as<eevm::log::Data>();
@@ -24,7 +24,7 @@ MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {
     };
 
     template <>
-    struct pack<eevm::LogEntry> {  // NOLINT
+    struct pack<eevm::LogEntry> { // NOLINT
         template <typename Stream>
         packer<Stream>& operator()(msgpack::packer<Stream>& o, eevm::LogEntry const& v) const {
             o.pack_array(3);
@@ -35,10 +35,10 @@ MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {
         }
     };
 
-    // msgpack conversion for evm4ccf::TxResult
+    // msgpack conversion for Ethereum::TxResult
     template <>
-    struct convert<evm4ccf::TxResult> {  // NOLINT
-        msgpack::object const& operator()(msgpack::object const& o, evm4ccf::TxResult& v) const {
+    struct convert<Ethereum::TxResult> { // NOLINT
+        msgpack::object const& operator()(msgpack::object const& o, Ethereum::TxResult& v) const {
             auto addr = o.via.array.ptr[0].as<eevm::Address>();
             if (addr != 0) {
                 v.contract_address = addr;
@@ -50,9 +50,9 @@ MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {
     };
 
     template <>
-    struct pack<evm4ccf::TxResult> {  // NOLINT
+    struct pack<Ethereum::TxResult> { // NOLINT
         template <typename Stream>
-        packer<Stream>& operator()(msgpack::packer<Stream>& o, evm4ccf::TxResult const& v) const {
+        packer<Stream>& operator()(msgpack::packer<Stream>& o, Ethereum::TxResult const& v) const {
             o.pack_array(2);
             o.pack(v.contract_address.value_or(0x0));
             o.pack(v.logs);
@@ -62,8 +62,9 @@ MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {
 
     // msgpack conversion for evm4ccf::BlockHeader
     template <>
-    struct convert<evm4ccf::BlockHeader> {  // NOLINT
-        msgpack::object const& operator()(msgpack::object const& o, evm4ccf::BlockHeader& v) const {
+    struct convert<Ethereum::BlockHeader> { // NOLINT
+        msgpack::object const& operator()(msgpack::object const& o,
+                                          Ethereum::BlockHeader& v) const {
             v.number = o.via.array.ptr[0].as<uint64_t>();
             v.difficulty = o.via.array.ptr[1].as<uint64_t>();
             v.gas_limit = o.via.array.ptr[2].as<uint64_t>();
@@ -77,9 +78,10 @@ MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {
     };
 
     template <>
-    struct pack<evm4ccf::BlockHeader> {  // NOLINT
+    struct pack<Ethereum::BlockHeader> { // NOLINT
         template <typename Stream>
-        packer<Stream>& operator()(msgpack::packer<Stream>& o, evm4ccf::BlockHeader const& v) const {
+        packer<Stream>& operator()(msgpack::packer<Stream>& o,
+                                   Ethereum::BlockHeader const& v) const {
             o.pack_array(7);
             o.pack(v.number);
             o.pack(v.difficulty);
@@ -91,6 +93,6 @@ MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {
             return o;
         }
     };
-    }  // namespace adaptor
-}  // namespace msgpack
-}  // namespace msgpack
+    } // namespace adaptor
+} // namespace msgpack
+} // namespace msgpack

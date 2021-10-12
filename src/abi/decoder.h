@@ -17,6 +17,8 @@
 #include "abi/types/array.h"
 #include "abi/types/type.h"
 
+#include <eEVM/util.h>
+
 namespace abicoder {
 
 class Decoder {
@@ -44,7 +46,8 @@ class Decoder {
         return coders;
     }
 
-    static std::vector<TypePrt> decode(const std::vector<uint8_t>& inputs, const std::vector<std::string>& _type) {
+    static std::vector<TypePrt> decode(const std::vector<uint8_t>& inputs,
+                                       const std::vector<std::string>& _type) {
         Decoder decoder;
         for (size_t i = 0; i < _type.size(); i++) {
             decoder.add_params("", _type[i]);
@@ -53,9 +56,23 @@ class Decoder {
         return decoder.decode(inputs);
     }
 
+    static std::vector<std::string> decode_bytes_array(const std::vector<uint8_t>& inputs) {
+        std::vector<std::string> res;
+        Decoder decoder;
+        decoder.add_params("", "bytes[]");
+        auto arr_ptr = std::dynamic_pointer_cast<DynamicArray>(decoder.decode(inputs)[0]);
+        if (!arr_ptr) {
+            throw std::logic_error("Internal Error");
+        }
+        for (auto bytes_ptr : arr_ptr->get_parameters()) {
+            res.push_back(eevm::to_hex_string(bytes_ptr->get_value()));
+        }
+        return res;
+    }
+
  private:
     std::vector<TypePrt> coders;
     std::vector<abiParams> abi;
 };
 
-}  // namespace abicoder
+} // namespace abicoder

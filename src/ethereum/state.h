@@ -1,11 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 #pragma once
-
-// EVM-for-CCF
-#include "account_proxy.h"
-#include "tables.h"
-
 // CCF
 #include "crypto/hash.h"
 #include "ds/logger.h"
@@ -17,8 +12,12 @@
 
 // STL/3rd-party
 #include <unordered_map>
+// EVM-for-CCF
+#include "account_proxy.h"
+#include "ethereum/exception.h"
+#include "tables.h"
 
-namespace evm4ccf {
+namespace Ethereum {
 // Implementation of eevm::GlobalState backed by ccf's KV
 class EthereumState : public eevm::GlobalState {
     eevm::Block current_block = {};
@@ -29,10 +28,11 @@ class EthereumState : public eevm::GlobalState {
     std::map<eevm::Address, std::unique_ptr<AccountProxy>> cache;
 
     eevm::AccountState add_to_cache(const eevm::Address& address) {
-        auto ib = cache.insert(std::make_pair(address, std::make_unique<AccountProxy>(address, accounts, tx_storage)));
+        auto ib = cache.insert(
+            std::make_pair(address, std::make_unique<AccountProxy>(address, accounts, tx_storage)));
 
         if (!ib.second) {
-            throw std::logic_error(
+            throw Exception(
                 fmt::format("Added account proxy to cache at address {}, but an "
                             "entry already existed",
                             eevm::to_checksum_address(address)));
@@ -44,12 +44,12 @@ class EthereumState : public eevm::GlobalState {
 
  public:
     template <typename... Ts>
-    EthereumState(const tables::Accounts::Views& acc_views, tables::Storage::TxView* views)
-        : accounts(acc_views), tx_storage(*views) {}
+    EthereumState(const tables::Accounts::Views& acc_views, tables::Storage::TxView* views) :
+        accounts(acc_views), tx_storage(*views) {}
 
     void remove(const eevm::Address& addr) override {
         LOG_INFO_FMT("addr to be removed is currently {}", addr);
-        throw std::logic_error("not implemented");
+        throw Exception("not implemented");
     }
 
     eevm::AccountState get(const eevm::Address& address) override {
@@ -82,8 +82,9 @@ class EthereumState : public eevm::GlobalState {
         // Write initial balance
         const auto balance_it = accounts.balances->get(address);
         if (balance_it.has_value()) {
-            throw std::logic_error(fmt::format("Trying to create account at {}, but it already has a balance",
-                                               eevm::to_checksum_address(address)));
+            throw Exception(
+                fmt::format("Trying to create account at {}, but it already has a balance",
+                            eevm::to_checksum_address(address)));
         } else {
             accounts.balances->put(address, balance);
         }
@@ -91,8 +92,8 @@ class EthereumState : public eevm::GlobalState {
         // Write initial code
         const auto code_it = accounts.codes->get(address);
         if (code_it.has_value()) {
-            throw std::logic_error(fmt::format("Trying to create account at {}, but it already has code",
-                                               eevm::to_checksum_address(address)));
+            throw Exception(fmt::format("Trying to create account at {}, but it already has code",
+                                        eevm::to_checksum_address(address)));
         } else {
             accounts.codes->put(address, code);
         }
@@ -100,8 +101,9 @@ class EthereumState : public eevm::GlobalState {
         // Write initial nonce
         const auto nonce_it = accounts.nonces->get(address);
         if (nonce_it.has_value()) {
-            throw std::logic_error(fmt::format("Trying to create account at {}, but it already has a nonce",
-                                               eevm::to_checksum_address(address)));
+            throw Exception(
+                fmt::format("Trying to create account at {}, but it already has a nonce",
+                            eevm::to_checksum_address(address)));
         } else {
             accounts.nonces->put(address, initial_nonce);
         }
@@ -109,11 +111,18 @@ class EthereumState : public eevm::GlobalState {
         return add_to_cache(address);
     }
 
-    const eevm::Block& get_current_block() override { return current_block; }
+    const eevm::Block& get_current_block() override {
+        return current_block;
+    }
 
     uint256_t get_block_hash(uint8_t offset) override {
         LOG_INFO_FMT("offset is currently {}", offset);
         return 0;
     }
+
+    static EthereumState make_state(kv::Tx& tx, tables::AccountsState& as) {
+        return EthereumState(as.accounts.get_views(tx), tx.get_view(as.storage));
+    }
 };
-}  // namespace evm4ccf
+
+} // namespace Ethereum

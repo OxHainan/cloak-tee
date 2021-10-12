@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 #pragma once
 
-#include "rpc_types.h"
+#include "ethereum/types.h"
 
 // CCF
 #include "tls/key_pair.h"
@@ -13,6 +13,7 @@
 #include <stdint.h>
 
 namespace evm4ccf {
+using namespace Ethereum;
 struct ChainIDs {
     static constexpr size_t pre_eip_155 = 0;
     static constexpr size_t ethereum_mainnet = 1;
@@ -31,11 +32,14 @@ static size_t current_chain_id = ChainIDs::ethereum_mainnet;
 static constexpr size_t pre_155_v_start = 27;
 static constexpr size_t post_155_v_start = 35;
 
-inline bool is_pre_eip_155(size_t v) { return v == 27 || v == 28; }
+inline bool is_pre_eip_155(size_t v) {
+    return v == 27 || v == 28;
+}
 
 inline size_t to_ethereum_recovery_id(size_t rec_id) {
     if (rec_id > 3) {
-        throw std::logic_error(fmt::format("ECDSA recovery values should be between 0 and 3, {} is invalid", rec_id));
+        throw std::logic_error(
+            fmt::format("ECDSA recovery values should be between 0 and 3, {} is invalid", rec_id));
     }
 
     if (rec_id > 1) {
@@ -70,8 +74,11 @@ inline size_t from_ethereum_recovery_id(size_t v) {
 
     const size_t chain_id = ((v - rec_id) - post_155_v_start) / 2;
     if (chain_id != current_chain_id) {
-        CLOAK_DEBUG_FMT(fmt::format(
-            "Parsed chain ID {} (from v {}), expected to find current chain ID {}", chain_id, v, current_chain_id));
+        CLOAK_DEBUG_FMT(
+            fmt::format("Parsed chain ID {} (from v {}), expected to find current chain ID {}",
+                        chain_id,
+                        v,
+                        current_chain_id));
 
         throw std::logic_error("Invalid Sender!");
     }
@@ -98,7 +105,7 @@ inline eevm::rlp::ByteString encode_optional_address(const std::optional<eevm::A
  */
 inline std::vector<uint8_t> public_key_asn1(mbedtls_pk_context* raw_ctx) {
     static constexpr auto buf_size = 256u;
-    uint8_t buf[buf_size];  // NOLINT
+    uint8_t buf[buf_size]; // NOLINT
 
     uint8_t* p = buf + buf_size;
 
@@ -117,8 +124,8 @@ inline eevm::Address get_address_from_public_key_asn1(const std::vector<uint8_t>
     // Check the bytes are prefixed with the ASN.1 type tag we expect,
     // then return raw bytes without type tag prefix.
     if (asn1[0] != MBEDTLS_ASN1_OCTET_STRING) {
-        throw std::logic_error(
-            fmt::format("Expected ASN.1 key to begin with {}, not {}", MBEDTLS_ASN1_OCTET_STRING, asn1[0]));
+        throw std::logic_error(fmt::format(
+            "Expected ASN.1 key to begin with {}, not {}", MBEDTLS_ASN1_OCTET_STRING, asn1[0]));
     }
 
     const std::vector<uint8_t> bytes(asn1.begin() + 1, asn1.end());
@@ -144,7 +151,7 @@ struct EthereumTransaction {
     uint256_t value;
     eevm::rlp::ByteString data;
 
-    EthereumTransaction(size_t nonce_, const rpcparams::MessageCall& tc) {
+    EthereumTransaction(size_t nonce_, const MessageCall& tc) {
         nonce = nonce_;
         gas_price = tc.gas_price;
         gas = tc.gas;
@@ -154,9 +161,12 @@ struct EthereumTransaction {
     }
 
     explicit EthereumTransaction(const eevm::rlp::ByteString& encoded) {
-        auto tup =
-            eevm::rlp::decode<size_t, uint256_t, uint256_t, eevm::rlp::ByteString, uint256_t, eevm::rlp::ByteString>(
-                encoded);
+        auto tup = eevm::rlp::decode<size_t,
+                                     uint256_t,
+                                     uint256_t,
+                                     eevm::rlp::ByteString,
+                                     uint256_t,
+                                     eevm::rlp::ByteString>(encoded);
 
         nonce = std::get<0>(tup);
         gas_price = std::get<1>(tup);
@@ -166,15 +176,20 @@ struct EthereumTransaction {
         data = std::get<5>(tup);
     }
 
-    eevm::rlp::ByteString encode() const { return eevm::rlp::encode(nonce, gas_price, gas, to, value, data); }
-
-    virtual eevm::KeccakHash to_be_signed() const { return eevm::keccak_256(encode()); }
-
-    eevm::KeccakHash to_be_signed_with_chain_id() const {
-        return eevm::keccak_256(eevm::rlp::encode(nonce, gas_price, gas, to, value, data, current_chain_id, 0, 0));
+    eevm::rlp::ByteString encode() const {
+        return eevm::rlp::encode(nonce, gas_price, gas, to, value, data);
     }
 
-    virtual void to_transaction_call(rpcparams::MessageCall& tc) const {
+    virtual eevm::KeccakHash to_be_signed() const {
+        return eevm::keccak_256(encode());
+    }
+
+    eevm::KeccakHash to_be_signed_with_chain_id() const {
+        return eevm::keccak_256(
+            eevm::rlp::encode(nonce, gas_price, gas, to, value, data, current_chain_id, 0, 0));
+    }
+
+    virtual void to_transaction_call(MessageCall& tc) const {
         tc.gas_price = gas_price;
         tc.gas = gas;
         if (to.empty()) {
@@ -200,15 +215,16 @@ struct EthereumTransactionWithSignature : public EthereumTransaction {
     EthereumTransactionWithSignature(const EthereumTransaction& tx,
                                      uint8_t v_,
                                      const PointCoord& r_,
-                                     const PointCoord& s_)
-        : EthereumTransaction(tx) {
+                                     const PointCoord& s_) :
+        EthereumTransaction(tx) {
         v = v_;
         r = r_;
         s = s_;
     }
 
-    EthereumTransactionWithSignature(const EthereumTransaction& tx, const tls::RecoverableSignature& sig)
-        : EthereumTransaction(tx) {
+    EthereumTransactionWithSignature(const EthereumTransaction& tx,
+                                     const tls::RecoverableSignature& sig) :
+        EthereumTransaction(tx) {
         v = to_ethereum_recovery_id(sig.recovery_id);
 
         const auto s_data = sig.raw.begin() + r_fixed_length;
@@ -238,7 +254,9 @@ struct EthereumTransactionWithSignature : public EthereumTransaction {
         s = std::get<8>(tup);
     }
 
-    eevm::rlp::ByteString encode() const { return eevm::rlp::encode(nonce, gas_price, gas, to, value, data, v, r, s); }
+    eevm::rlp::ByteString encode() const {
+        return eevm::rlp::encode(nonce, gas_price, gas, to, value, data, v, r, s);
+    }
 
     void to_recoverable_signature(tls::RecoverableSignature& sig) const {
         sig.recovery_id = from_ethereum_recovery_id(v);
@@ -256,10 +274,11 @@ struct EthereumTransactionWithSignature : public EthereumTransaction {
         // EIP-155 adds (CHAIN_ID, 0, 0) to the data which is hashed, but _only_
         // for signing/recovering. The canonical transaction hash (produced by
         // encode(), used as transaction ID) is unaffected
-        return eevm::keccak_256(eevm::rlp::encode(nonce, gas_price, gas, to, value, data, current_chain_id, 0, 0));
+        return eevm::keccak_256(
+            eevm::rlp::encode(nonce, gas_price, gas, to, value, data, current_chain_id, 0, 0));
     }
 
-    void to_transaction_call(rpcparams::MessageCall& tc) const override {
+    void to_transaction_call(MessageCall& tc) const override {
         EthereumTransaction::to_transaction_call(tc);
 
         tls::RecoverableSignature rs;
@@ -283,7 +302,7 @@ inline EthereumTransactionWithSignature sign_transaction(tls::KeyPair_k1Bitcoin&
     return EthereumTransactionWithSignature(tx, signature);
 }
 
-inline std::vector<uint8_t> sign_eth_tx(tls::KeyPairPtr kp, const rpcparams::MessageCall& mc, size_t nonce) {
+inline std::vector<uint8_t> sign_eth_tx(tls::KeyPairPtr kp, const MessageCall& mc, size_t nonce) {
     auto bkp = std::dynamic_pointer_cast<tls::KeyPair_k1Bitcoin>(kp);
     if (!bkp) {
         CLOAK_DEBUG_FMT("tee_kp is not k1Bitcoin");
@@ -299,4 +318,4 @@ inline std::vector<uint8_t> sign_eth_tx(tls::KeyPairPtr kp, const rpcparams::Mes
     return ethTx.encode();
 }
 
-}  // namespace evm4ccf
+} // namespace evm4ccf

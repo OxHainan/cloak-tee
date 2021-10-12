@@ -22,6 +22,7 @@
 #include "string"
 
 #include <algorithm>
+#include <app/utils.h>
 #include <iostream>
 #include <sys/types.h>
 #include <vector>
@@ -45,6 +46,7 @@ class Type {
 };
 
 using TypePrt = std::shared_ptr<Type>;
+using TypePtrLst = std::vector<TypePrt>;
 
 class Address : public Type {
  public:
@@ -165,7 +167,7 @@ class IntType : public NumericType {
     std::string parse(const std::string& typePrefix, const size_t& _bitSize) {
         auto bitSize = calc_bitSize(_bitSize);
         if (!isValidBitSize(bitSize)) {
-            throw std::length_error(
+            throw ABIException(
                 "Bitsize must be 8 bit aligned, and in range 0 < bitSize <= 256, and in valid "
                 "range.");
         }
@@ -238,10 +240,12 @@ class Boolean : public Type {
         if (v.size() > 1) {
             throw ABIException("Input value length is greater than 1");
         }
+
         auto c = static_cast<size_t>(v[0]);
         if (c > 1 || c < 0) {
             throw ABIException("The input value exceeds the maximum range of the bool type");
         }
+
         value = c == 1;
     }
 
@@ -294,6 +298,10 @@ class Boolean : public Type {
 };
 
 inline uint64_t decode_to_uint64(const std::vector<uint8_t>& inputs) {
+    if (inputs.size() != 32u) {
+        throw ABIException(
+            fmt::format("Cant't convert to uint64, want {} but get {}", 32u, inputs.size()));
+    }
     return NumericType(inputs).to_uint64();
 }
 
@@ -301,11 +309,6 @@ inline uint64_t decode_to_uint64(const std::vector<uint8_t>& inputs,
                                  const size_t& begin,
                                  const size_t& offset = 32u) {
     auto val = sub_vector(inputs, begin, offset);
-    if (val.size() != 32u) {
-        throw ABIException(
-            fmt::format("Cant't convert to uint64, want {} but get {}", 32u, val.size()));
-    }
-
     return decode_to_uint64(val);
 }
 
@@ -328,11 +331,10 @@ class BytesType : public Type {
     }
 
     void decode(const std::vector<uint8_t>& inputs) override {
-        if (inputs.size() < 2 * MAX_BYTE_LENGTH) {
+        if (inputs.size() < MAX_BYTE_LENGTH) {
             throw ABIException("Input value length has no enough space");
         }
 
-        CLOAK_DEBUG_FMT("bytes: {}", eevm::to_hex_string(inputs));
         auto header = decode_to_uint64(inputs, 0, MAX_BYTE_LENGTH);
         value = sub_vector(inputs, MAX_BYTE_LENGTH, MAX_BYTE_LENGTH + header);
     }

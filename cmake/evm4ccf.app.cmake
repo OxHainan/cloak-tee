@@ -45,7 +45,8 @@ set(EVM_CPP_FILES
 # set_property(TARGET enclave_evm PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 set(EVM4CCF_FILE
-  ${CMAKE_CURRENT_LIST_DIR}/../src/app/evm_for_ccf.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/../src/app/cloak_for_ccf.cpp
+  # ${CMAKE_CURRENT_LIST_DIR}/../src/app/user_frontend.cpp
 )
 # Build app
 add_ccf_app(evm4ccf

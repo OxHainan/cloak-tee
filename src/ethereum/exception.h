@@ -13,8 +13,20 @@
 // limitations under the License.
 
 #pragma once
+#include "string"
 
-#include "abi/common.h"
-#include "abi/decoder.h"
-#include "abi/encoder.h"
-#include "abi/exception.h"
+#include <exception>
+namespace Ethereum {
+
+class Exception : public std::exception {
+ public:
+    explicit Exception(const std::string& msg_) : msg(msg_) {}
+
+    virtual const char* what() const throw() {
+        return msg.c_str();
+    }
+
+ private:
+    const std::string msg;
+};
+} // namespace Ethereum
