@@ -12,9 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "fmt/core.h"
 
-#include "abi/common.h"
-#include "abi/decoder.h"
-#include "abi/encoder.h"
-#include "abi/exception.h"
+#include <eEVM/bigint.h>
+FMT_BEGIN_NAMESPACE
+template <>
+struct formatter<intx::uint256> {
+    template <typename ParseContext>
+    auto parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template <typename FormatContext>
+    auto format(const intx::uint256& v, FormatContext& ctx) -> decltype(ctx.out()) {
+        return format_to(ctx.out(), "0x{}", intx::hex(v));
+    }
+};
+
+FMT_END_NAMESPACE

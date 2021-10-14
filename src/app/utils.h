@@ -19,25 +19,16 @@
 #include "nlohmann/json.hpp"
 #include "tls/key_exchange.h"
 #include "tls/key_pair.h"
-#include "tls/pem.h"
 #include "vector"
 
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
 #include <mbedtls/hkdf.h>
-#include <mbedtls/md.h>
-#include <stdint.h>
-#include <string>
-#include <utility>
+
 // eEVM
 #include <eEVM/address.h>
-#include <eEVM/bigint.h>
-#include <eEVM/processor.h>
-#include <eEVM/rlp.h>
 #include <eEVM/util.h>
-// CCF
-#include <tls/entropy.h>
 
 #ifdef CLOAK_DEBUG_LOGGING
 #    define CLOAK_DEBUG_FMT(...) LOG_INFO_FMT(__VA_ARGS__)
@@ -115,7 +106,8 @@ inline T parse(const std::string& s) {
 inline eevm::KeccakHash to_KeccakHash(const std::string& _s) {
     auto s = eevm::strip(_s);
     eevm::KeccakHash h;
-    if (s.empty()) return h;
+    if (s.empty())
+        return h;
     for (size_t i = 0, x = 0; i < 32; i++, x += 2) {
         h.at(i) = strtol(s.substr(x, 2).c_str(), 0, 16);
     }
@@ -137,7 +129,8 @@ inline std::vector<std::string> stringToArray(const std::string& s) {
     for (size_t i = 1; i < s.size(); i++) {
         size_t j = i;
         for (; j < s.size(); j++) {
-            if (s[j] == ',' || s[j] == ']') break;
+            if (s[j] == ',' || s[j] == ']')
+                break;
         }
         arr.push_back(std::string(s.substr(i + 1, j - i - 2)));
         i = j;
@@ -151,11 +144,14 @@ inline std::string to_lower(const std::string& str) {
     return res;
 }
 
-inline std::vector<uint8_t> get_random_id() { return tls::create_entropy()->random(256); }
+inline std::vector<uint8_t> get_random_id() {
+    return tls::create_entropy()->random(256);
+}
 
 inline void cloak_agent_log(const std::string& tag, const nlohmann::json& msg) {
     std::string magic_str = "ShouokOn";
     nlohmann::json j;
+    j["seq"] = 0;
     j["tag"] = tag;
     j["message"] = msg;
     LOG_INFO_FMT("{}{}{}", magic_str, j.dump(), magic_str);
@@ -235,7 +231,6 @@ inline std::vector<T> vector_filter(const std::vector<T>& vec, std::function<T(T
     return res;
 }
 
-// TODO: performance
 inline std::string repeat_hex_string(const std::string& str, size_t n) {
     std::vector<uint8_t> res;
     auto tmp = eevm::to_bytes(str);
@@ -245,4 +240,4 @@ inline std::string repeat_hex_string(const std::string& str, size_t n) {
     return eevm::to_hex_string(res);
 }
 
-}  // namespace Utils
+} // namespace Utils

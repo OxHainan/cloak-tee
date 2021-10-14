@@ -13,31 +13,36 @@
 // limitations under the License.
 
 #pragma once
+#include "abi/exception.h"
 #include "app/utils.h"
 #include "iostream"
 #include "math.h"
 #include "vector"
 
 namespace abicoder {
-std::vector<uint8_t> sub_vector(const std::vector<uint8_t> &inputs,
-                                const size_t &begin = 0,
-                                const size_t &offset = 32u) {
+std::vector<uint8_t> sub_vector(const std::vector<uint8_t>& inputs,
+                                const size_t& begin = 0,
+                                const size_t& offset = 32u) {
     if (offset > inputs.size()) {
-        throw std::logic_error(fmt::format("Insufficient array length, want [{}] get [{}]", offset, inputs.size()));
+        throw ABIException(
+            fmt::format("Insufficient array length, want [{}] get [{}]", offset, inputs.size()));
     }
 
     return std::vector<uint8_t>(inputs.begin() + begin, inputs.begin() + offset);
 }
 
-inline double alignSize(const size_t &size) { return 32 * (ceil(size / 32.0)); }
+inline double alignSize(const size_t& size) {
+    return 32 * (ceil(size / 32.0));
+}
 
-void insert(std::vector<uint8_t> &coder, const std::vector<uint8_t> &input, size_t offset = 0) {
+void insert(std::vector<uint8_t>& coder, const std::vector<uint8_t>& input, size_t offset = 0) {
     for (size_t i = offset, x = 0; x < input.size(); x++, i++) {
         coder.at(i) = input.at(x);
     }
 }
-inline void to_array(std::vector<uint8_t> &result,
-                     const std::vector<uint8_t> &value,
+
+inline void to_array(std::vector<uint8_t>& result,
+                     const std::vector<uint8_t>& value,
                      size_t offset = 0,
                      bool signal = true) {
     if (signal) {
@@ -51,31 +56,35 @@ inline void to_array(std::vector<uint8_t> &result,
     }
 }
 
-inline void to_array(std::vector<uint8_t> &result, const uint8_t &value, size_t offset) { result.at(offset) = value; }
+inline void to_array(std::vector<uint8_t>& result, const uint8_t& value, size_t offset) {
+    result.at(offset) = value;
+}
 
-std::vector<uint8_t> to_bytes(const std::string &_s, size_t offset = 0, bool boolean = true) {
+std::vector<uint8_t> to_bytes(const std::string& _s, size_t offset = 0, bool boolean = true) {
     auto s = eevm::strip(_s);
     if (s.size() > 64) {
-        throw std::logic_error(fmt::format("Invalid length, want {} but get {}", 32, s.size()));
+        throw ABIException(fmt::format("Invalid length, want {} but get {}", 32, s.size()));
     }
     std::vector<uint8_t> h(32);
-    if (!boolean) h.resize(ceil(s.size() / 2.0));
-    if (s.empty()) return h;
+    if (!boolean)
+        h.resize(ceil(s.size() / 2.0));
+    if (s.empty())
+        return h;
     for (size_t i = 0; i < offset; i++) {
         h.at(i) = 0;
     }
 
     for (size_t x = 0; x < s.size(); offset++, x += 2) {
         if (offset >= h.size()) {
-            throw std::logic_error(
-                fmt::format("Handle encoding string to uint8 array error, offset out of maximum range 32"));
+            throw ABIException(fmt::format(
+                "Handle encoding string to uint8 array error, offset out of maximum range 32"));
         }
         h.at(offset) = strtol(s.substr(x, 2).c_str(), 0, 16);
     }
     return h;
 }
 
-std::vector<uint8_t> fixed_to_bytes(const std::string &_s) {
+std::vector<uint8_t> fixed_to_bytes(const std::string& _s) {
     std::vector<uint8_t> h(32);
     auto s = Utils::BinaryToHex(_s);
     for (size_t x = 0, offset = 0; x < s.size(); offset++, x += 2) {
@@ -84,17 +93,25 @@ std::vector<uint8_t> fixed_to_bytes(const std::string &_s) {
     return h;
 }
 
-std::vector<uint8_t> string_to_bytes(const std::string &_s) {
+const std::vector<uint8_t> bytes_strip(const std::string& src) {
+    if (src.size() >= 2 && src[1] == 'x') {
+        return eevm::to_bytes(src);
+    }
+    return std::vector<uint8_t>(src.begin(), src.end());
+}
+
+std::vector<uint8_t> string_to_bytes(const std::string& _s) {
     auto s = Utils::BinaryToHex(_s);
     std::vector<uint8_t> h(ceil(s.size() / 2.0));
-    if (s.empty()) return h;
+    if (s.empty())
+        return h;
     for (size_t offset = 0, x = 0; x < s.size(); offset++, x += 2) {
         h.at(offset) = strtol(s.substr(x, 2).c_str(), 0, 16);
     }
     return h;
 }
 
-inline std::vector<std::string> decode_uint256_array(const std::vector<uint8_t> &states) {
+inline std::vector<std::string> decode_uint256_array(const std::vector<uint8_t>& states) {
     CLOAK_DEBUG_FMT("raw data:{}", states);
     if (states.size() < 64) {
         LOG_AND_THROW("decode_uint256_array error, states length:{} is to short", states.size());
@@ -112,7 +129,7 @@ inline std::vector<std::string> decode_uint256_array(const std::vector<uint8_t> 
     return res;
 }
 
-inline std::string decode_string(const std::vector<uint8_t> &data) {
+inline std::string decode_string(const std::vector<uint8_t>& data) {
     CLOAK_DEBUG_FMT("decode_string, raw:{}", data);
     if (data.size() < 32) {
         LOG_DEBUG_FMT("decode_string error, data length:{} is to short", data.size());
@@ -133,7 +150,8 @@ inline std::string decode_string(const std::vector<uint8_t> &data) {
     CLOAK_DEBUG_FMT("decode_string, res:{}", res);
     return res;
 }
-inline std::vector<std::string> decode_string_array(const std::vector<uint8_t> &data) {
+
+inline std::vector<std::string> decode_string_array(const std::vector<uint8_t>& data) {
     if (data.size() < 32) {
         LOG_DEBUG_FMT("decode_string error, data length:{} is to short", data.size());
     }
@@ -141,14 +159,15 @@ inline std::vector<std::string> decode_string_array(const std::vector<uint8_t> &
     CLOAK_DEBUG_FMT("count:{}", count);
     std::vector<std::string> res;
     for (size_t i = 0; i < count; i++) {
-        size_t offset = size_t(Utils::vec32_to_uint256({data.begin() + 32 * (i + 1), data.begin() + 32 * (i + 2)}));
+        size_t offset = size_t(
+            Utils::vec32_to_uint256({data.begin() + 32 * (i + 1), data.begin() + 32 * (i + 2)}));
         // TODO(MUMMY): better end
         res.push_back(decode_string({data.begin() + 32 + offset, data.end()}));
     }
     return res;
 }
 
-inline std::vector<std::string> split_abi_data(const std::vector<uint8_t> &data) {
+inline std::vector<std::string> split_abi_data(const std::vector<uint8_t>& data) {
     std::vector<std::string> res;
     size_t count = data.size() / 32;
     for (size_t i = 0; i < count; i++) {
@@ -160,15 +179,15 @@ inline std::vector<std::string> split_abi_data(const std::vector<uint8_t> &data)
     return res;
 }
 
-inline std::string split_abi_data_to_str(const std::vector<uint8_t> &data) {
+inline std::string split_abi_data_to_str(const std::vector<uint8_t>& data) {
     return fmt::format("{}", fmt::join(split_abi_data(data), "\n"));
 }
 
-inline size_t get_static_array_size(const nlohmann::json &type) {
-    if (type["type"] != "array" || type["len"].is_null()) {
+inline size_t get_static_array_size(const nlohmann::json& type) {
+    if (type["type"] != "array" || !type.contains("len")) {
         return 1;
     }
     return type["len"].get<size_t>() * get_static_array_size(type["value_type"]);
 }
 
-}  // namespace abicoder
+} // namespace abicoder

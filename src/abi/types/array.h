@@ -15,9 +15,9 @@
 #pragma once
 #include "abi/coder.h"
 #include "abi/common.h"
+#include "abi/exception.h"
 #include "abi/parsing.h"
 #include "abi/utils.h"
-// #include "abi/encoder.h"
 #include "type.h"
 
 #include <cstddef>
@@ -32,23 +32,26 @@ class ArrayType : public Type {
  protected:
     ArrayType() {}
 
-    ArrayType(const std::string& _type, const std::vector<std::string> _value, bool _dynamicType)
-        : value(_value), isDynamicType(_dynamicType), type(_type) {
+    ArrayType(const std::string& _type, const std::vector<std::string> _value, bool _dynamicType) :
+        value(_value), isDynamicType(_dynamicType), type(_type) {
         if (!valid(_type)) {
             throw std::logic_error("If empty vector is provided, use empty array instance");
         }
     }
 
-    ArrayType(const std::string& _type, bool _dynamicType) : isDynamicType(_dynamicType), type(_type) {}
+    ArrayType(const std::string& _type, bool _dynamicType) :
+        isDynamicType(_dynamicType), type(_type) {}
 
-    ArrayType(const std::string& _type, const std::string& _value, bool _isDynamicType)
-        : value(Utils::stringToArray(_value)), isDynamicType(_isDynamicType), type(_type) {
+    ArrayType(const std::string& _type, const std::string& _value, bool _isDynamicType) :
+        value(Utils::stringToArray(_value)), isDynamicType(_isDynamicType), type(_type) {
         if (!valid(_type)) {
             throw std::logic_error("If empty string value is provided, use empty array instance");
         }
     }
 
-    std::string getTypeAsString() override { return type; }
+    std::string getTypeAsString() override {
+        return type;
+    }
 
     std::vector<uint8_t> encode() override {
         for (size_t i = 0; i < value.size(); i++) {
@@ -71,20 +74,20 @@ class ArrayType : public Type {
     }
 
     void decode(const std::vector<uint8_t>& inputs) override {
-        LOG_INFO_FMT("dynamic decode: {}", eevm::to_hex_string(inputs));
         auto length = inputs.size() / MAX_BYTE_LENGTH;
 
         if (length < 2) {
-            throw std::logic_error(
-                fmt::format("The minimum length of the dynamic array type is 1, get {}", length - 1));
+            throw ABIException(fmt::format(
+                "The minimum length of the dynamic array type is 1, get {}", length - 1));
         }
 
         auto header = decode_to_uint64(inputs, 0u, MAX_BYTE_LENGTH);
         if (header > length - 1) {
-            throw std::logic_error(fmt::format(
-                "The parsed dynamic type length does not match the actual array length, want {}, but get {}",
-                length - 1,
-                header));
+            throw ABIException(
+                fmt::format("The parsed dynamic type length does not match the actual array "
+                            "length, want {}, but get {}",
+                            length - 1,
+                            header));
         }
         size_t offset = MAX_BYTE_LENGTH, end = MAX_BYTE_LENGTH + header * MAX_BYTE_LENGTH;
         while (offset < end) {
@@ -92,7 +95,9 @@ class ArrayType : public Type {
         }
     }
 
-    size_t offset() override { return MAX_BYTE_LENGTH; }
+    size_t offset() override {
+        return MAX_BYTE_LENGTH;
+    }
 
     std::vector<uint8_t> get_value() override {
         std::vector<uint8_t> data;
@@ -111,7 +116,8 @@ class ArrayType : public Type {
 
         if (parameter->dynamicType()) {
             auto offDst = decode_to_uint64(inputs, offset, offset + MAX_BYTE_LENGTH);
-            parameter->decode(std::vector<uint8_t>(inputs.begin() + offDst + MAX_BYTE_LENGTH, inputs.end()));
+            parameter->decode(
+                std::vector<uint8_t>(inputs.begin() + offDst + MAX_BYTE_LENGTH, inputs.end()));
         } else {
             parameter->decode(sub_vector(inputs, offset, offset + MAX_BYTE_LENGTH));
         }
@@ -124,7 +130,9 @@ class ArrayType : public Type {
     std::vector<TypePrt> parameters;
 
  private:
-    bool valid(const std::string& _type) { return !_type.empty(); }
+    bool valid(const std::string& _type) {
+        return !_type.empty();
+    }
 
     bool isDynamicType;
     std::string type;
@@ -134,31 +142,39 @@ class DynamicArray : public ArrayType {
  public:
     explicit DynamicArray(const std::string& _type) : DynamicArray(_type, "") {}
 
-    DynamicArray(const std::string& _type, const std::string& _value) : ArrayType(_type, _value, dynamicType()) {}
+    DynamicArray(const std::string& _type, const std::string& _value) :
+        ArrayType(_type, _value, dynamicType()) {}
 
-    DynamicArray(const std::string& _type, const std::vector<std::string>& _value)
-        : ArrayType(_type, _value, dynamicType()) {}
+    DynamicArray(const std::string& _type, const std::vector<std::string>& _value) :
+        ArrayType(_type, _value, dynamicType()) {}
 
-    bool dynamicType() override { return true; }
+    bool dynamicType() override {
+        return true;
+    }
 
-    TypePtrLst get_parameters() { return parameters; }
+    TypePtrLst get_parameters() {
+        return parameters;
+    }
 };
 
 class StaticArray : public ArrayType {
  public:
-    StaticArray(const std::string& _type, const size_t& _expectedSize, const std::string& _value = "")
-        : ArrayType(_type, _value, dynamicType()), expectedSize(_expectedSize) {}
+    StaticArray(const std::string& _type,
+                const size_t& _expectedSize,
+                const std::string& _value = "") :
+        ArrayType(_type, _value, dynamicType()),
+        expectedSize(_expectedSize) {}
 
-    StaticArray(const std::string& _type, const std::vector<std::string>& _value)
-        : ArrayType(_type, _value, dynamicType()), expectedSize(_value.size()) {
+    StaticArray(const std::string& _type, const std::vector<std::string>& _value) :
+        ArrayType(_type, _value, dynamicType()), expectedSize(_value.size()) {
         isValid();
     }
 
     void decode(const std::vector<uint8_t>& inputs) override {
-        CLOAK_DEBUG_FMT("static decode:  {}", eevm::to_hex_string(inputs));
         auto length = inputs.size() / MAX_BYTE_LENGTH;
         if (length < 1) {
-            throw std::logic_error(fmt::format("The minimum length of the static array type is 1, get {}", 0));
+            throw ABIException(
+                fmt::format("The minimum length of the static array type is 1, get {}", 0));
         }
         size_t offset = 0;
         for (size_t i = 0; i < expectedSize; i++) {
@@ -166,9 +182,13 @@ class StaticArray : public ArrayType {
         }
     }
 
-    bool dynamicType() override { return false; }
+    bool dynamicType() override {
+        return false;
+    }
 
-    size_t offset() override { return expectedSize * MAX_BYTE_LENGTH; }
+    size_t offset() override {
+        return expectedSize * MAX_BYTE_LENGTH;
+    }
 
     std::string getTypeAsString() override {
         return ArrayType::getTypeAsString() + "[" + to_string(expectedSize) + "]";
@@ -177,12 +197,13 @@ class StaticArray : public ArrayType {
  private:
     void isValid() {
         if (expectedSize == 0 && value.size() > MAX_SIZE_OF_STATIC_ARRAY) {
-            throw std::logic_error("Static arrays with a length greater than 1024 are not supported");
+            throw ABIException("Static arrays with a length greater than 1024 are not supported");
         } else if (expectedSize != 0 && value.size() != expectedSize) {
-            throw std::logic_error(fmt::format("Expected array of type {} to have [{}] elements, but get {}",
-                                               getTypeAsString(),
-                                               expectedSize,
-                                               value.size()));
+            throw ABIException(
+                fmt::format("Expected array of type {} to have [{}] elements, but get {}",
+                            getTypeAsString(),
+                            expectedSize,
+                            value.size()));
         }
     }
 
@@ -202,15 +223,18 @@ inline TypePrt check_paramter(const std::string& rawType, const size_t& length) 
     } else if (!rawType.find(BOOL)) {
         return std::make_shared<Boolean>();
     } else if (!rawType.find(BYTES)) {
-        if (std::strcmp(rawType.c_str(), BYTES) == 0) return std::make_shared<DynamicBytes>();
+        if (std::strcmp(rawType.c_str(), BYTES) == 0)
+            return std::make_shared<DynamicBytes>();
         return std::make_shared<Bytes>(length);
     } else if (!rawType.find(FIXED) || !rawType.find(UFIXED)) {
-        throw std::logic_error(fmt::format("Unsupported type: {}", rawType));
+        throw ABIException(fmt::format("Unsupported type: {}", rawType));
     }
-    throw std::logic_error(fmt::format("Unrecognized type: {}", rawType));
+    throw ABIException(fmt::format("Unrecognized type: {}", rawType));
 }
 
-inline TypePrt generate_coders(const std::string& rawType, const size_t& length, const std::string& value) {
+inline TypePrt generate_coders(const std::string& rawType,
+                               const size_t& length,
+                               const std::string& value) {
     if (!rawType.find(UINT)) {
         return std::make_shared<Uint>(value, length);
     } else if (!rawType.find(INT)) {
@@ -222,12 +246,13 @@ inline TypePrt generate_coders(const std::string& rawType, const size_t& length,
     } else if (!rawType.find(BOOL)) {
         return std::make_shared<Boolean>(value);
     } else if (!rawType.find(BYTES)) {
-        if (std::strcmp(rawType.c_str(), BYTES) == 0 && length == 0) return std::make_shared<DynamicBytes>(value);
+        if (std::strcmp(rawType.c_str(), BYTES) == 0 && length == 0)
+            return std::make_shared<DynamicBytes>(value);
         return std::make_shared<Bytes>(length, value);
     } else if (!rawType.find(FIXED) || !rawType.find(UFIXED)) {
-        throw std::logic_error(fmt::format("Unsupported type: {}", rawType));
+        throw ABIException(fmt::format("Unsupported type: {}", rawType));
     }
-    throw std::logic_error(fmt::format("Unrecognized type: {}", rawType));
+    throw ABIException(fmt::format("Unrecognized type: {}", rawType));
 }
 
 inline TypePrt entry_identity(const std::string& rawType) {
@@ -254,4 +279,4 @@ inline TypePrt generate_coders(const std::string& rawType, const std::string& va
     return generate_coders(type, expectedSize, value);
 }
 
-}  // namespace abicoder
+} // namespace abicoder

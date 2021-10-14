@@ -14,46 +14,48 @@
 
 #pragma once
 
-#include "app/tables.h"
 #include "app/utils.h"
+#include "ethereum/tables.h"
 #include "ethereum_transaction.h"
 #include "kv/map.h"
 #include "kv/store.h"
 #include "queue/workertransaction.h"
 #include "signature_abstract.h"
-namespace evm4ccf {
-struct TxTables {
+
+namespace cloak4ccf {
+
+namespace transaction {
+struct Tables {
     static constexpr auto PRIVACYS = "eth.transaction.privacys";
     static constexpr auto PRIVACY_DIGESTS = "eth.transaction.privacy_digests";
     static constexpr auto CLOAKPOLICYS = "eth.transaction.cloak_policys";
     static constexpr auto CLOAK_DIGESTS = "eth.transaction.cloak_digests";
     static constexpr auto MULTI_PARTYS = "eth.transaction.multi_partys";
-    static constexpr auto NONCES = "eth.account.nonce";
+    static constexpr auto STATES_DIGEST = "eth.transaction.states_digest";
 };
 
-struct AccTables {
-    static constexpr auto BALANCES = "eth.account.balance";
-    static constexpr auto CODERS = "eth.account.code";
-    static constexpr auto NONCES = "eth.account.nonce";
-};
+} // namespace transaction
+
+namespace accounts {
+struct Tables {};
+
+} // namespace accounts
 
 struct TransactionTables {
-    const kv::Store& store;
-    Privacys privacys;
-    PrivacyDigests privacy_digests;
+    evm4ccf::Privacys privacys;
+    evm4ccf::PrivacyDigests privacy_digests;
 
-    CloakPolicys cloak_policys;
-    CloakDigests cloak_digests;
-    MultiPartys multi_partys;
-    tables::Accounts::Nonces nonces;
-    explicit TransactionTables(const kv::Store& _store)
-        : store(_store),
-          privacys(TxTables::PRIVACYS),
-          privacy_digests(TxTables::PRIVACY_DIGESTS),
-          cloak_policys(TxTables::CLOAKPOLICYS),
-          cloak_digests(TxTables::CLOAK_DIGESTS),
-          multi_partys(TxTables::MULTI_PARTYS),
-          nonces(TxTables::NONCES) {}
+    evm4ccf::CloakPolicys cloak_policys;
+    evm4ccf::CloakDigests cloak_digests;
+    evm4ccf::MultiPartys multi_partys;
+    evm4ccf::StatesDigests states_digests;
+    TransactionTables() :
+        privacys(transaction::Tables::PRIVACYS),
+        privacy_digests(transaction::Tables::PRIVACY_DIGESTS),
+        cloak_policys(transaction::Tables::CLOAKPOLICYS),
+        cloak_digests(transaction::Tables::CLOAK_DIGESTS),
+        multi_partys(transaction::Tables::MULTI_PARTYS),
+        states_digests(transaction::Tables::STATES_DIGEST) {}
 };
 
-}  // namespace evm4ccf
+} // namespace cloak4ccf

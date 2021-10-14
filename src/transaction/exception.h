@@ -13,8 +13,24 @@
 // limitations under the License.
 
 #pragma once
+#include "string"
 
-#include "abi/common.h"
-#include "abi/decoder.h"
-#include "abi/encoder.h"
-#include "abi/exception.h"
+#include <exception>
+namespace cloak4ccf {
+
+namespace Transaction {
+
+class TransactionException : public std::exception {
+ public:
+    explicit TransactionException(const std::string& msg_) : msg(msg_) {}
+
+    virtual const char* what() const throw() {
+        return msg.c_str();
+    }
+
+ private:
+    const std::string msg;
+};
+
+} // namespace Transaction
+} // namespace cloak4ccf

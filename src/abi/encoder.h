@@ -24,19 +24,25 @@ class Encoder {
     Encoder() {}
     explicit Encoder(const std::string& _entry) : entry(_entry) {}
 
-    void add_inputs(const std::string& _name, const std::string& _type) { add_params(_name, _type); }
+    void add_inputs(const std::string& _name, const std::string& _type) {
+        add_params(_name, _type);
+    }
 
     void add_inputs(const std::string& _name, const std::string& _type, const std::string& _value) {
         add_params(_name, _type);
         paramsCoder(_type, _value);
     }
 
-    void add_inputs(const std::string& _name, const std::string& _type, const std::vector<std::string>& _value) {
+    void add_inputs(const std::string& _name,
+                    const std::string& _type,
+                    const std::vector<std::string>& _value) {
         add_params(_name, _type);
         paramsCoder(_type, _value);
     }
 
-    std::vector<uint8_t> encode() { return Coder::pack(coders); }
+    std::vector<uint8_t> encode() {
+        return Coder::pack(coders);
+    }
 
     static std::vector<uint8_t> encode(const std::string& type, const std::string& value) {
         Encoder encoder;
@@ -45,8 +51,16 @@ class Encoder {
     }
 
     std::vector<uint8_t> encode(const std::vector<uint8_t>& _signature_function) {
-        auto sha3 = std::vector<uint8_t>(_signature_function.begin(), _signature_function.begin() + 4);
+        auto sha3 =
+            std::vector<uint8_t>(_signature_function.begin(), _signature_function.begin() + 4);
         auto data = encode();
+        sha3.insert(sha3.end(), data.begin(), data.end());
+        return sha3;
+    }
+
+    std::vector<uint8_t> encodeWithSignatrue() {
+        auto data = encode();
+        auto sha3 = build_method_signature();
         sha3.insert(sha3.end(), data.begin(), data.end());
         return sha3;
     }
@@ -79,7 +93,8 @@ class Encoder {
             else
                 coder = std::make_shared<DynamicArray>(type, _value);
         } else {
-            throw std::logic_error(fmt::format("Hangle type failed, beacuse it doesn't array, get {}", _type));
+            throw ABIException(
+                fmt::format("Hangle type failed, beacuse it doesn't array, get {}", _type));
         }
 
         coders.push_back(coder);
@@ -107,4 +122,4 @@ class Encoder {
     std::string entry;
 };
 
-}  // namespace abicoder
+} // namespace abicoder

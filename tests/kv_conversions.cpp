@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-#include "../src/app/tables.h"
+#include "ethereum/tables.h"
 #include "kv/kv_serialiser.h"
 
 #include <doctest/doctest.h>
@@ -73,9 +73,10 @@ T make_rand() {
 
 std::vector<uint8_t> rand_bytes(size_t max_len = 100) {
     std::vector<uint8_t> result(rand() % max_len);
-    if (result.empty())  // Don't allow empty bytes
+    if (result.empty()) // Don't allow empty bytes
         result.resize(1);
-    for (size_t i = 0; i < result.size(); ++i) result[i] = (uint8_t)rand();
+    for (size_t i = 0; i < result.size(); ++i)
+        result[i] = (uint8_t)rand();
     return result;
 }
 
@@ -93,27 +94,30 @@ uint256_t make_rand<uint256_t>() {
 template <>
 eevm::LogEntry make_rand<eevm::LogEntry>() {
     std::vector<eevm::log::Topic> topics(rand() % 4);
-    for (size_t i = 0; i < topics.size(); ++i) topics[i] = make_rand<eevm::log::Topic>();
-    return eevm::LogEntry{
-        make_rand<decltype(eevm::LogEntry::address)>(), make_rand<decltype(eevm::LogEntry::data)>(), topics};
+    for (size_t i = 0; i < topics.size(); ++i)
+        topics[i] = make_rand<eevm::log::Topic>();
+    return eevm::LogEntry{make_rand<decltype(eevm::LogEntry::address)>(),
+                          make_rand<decltype(eevm::LogEntry::data)>(),
+                          topics};
 }
 
 template <>
-evm4ccf::TxResult make_rand<evm4ccf::TxResult>() {
+Ethereum::TxResult make_rand<Ethereum::TxResult>() {
     std::vector<eevm::LogEntry> logs(rand() % 10);
-    for (size_t i = 0; i < logs.size(); ++i) logs[i] = make_rand<eevm::LogEntry>();
-    return evm4ccf::TxResult{make_rand<decltype(eevm::LogEntry::address)>(), logs};
+    for (size_t i = 0; i < logs.size(); ++i)
+        logs[i] = make_rand<eevm::LogEntry>();
+    return Ethereum::TxResult{make_rand<decltype(eevm::LogEntry::address)>(), logs};
 }
 
 template <>
-evm4ccf::BlockHeader make_rand<evm4ccf::BlockHeader>() {
-    return evm4ccf::BlockHeader{make_rand<decltype(evm4ccf::BlockHeader::number)>(),
-                                make_rand<decltype(evm4ccf::BlockHeader::difficulty)>(),
-                                make_rand<decltype(evm4ccf::BlockHeader::gas_limit)>(),
-                                make_rand<decltype(evm4ccf::BlockHeader::gas_used)>(),
-                                make_rand<decltype(evm4ccf::BlockHeader::timestamp)>(),
-                                make_rand<decltype(evm4ccf::BlockHeader::miner)>(),
-                                make_rand<decltype(evm4ccf::BlockHeader::block_hash)>()};
+Ethereum::BlockHeader make_rand<Ethereum::BlockHeader>() {
+    return Ethereum::BlockHeader{make_rand<decltype(Ethereum::BlockHeader::number)>(),
+                                 make_rand<decltype(Ethereum::BlockHeader::difficulty)>(),
+                                 make_rand<decltype(Ethereum::BlockHeader::gas_limit)>(),
+                                 make_rand<decltype(Ethereum::BlockHeader::gas_used)>(),
+                                 make_rand<decltype(Ethereum::BlockHeader::timestamp)>(),
+                                 make_rand<decltype(Ethereum::BlockHeader::miner)>(),
+                                 make_rand<decltype(Ethereum::BlockHeader::block_hash)>()};
 }
 
 using namespace intx;
@@ -143,7 +147,9 @@ TEST_CASE("Hex-string conversion" * doctest::test_suite("conversions")) {
     }
 }
 
-TEST_CASE("Empty" * doctest::test_suite("conversions")) { require_roundtrip(); }
+TEST_CASE("Empty" * doctest::test_suite("conversions")) {
+    require_roundtrip();
+}
 
 TEST_CASE("uint256_t" * doctest::test_suite("conversions")) {
     const uint256_t a = 0;
@@ -164,40 +170,41 @@ TEST_CASE("eevm::LogEntry" * doctest::test_suite("conversions")) {
     require_roundtrip(make_rand<eevm::LogEntry>());
 }
 
-TEST_CASE("evm4ccf::TxResult" * doctest::test_suite("conversions")) {
-    const evm4ccf::TxResult a{};
-    const evm4ccf::TxResult b{0x1, {{0x1, {0x1, 0x2, 0x3, 0x4, 0x5, 0x6}, {0xaabb}}}};
-    const evm4ccf::TxResult c{address,
-                              {
-                                  {0x1, {0x1, 0x2, 0x3, 0x4, 0x5, 0x6}, {0xaabb}},
-                                  {address, {0x0, 0x0, 0xff, 0xfe, 0xef, 0xee, 0xaa}, {0xaabb, 0xab, 0xcd, 0xdc}},
-                              }};
+TEST_CASE("Ethereum::TxResult" * doctest::test_suite("conversions")) {
+    const Ethereum::TxResult a{};
+    const Ethereum::TxResult b{0x1, {{0x1, {0x1, 0x2, 0x3, 0x4, 0x5, 0x6}, {0xaabb}}}};
+    const Ethereum::TxResult c{
+        address,
+        {
+            {0x1, {0x1, 0x2, 0x3, 0x4, 0x5, 0x6}, {0xaabb}},
+            {address, {0x0, 0x0, 0xff, 0xfe, 0xef, 0xee, 0xaa}, {0xaabb, 0xab, 0xcd, 0xdc}},
+        }};
 
     require_roundtrip(a, b, c);
-    require_roundtrip(make_rand<evm4ccf::TxResult>());
+    require_roundtrip(make_rand<Ethereum::TxResult>());
 }
 
-TEST_CASE("evm4ccf::BlockHeader" * doctest::test_suite("conversions")) {
-    const evm4ccf::BlockHeader a{};
-    const evm4ccf::BlockHeader b{0, 1, 2, 3, 4};
-    const evm4ccf::BlockHeader c{0x55, 0x44, 0x33, 0x22, 0x11};
+TEST_CASE("Ethereum::BlockHeader" * doctest::test_suite("conversions")) {
+    const Ethereum::BlockHeader a{};
+    const Ethereum::BlockHeader b{0, 1, 2, 3, 4};
+    const Ethereum::BlockHeader c{0x55, 0x44, 0x33, 0x22, 0x11};
 
     require_roundtrip(a, b, c);
-    require_roundtrip(make_rand<evm4ccf::BlockHeader>());
+    require_roundtrip(make_rand<Ethereum::BlockHeader>());
 }
 
 TEST_CASE("mixed random" * doctest::test_suite("conversions")) {
     require_roundtrip(make_rand<uint256_t>(),
                       make_rand<eevm::LogEntry>(),
-                      make_rand<evm4ccf::TxResult>(),
-                      make_rand<evm4ccf::BlockHeader>());
+                      make_rand<Ethereum::TxResult>(),
+                      make_rand<Ethereum::BlockHeader>());
 
-    require_roundtrip(make_rand<evm4ccf::BlockHeader>(),
+    require_roundtrip(make_rand<Ethereum::BlockHeader>(),
                       make_rand<uint256_t>(),
                       make_rand<uint256_t>(),
-                      make_rand<evm4ccf::TxResult>(),
+                      make_rand<Ethereum::TxResult>(),
                       make_rand<eevm::LogEntry>(),
-                      make_rand<evm4ccf::TxResult>(),
+                      make_rand<Ethereum::TxResult>(),
                       make_rand<eevm::LogEntry>(),
-                      make_rand<evm4ccf::BlockHeader>());
+                      make_rand<Ethereum::BlockHeader>());
 }

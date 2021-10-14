@@ -14,11 +14,12 @@
 
 #pragma once
 
-#include "app/tables.h"
 #include "app/utils.h"
+#include "ethereum/tables.h"
 #include "ethereum_transaction.h"
 #include "kv/map.h"
 #include "kv/store.h"
+#include "queue/types.h"
 #include "queue/workertransaction.h"
 #include "transaction/signature_abstract.h"
 
@@ -42,17 +43,23 @@ struct PrivacyTransaction {
     }
 
     explicit PrivacyTransaction(const eevm::rlp::ByteString& encoded) {
-        auto tup = eevm::rlp::
-            decode<eevm::rlp::ByteString, eevm::rlp::ByteString, eevm::rlp::ByteString, eevm::rlp::ByteString>(encoded);
+        auto tup = eevm::rlp::decode<eevm::rlp::ByteString,
+                                     eevm::rlp::ByteString,
+                                     eevm::rlp::ByteString,
+                                     eevm::rlp::ByteString>(encoded);
         to = std::get<0>(tup);
         verifierAddr = std::get<1>(tup);
         codeHash = std::get<2>(tup);
         data = std::get<3>(tup);
     }
 
-    eevm::rlp::ByteString encode() const { return eevm::rlp::encode(to, verifierAddr, codeHash, data); }
+    eevm::rlp::ByteString encode() const {
+        return eevm::rlp::encode(to, verifierAddr, codeHash, data);
+    }
 
-    virtual eevm::KeccakHash to_be_signed() const { return eevm::keccak_256(encode()); }
+    virtual eevm::KeccakHash to_be_signed() const {
+        return eevm::keccak_256(encode());
+    }
 
     void to_transaction(PrivacyPolicyTransaction& tc) const {
         tc.to = eevm::from_big_endian(to.data(), 20u);
@@ -89,19 +96,26 @@ struct PrivacyTransactionWithSignature : public SignatureAbstract, public Privac
                         eevm::to_hex_string(s));
     }
 
-    PrivacyTransactionWithSignature(const PrivacyTransaction& tx, const tls::RecoverableSignature& sig)
-        : SignatureAbstract(sig), PrivacyTransaction(tx) {}
+    PrivacyTransactionWithSignature(const PrivacyTransaction& tx,
+                                    const tls::RecoverableSignature& sig) :
+        SignatureAbstract(sig),
+        PrivacyTransaction(tx) {}
 
-    eevm::rlp::ByteString encode() const { return eevm::rlp::encode(to, verifierAddr, codeHash, data, v, r, s); }
+    eevm::rlp::ByteString encode() const {
+        return eevm::rlp::encode(to, verifierAddr, codeHash, data, v, r, s);
+    }
 
     eevm::KeccakHash to_be_signed() const override {
         if (is_pre_eip_155(v))
             return PrivacyTransaction::to_be_signed();
 
-        return eevm::keccak_256(eevm::rlp::encode(to, verifierAddr, codeHash, data, current_chain_id, 0, 0));
+        return eevm::keccak_256(
+            eevm::rlp::encode(to, verifierAddr, codeHash, data, current_chain_id, 0, 0));
     }
 
-    eevm::KeccakHash calc_policy_hash() const { return eevm::keccak_256(data); }
+    eevm::KeccakHash calc_policy_hash() const {
+        return eevm::keccak_256(data);
+    }
 
     eevm::KeccakHash to_transaction_call(PrivacyPolicyTransaction& tc) const {
         PrivacyTransaction::to_transaction(tc);
@@ -112,7 +126,8 @@ struct PrivacyTransactionWithSignature : public SignatureAbstract, public Privac
     }
 };
 
-inline PrivacyTransactionWithSignature sign_transaction(tls::KeyPair_k1Bitcoin& kp, const PrivacyTransaction& tx) {
+inline PrivacyTransactionWithSignature sign_transaction(tls::KeyPair_k1Bitcoin& kp,
+                                                        const PrivacyTransaction& tx) {
     const auto tbs = tx.to_be_signed();
     const auto sig = kp.sign_recoverable_hashed({tbs.data(), tbs.size()});
     return PrivacyTransactionWithSignature(tx, sig);
@@ -134,9 +149,13 @@ struct CloakTransaction {
         data = std::get<2>(tup);
     }
 
-    eevm::rlp::ByteString encode() const { return eevm::rlp::encode(nonce, to, data); }
+    eevm::rlp::ByteString encode() const {
+        return eevm::rlp::encode(nonce, to, data);
+    }
 
-    virtual eevm::KeccakHash to_be_signed() const { return eevm::keccak_256(encode()); }
+    virtual eevm::KeccakHash to_be_signed() const {
+        return eevm::keccak_256(encode());
+    }
 
     virtual void to_transaction_call(MultiPartyTransaction& mpt) const {
         mpt.to = to;
@@ -147,9 +166,12 @@ struct CloakTransaction {
 
 struct CloakTransactionWithSignature : public SignatureAbstract, public CloakTransaction {
     explicit CloakTransactionWithSignature(const eevm::rlp::ByteString& encoded) {
-        auto tup =
-            eevm::rlp::decode<size_t, eevm::rlp::ByteString, eevm::rlp::ByteString, uint8_t, PointCoord, PointCoord>(
-                encoded);
+        auto tup = eevm::rlp::decode<size_t,
+                                     eevm::rlp::ByteString,
+                                     eevm::rlp::ByteString,
+                                     uint8_t,
+                                     PointCoord,
+                                     PointCoord>(encoded);
 
         nonce = std::get<0>(tup);
         to = std::get<1>(tup);
@@ -159,12 +181,18 @@ struct CloakTransactionWithSignature : public SignatureAbstract, public CloakTra
         s = std::get<5>(tup);
     }
 
-    CloakTransactionWithSignature(const CloakTransaction& tx, const tls::RecoverableSignature& sig)
-        : SignatureAbstract(sig), CloakTransaction(tx) {}
+    CloakTransactionWithSignature(const CloakTransaction& tx,
+                                  const tls::RecoverableSignature& sig) :
+        SignatureAbstract(sig),
+        CloakTransaction(tx) {}
 
-    eevm::rlp::ByteString encode() const { return eevm::rlp::encode(nonce, to, data, v, r, s); }
+    eevm::rlp::ByteString encode() const {
+        return eevm::rlp::encode(nonce, to, data, v, r, s);
+    }
 
-    eevm::KeccakHash digest() const { return eevm::keccak_256(encode()); }
+    eevm::KeccakHash digest() const {
+        return eevm::keccak_256(encode());
+    }
 
     eevm::KeccakHash to_be_signed() const override {
         if (is_pre_eip_155(v)) {
@@ -181,4 +209,4 @@ struct CloakTransactionWithSignature : public SignatureAbstract, public CloakTra
         CLOAK_DEBUG_FMT("recoverd from:{}", to_checksum_address(mpt.from));
     }
 };
-}  // namespace evm4ccf
+} // namespace evm4ccf

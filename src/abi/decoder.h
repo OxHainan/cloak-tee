@@ -46,7 +46,8 @@ class Decoder {
         return coders;
     }
 
-    static std::vector<TypePrt> decode(const std::vector<uint8_t>& inputs, const std::vector<std::string>& _type) {
+    static std::vector<TypePrt> decode(const std::vector<uint8_t>& inputs,
+                                       const std::vector<std::string>& _type) {
         Decoder decoder;
         for (size_t i = 0; i < _type.size(); i++) {
             decoder.add_params("", _type[i]);
@@ -74,4 +75,4 @@ class Decoder {
     std::vector<abiParams> abi;
 };
 
-}  // namespace abicoder
+} // namespace abicoder

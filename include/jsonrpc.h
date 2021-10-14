@@ -143,7 +143,8 @@ inline void to_json(nlohmann::json& j, const ProcedureCallBase& pc) {
 
 inline void from_json(const nlohmann::json& j, ProcedureCallBase& pc) {
     std::string jsonRpc = j[JSON_RPC];
-    if (jsonRpc != RPC_VERSION) throw std::logic_error("Wrong JSON-RPC version: " + j.dump());
+    if (jsonRpc != RPC_VERSION)
+        throw std::logic_error("Wrong JSON-RPC version: " + j.dump());
     pc.id = j[ID];
     assign_j(pc.method, j[METHOD]);
 }
@@ -187,7 +188,9 @@ struct Response {
     T result;
     SeqNo id;
 
-    T* operator->() { return &result; }
+    T* operator->() {
+        return &result;
+    }
 };
 
 template <typename T>
@@ -200,11 +203,13 @@ void to_json(nlohmann::json& j, const Response<T>& r) {
 template <typename T>
 void from_json(const nlohmann::json& j, Response<T>& r) {
     std::string jsonRpc = j[JSON_RPC];
-    if (jsonRpc != RPC_VERSION) throw std::logic_error("Wrong JSON-RPC version: " + j.dump());
+    if (jsonRpc != RPC_VERSION)
+        throw std::logic_error("Wrong JSON-RPC version: " + j.dump());
 
     r.id = j[ID];
     auto search = j.find(RESULT);
-    if (search == j.end()) throw std::logic_error("No result field: " + j.dump());
+    if (search == j.end())
+        throw std::logic_error("No result field: " + j.dump());
 
     decltype(r.result) temp = *search;
     r.result = temp;
@@ -215,8 +220,8 @@ struct Error {
     std::string message;
 
     template <typename ErrorEnum>
-    explicit Error(ErrorEnum error_code, const std::string& msg = "")
-        : code(static_cast<ErrorBaseType>(error_code)), message(get_error_prefix(error_code) + msg) {}
+    explicit Error(ErrorEnum error_code, const std::string& msg = "") :
+        code(static_cast<ErrorBaseType>(error_code)), message(get_error_prefix(error_code) + msg) {}
 };
 DECLARE_JSON_TYPE(Error)
 DECLARE_JSON_REQUIRED_FIELDS(Error, code, message)
@@ -276,10 +281,12 @@ inline nlohmann::json error_response(SeqNo id, ErrorEnum error_code, const std::
     return j;
 }
 
-inline std::pair<bool, nlohmann::json> unpack_rpc(const std::vector<uint8_t>& input, std::optional<Pack>& o_pack) {
+inline std::pair<bool, nlohmann::json> unpack_rpc(const std::vector<uint8_t>& input,
+                                                  std::optional<Pack>& o_pack) {
     const auto pack = detect_pack(input);
     if (!pack.has_value()) {
-        return jsonrpc::error(StandardErrorCodes::INVALID_REQUEST, "Unable to detect packing format of request");
+        return jsonrpc::error(StandardErrorCodes::INVALID_REQUEST,
+                              "Unable to detect packing format of request");
     }
 
     o_pack = pack;
@@ -288,13 +295,15 @@ inline std::pair<bool, nlohmann::json> unpack_rpc(const std::vector<uint8_t>& in
     try {
         rpc = unpack(input, pack.value());
         if (!rpc.is_object()) {
-            return jsonrpc::error(StandardErrorCodes::INVALID_REQUEST,
-                                  fmt::format("RPC payload is a not a valid object: {}", rpc.dump()));
+            return jsonrpc::error(
+                StandardErrorCodes::INVALID_REQUEST,
+                fmt::format("RPC payload is a not a valid object: {}", rpc.dump()));
         }
     } catch (const std::exception& e) {
-        return error(StandardErrorCodes::INVALID_REQUEST, fmt::format("Exception during unpack: {}", e.what()));
+        return error(StandardErrorCodes::INVALID_REQUEST,
+                     fmt::format("Exception during unpack: {}", e.what()));
     }
 
     return {true, rpc};
 }
-}  // namespace jsonrpc
+} // namespace jsonrpc

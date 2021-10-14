@@ -13,16 +13,19 @@
 // limitations under the License.
 
 #pragma once
+#include "string"
 
-namespace Const {
-// tables name
-namespace TableNames {
-inline constexpr auto TEE_MANAGER = "tee.manager";
-}
+#include <exception>
+namespace abicoder {
 
-namespace TEE_MANAGER_KEYS {
-inline constexpr auto KP_SK = "kp_sk_pem";
-inline constexpr auto PKI_ADDR = "pki_addr";
-inline constexpr auto NONCE = "nonce";
-}  // namespace TEE_MANAGER_KEYS
-}  // namespace Const
+class ABIException : public std::exception {
+ public:
+    explicit ABIException(const std::string& msg_) : msg(msg_) {}
+    virtual const char* what() const throw() {
+        return msg.c_str();
+    }
+
+ private:
+    const std::string msg;
+};
+} // namespace abicoder

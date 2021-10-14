@@ -15,7 +15,7 @@
 #pragma once
 #include "iostream"
 #include "map"
-#include "regex"  // NOLINT
+#include "regex" // NOLINT
 #include "string"
 
 #include <fmt/format.h>
@@ -41,18 +41,24 @@ class Parsing {
     explicit Parsing(string _str) : str(_str) {}
 
     inline bool check(string& str) {
-        if (!paramTypeSimple[str].empty()) return true;
+        if (!paramTypeSimple[str].empty())
+            return true;
         smatch match;
-        if (regex_match(str, match, regex(patternBytes))) return true;
-        if (regex_match(str, match, regex(patternMapping))) return true;
-        if (regex_match(str, match, regex(patternNumber))) return true;
-        if (regex_match(str, match, regex(patternArray))) return true;
+        if (regex_match(str, match, regex(patternBytes)))
+            return true;
+        if (regex_match(str, match, regex(patternMapping)))
+            return true;
+        if (regex_match(str, match, regex(patternNumber)))
+            return true;
+        if (regex_match(str, match, regex(patternArray)))
+            return true;
 
         throw std::logic_error(fmt::format("{} can`t parsing", str));
     }
 
     std::tuple<string, int, bool> result() {
-        if (!paramTypeSimple[str].empty()) return std::make_tuple(paramTypeSimple[str], 0, false);
+        if (!paramTypeSimple[str].empty())
+            return std::make_tuple(paramTypeSimple[str], 0, false);
         smatch match;
         if (regex_match(str, match, regex(patternBytes))) {
             size_t len;
