@@ -27,9 +27,8 @@ def get_ccf_client(args: argparse.Namespace) -> CCFClient:
 
 
 def get_abi_and_bin(file_path: str, name: str):
-    out, err = subprocess.Popen(
-        f"solc --combined-json abi,bin,bin-runtime,hashes --evm-version homestead --optimize {file_path}",
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).communicate()
+    cmd = f"solc --combined-json abi,bin,bin-runtime,hashes --evm-version homestead --optimize {file_path}"
+    out, err = subprocess.Popen(cmd.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
     if err:
         print(f"get_abi_and_bin failed:{err}")
         raise Exception(f"get_abi_and_bin failed:{err}")
