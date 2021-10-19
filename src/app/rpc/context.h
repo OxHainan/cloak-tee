@@ -28,19 +28,14 @@ struct CloakTables {
     CloakTables() : txTables(), acc_state(), tx_results("eth.txresults"), tee_table() {}
 };
 
-struct CloakContext {
-    kv::Tx& tx;
+template <typename TX>
+struct CloakContextT {
+    TX& tx;
     CloakTables& cloakTables;
     SeqNo seqno;
-    CloakContext(kv::Tx& tx_, CloakTables& cloakTables_) : tx(tx_), cloakTables(cloakTables_) {}
+    CloakContextT(TX& tx_, CloakTables& cloakTables_) : tx(tx_), cloakTables(cloakTables_) {}
 };
 
-struct ReadOnlyCloakContext {
-    kv::ReadOnlyTx& tx;
-    CloakTables& cloakTables;
-    SeqNo seqno;
-    ReadOnlyCloakContext(kv::ReadOnlyTx& tx_, CloakTables& cloakTables_) :
-        tx(tx_), cloakTables(cloakTables_) {}
-};
-
+using CloakContext = CloakContextT<kv::Tx>;
+using ReadOnlyCloakContext = CloakContextT<kv::ReadOnlyTx>;
 } // namespace cloak4ccf

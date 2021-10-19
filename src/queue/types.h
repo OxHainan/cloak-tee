@@ -14,21 +14,50 @@
 
 #pragma once
 #include "ds/logger.h"
-namespace evm4ccf {
-namespace policy {
+#include "transaction/exception.h"
 
-struct MultiInput {
-    ByteData name = {};
-    ByteData value = {};
-    MSGPACK_DEFINE(name, value);
+namespace evm4ccf {
+enum class Status {
+    PENDING,
+    REQUESTING_OLD_STATES,
+    SYNCING,
+    SYNCED,
+    SYNC_FAILED,
+    DROPPED,
 };
 
-DECLARE_JSON_TYPE(MultiInput)
-DECLARE_JSON_REQUIRED_FIELDS(MultiInput, name, value)
+DECLARE_JSON_ENUM(Status,
+                  {
+                      {Status::PENDING, "PENDING"},
+                      {Status::REQUESTING_OLD_STATES, "REQUESTING_OLD_STATES"},
+                      {Status::SYNCING, "SYNCING"},
+                      {Status::SYNCED, "SYNCED"},
+                      {Status::SYNC_FAILED, "SYNC_FAILED"},
+                      {Status::DROPPED, "DROPPED"},
+                  })
+
+struct MPT_CALL {
+    struct In {
+        std::string id = {};
+    };
+
+    struct Out {
+        Status status = {};
+        std::string output = {};
+    };
+};
+
+DECLARE_JSON_TYPE(MPT_CALL::In)
+DECLARE_JSON_REQUIRED_FIELDS(MPT_CALL::In, id)
+
+DECLARE_JSON_TYPE(MPT_CALL::Out)
+DECLARE_JSON_REQUIRED_FIELDS(MPT_CALL::Out, status, output)
+
+namespace policy {
 
 struct MultiPartyParams {
-    ByteData function = {};
-    std::vector<MultiInput> inputs = {};
+    ByteData function;
+    std::map<std::string, nlohmann::json> inputs;
     MSGPACK_DEFINE(function, inputs);
 
     ByteData name() const {
@@ -45,15 +74,20 @@ struct Params {
     ByteData type = {};
     nlohmann::json structural_type;
     nlohmann::json owner;
-    std::optional<ByteData> value = std::nullopt;
+    std::optional<nlohmann::json> value = std::nullopt;
 
     MSGPACK_DEFINE(name, type, structural_type, owner, value);
 
-    ByteData getValue() const {
-        return value.value_or("");
+    nlohmann::json getValue() const {
+        if (!value.has_value()) {
+            throw cloak4ccf::Transaction::TransactionException(fmt::format(
+                "multi party transaction has not complete, get [{}] has no value", name));
+        }
+
+        return value.value();
     }
 
-    void set_value(const ByteData& _v) {
+    void set_value(const nlohmann::json& _v) {
         value = _v;
     }
 };
@@ -93,18 +127,18 @@ struct Function {
         return encoder.encode(entry);
     }
 
-    void padding(const MultiInput& p) {
+    void padding(const std::pair<std::string, nlohmann::json>& p) {
         if (complete())
             return;
 
-        for (int i = 0; i < inputs.size(); i++) {
-            if (inputs[i].name == p.name) {
-                inputs[i].set_value(p.value);
+        for (size_t i = 0; i < inputs.size(); i++) {
+            if (p.first == inputs[i].name) {
+                inputs[i].set_value(p.second);
                 return;
             }
         }
 
-        throw std::logic_error(fmt::format("input params doesn`t match, get {}", p.name));
+        throw std::logic_error(fmt::format("input params doesn`t match, get {}", p.first));
     }
 
     bool complete() const {
@@ -190,6 +224,7 @@ struct Policy {
                 return functions[i];
             }
         }
+
         throw std::logic_error(
             fmt::format("doesn't find this {} function in this policy modules", name));
     }
@@ -211,3 +246,4 @@ struct SendMultiPartyTransaction {
 } // namespace evm4ccf
 
 #include "nljsontypes.h"
+MSGPACK_ADD_ENUM(evm4ccf::Status);

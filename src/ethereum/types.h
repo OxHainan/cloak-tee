@@ -18,12 +18,13 @@
 #include <eEVM/transaction.h>
 #include <eEVM/util.h>
 #include <kv/tx.h>
+
 namespace Ethereum {
 using Balance = uint256_t;
+using EthHash = uint256_t;
 using Result = uint64_t;
 using BlockID = std::string;
 using ByteData = std::string;
-using EthHash = uint256_t;
 using TxHash = EthHash;
 using BlockHash = EthHash;
 using ByteString = std::vector<uint8_t>;

@@ -14,6 +14,7 @@
 
 #pragma once
 #include "abi/exception.h"
+#include "abi/parsing.h"
 #include "app/utils.h"
 #include "iostream"
 #include "math.h"
@@ -109,6 +110,15 @@ std::vector<uint8_t> string_to_bytes(const std::string& _s) {
         h.at(offset) = strtol(s.substr(x, 2).c_str(), 0, 16);
     }
     return h;
+}
+
+bool check_dynamic(const std::string& type) {
+    auto [boolean, _type] = Parsing::check_dynamic(type);
+    if (boolean)
+        return boolean;
+    if (_type.empty())
+        return false;
+    return check_dynamic(_type);
 }
 
 inline std::vector<std::string> decode_uint256_array(const std::vector<uint8_t>& states) {

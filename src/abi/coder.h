@@ -23,11 +23,13 @@ class Coder {
     static std::vector<uint8_t> pack(const std::vector<TypePrt>& coders) {
         if (coders.size() < 1)
             return {};
+
         std::vector<PackParams> parts;
         parts.resize(coders.size());
         for (size_t i = 0; i < coders.size(); i++) {
             parts[i] = {coders[i]->dynamicType(), coders[i]->encode()};
         }
+
         return basic_pack(parts);
     }
 
@@ -45,7 +47,6 @@ class Coder {
 
         size_t offset = 0, dynamicOffset = staticSize;
         std::vector<uint8_t> data(staticSize + dynamicSize);
-
         for (auto part : parts) {
             if (part.Dynamic) {
                 to_array(data, encode_to_vector(dynamicOffset), offset);
@@ -61,4 +62,4 @@ class Coder {
     }
 };
 
-}  // namespace abicoder
+} // namespace abicoder

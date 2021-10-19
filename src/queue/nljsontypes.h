@@ -16,7 +16,9 @@
 #include "json_utils.h"
 
 namespace evm4ccf {
+
 namespace policy {
+
 inline void from_json(const nlohmann::json& j, Function& s) {
     require_object(j);
     from_to_str(j, "name", s.name);

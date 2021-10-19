@@ -104,7 +104,7 @@ class NumericType : public Type {
     NumericType(const std::string& _type, const std::string& _value) :
         value(eevm::to_uint256(_value)), type(_type) {}
 
-    explicit NumericType(const size_t& length) : value(eevm::to_uint256(std::to_string(length))) {}
+    explicit NumericType(const size_t& length) : value(length) {}
 
     uint64_t to_uint64() {
         const auto val = value;
@@ -319,6 +319,7 @@ inline std::vector<uint8_t> encode_to_vector(const size_t& value) {
 class BytesType : public Type {
  public:
     explicit BytesType(const std::string& _type) : type(_type) {}
+
     BytesType(const std::string& _type, const std::vector<uint8_t>& src) :
         type(_type), value(src) {}
 
@@ -407,8 +408,8 @@ class Bytes : public BytesType {
 
  private:
     bool isValid(const size_t& byteSize, const std::vector<uint8_t>& _value) {
-        size_t length = _value.size();
-        return length > 0 && length <= MAX_BYTE_LENGTH && length == byteSize;
+        size_t len = _value.size();
+        return len > 0 && len <= MAX_BYTE_LENGTH && len == byteSize;
     }
 
     size_t length;

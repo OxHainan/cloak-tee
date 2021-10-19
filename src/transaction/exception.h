@@ -13,18 +13,18 @@
 // limitations under the License.
 
 #pragma once
+#include "cloak_exception.h"
 #include "string"
 
-#include <exception>
 namespace cloak4ccf {
 
 namespace Transaction {
 
-class TransactionException : public std::exception {
+class TransactionException : public cloak4ccf::CloakException {
  public:
     explicit TransactionException(const std::string& msg_) : msg(msg_) {}
 
-    virtual const char* what() const throw() {
+    const char* what() const throw() {
         return msg.c_str();
     }
 
