@@ -18,13 +18,8 @@
 #include "abi/exception.h"
 #include "abi/utils.h"
 #include "fmt/format.h"
-#include "nlohmann/json.hpp"
-#include "string"
 
-#include <algorithm>
-#include <app/utils.h>
-#include <iostream>
-#include <sys/types.h>
+#include <string>
 #include <vector>
 
 namespace abicoder {
