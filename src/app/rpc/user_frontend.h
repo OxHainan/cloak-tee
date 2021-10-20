@@ -24,7 +24,6 @@
 #include "transaction/generator.h"
 
 namespace cloak4ccf {
-
 class CloakEndpointRegistry : public EVMHandlers {
  public:
     CloakEndpointRegistry(ccf::NetworkTables& nwt, ccfapp::AbstractNodeContext& context) :
@@ -76,9 +75,9 @@ class CloakEndpointRegistry : public EVMHandlers {
         };
 
         auto sync_public_keys = [this](CloakContext& ctx, const nlohmann::json& params) {
-            auto syncKeys = params.get<SyncKeys>();
+            // auto syncKeys = params.get<SyncKeys>();
             Transaction::Generator gen(ctx);
-            gen.sync_public_keys(syncKeys);
+            gen.sync_public_keys(params);
             return true;
         };
 

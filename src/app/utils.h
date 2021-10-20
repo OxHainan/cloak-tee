@@ -124,20 +124,6 @@ inline uint256_t vec32_to_uint256(const std::vector<uint8_t>& data) {
     return eevm::to_uint256(eevm::to_hex_string(data));
 }
 
-inline std::vector<std::string> stringToArray(const std::string& s) {
-    std::vector<std::string> arr;
-    for (size_t i = 1; i < s.size(); i++) {
-        size_t j = i;
-        for (; j < s.size(); j++) {
-            if (s[j] == ',' || s[j] == ']')
-                break;
-        }
-        arr.push_back(std::string(s.substr(i + 1, j - i - 2)));
-        i = j;
-    }
-    return arr;
-}
-
 inline std::string to_lower(const std::string& str) {
     std::string res(str.size(), ' ');
     std::transform(str.begin(), str.end(), res.begin(), ::towlower);

@@ -31,7 +31,9 @@ using namespace eevm;
 
 namespace abicoder {
 
-eevm::Address to_address(const vector<uint8_t>& inputs) { return eevm::from_big_endian(inputs.data()); }
+eevm::Address to_address(const vector<uint8_t>& inputs) {
+    return eevm::from_big_endian(inputs.data());
+}
 
 template <typename T>
 void test_basic(Type* pd, const T&& correct) {
@@ -108,13 +110,13 @@ TEST_CASE("Test dynamic bytes") {
 
     auto de_bytes = DynamicBytes();
     de_bytes.decode(correct);
-    // cout << eevm::to_hex_string(de_bytes.get_value()) << endl;
     CHECK(de_bytes.get_value() == std::vector<uint8_t>(src.begin(), src.end()));
 }
 
 TEST_CASE("Test static bytes") {
     string src = "1234567890";
-    auto correct = eevm::to_bytes("0x3132333435363738393000000000000000000000000000000000000000000000");
+    auto correct =
+        eevm::to_bytes("0x3132333435363738393000000000000000000000000000000000000000000000");
 
     auto bytes = Bytes(10, src);
     test_basic(&bytes, move(correct));
@@ -126,8 +128,8 @@ TEST_CASE("Test static bytes") {
 
 TEST_CASE("Test uint") {
     auto src = eevm::to_uint256("69");
-    auto correct = eevm::to_bytes("0x0000000000000000000000000000000000000000000000000000000000000045");
-
+    auto correct =
+        eevm::to_bytes("0x0000000000000000000000000000000000000000000000000000000000000045");
     // uint256
     auto uint_ = Uint(src);
     test_basic(&uint_, move(correct));
@@ -142,54 +144,222 @@ TEST_CASE("Test uint") {
     test_basic(&uint_2, move(correct));
 
     // to_uint64
-    CHECK(NumericType(correct).to_uint64() == 69);  // NOLINT
+    CHECK(NumericType(correct).to_uint64() == 69); // NOLINT
 }
 
 TEST_CASE("Test dynamic array") {
-    auto src =
-        vector<string>({"0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe", "0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe"});
+    auto one = {"0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe",
+                "0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe"};
 
-    auto correct = eevm::to_bytes(
-        "0x0000000000000000000000000000000000000000000000000000000000000002"
-        "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
-        "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae");
+    SUBCASE("One-dimensional") {
+        auto correct = eevm::to_bytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000002"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae");
 
-    auto array = DynamicArray("address", src);
-    test_basic(&array, move(correct));
+        auto array = DynamicArray("address", one);
+        test_basic(&array, move(correct));
+    }
+
+    SUBCASE("Two-dimensional") {
+        auto src = {one, one};
+        auto correct = eevm::to_bytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000002"
+            "0000000000000000000000000000000000000000000000000000000000000040"
+            "00000000000000000000000000000000000000000000000000000000000000a0"
+            "0000000000000000000000000000000000000000000000000000000000000002"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
+            "0000000000000000000000000000000000000000000000000000000000000002"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae");
+
+        auto array = DynamicArray("address[]", src);
+        test_basic(&array, move(correct));
+    }
+
+    SUBCASE("Three-dimensional") {
+        vector<vector<string>> src = {{"0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe"}};
+
+        vector<vector<vector<string>>> vec = {src, src};
+        auto correct = eevm::to_bytes(
+            "0000000000000000000000000000000000000000000000000000000000000002"
+            "0000000000000000000000000000000000000000000000000000000000000040"
+            "00000000000000000000000000000000000000000000000000000000000000c0"
+            "0000000000000000000000000000000000000000000000000000000000000001"
+            "0000000000000000000000000000000000000000000000000000000000000020"
+            "0000000000000000000000000000000000000000000000000000000000000001"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
+            "0000000000000000000000000000000000000000000000000000000000000001"
+            "0000000000000000000000000000000000000000000000000000000000000020"
+            "0000000000000000000000000000000000000000000000000000000000000001"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae");
+
+        auto array = DynamicArray("address[][]", vec);
+        test_basic(&array, move(correct));
+    }
 }
 
 TEST_CASE("Test static array") {
-    auto src =
-        vector<string>({"0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe", "0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe"});
+    auto one = {"0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe"};
+    SUBCASE("One-dimensional") {
+        auto correct =
+            eevm::to_bytes("000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae");
 
-    auto correct = eevm::to_bytes(
-        "0x000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
-        "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae");
+        auto array = StaticArray("address", one);
+        CHECK_FALSE(array.dynamicType()); // address[1] false
+        test_basic(&array, move(correct));
 
-    auto array = StaticArray("address", src);
-    test_basic(&array, move(correct));
+        auto correct1 = eevm::to_bytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000020"
+            "0000000000000000000000000000000000000000000000000000000000000014"
+            "de0b295669a9fd93d5f28d9ec85e40f4cb697bae000000000000000000000000");
+
+        auto array1 = StaticArray("bytes", one); // bytes[1] true
+        CHECK(array1.dynamicType());
+        CHECK(array1.encode() == correct1);
+    }
+
+    auto two = {one, one};
+    SUBCASE("Two-dimensional") {
+        auto correct = eevm::to_bytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000040"
+            "0000000000000000000000000000000000000000000000000000000000000080"
+            "0000000000000000000000000000000000000000000000000000000000000001"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
+            "0000000000000000000000000000000000000000000000000000000000000001"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae");
+
+        auto array = StaticArray("address[]", two); // address[][2]  true
+        CHECK(array.dynamicType());
+        test_basic(&array, move(correct));
+
+        auto array1 = StaticArray("address[1]", two);
+        auto correct1 = eevm::to_bytes(
+            "0x000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae");
+        CHECK_FALSE(array1.dynamicType());
+        test_basic(&array1, move(correct1));
+    }
+
+    SUBCASE("Three-dimensional") {
+        auto src = {two, two};
+        auto correct = eevm::to_bytes(
+            "0000000000000000000000000000000000000000000000000000000000000040"
+            "0000000000000000000000000000000000000000000000000000000000000120"
+            "0000000000000000000000000000000000000000000000000000000000000002"
+            "0000000000000000000000000000000000000000000000000000000000000040"
+            "0000000000000000000000000000000000000000000000000000000000000080"
+            "0000000000000000000000000000000000000000000000000000000000000001"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
+            "0000000000000000000000000000000000000000000000000000000000000001"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
+            "0000000000000000000000000000000000000000000000000000000000000002"
+            "0000000000000000000000000000000000000000000000000000000000000040"
+            "0000000000000000000000000000000000000000000000000000000000000080"
+            "0000000000000000000000000000000000000000000000000000000000000001"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
+            "0000000000000000000000000000000000000000000000000000000000000001"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae");
+
+        auto array = StaticArray("address[][]", src); // address[][][2] true
+        CHECK(array.dynamicType());
+        test_basic(&array, move(correct));
+    }
 }
 
 TEST_CASE("Test encode") {
     auto encoder = Encoder("test");
-    std::vector<std::string> arrs = {"0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe",
-                                     "0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe"};
+    SUBCASE("encoder one") {
+        std::vector<std::string> arrs = {"0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe",
+                                         "0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe"};
 
-    encoder.add_inputs("a", "uint", "0x123");
-    encoder.add_inputs("b", "address[2]", arrs);
-    encoder.add_inputs("c", "bytes10", "1234567890");
-    encoder.add_inputs("d", "string", "Hello, world!");
+        encoder.add_inputs("a", "uint", "0x123");
+        encoder.add_inputs("b", "address[2]", arrs);
+        encoder.add_inputs("c", "bytes10", "1234567890");
+        encoder.add_inputs("d", "string", "Hello, world!");
 
-    auto correct = eevm::to_bytes(
-        "0x0000000000000000000000000000000000000000000000000000000000000123"
-        "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
-        "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
-        "3132333435363738393000000000000000000000000000000000000000000000"
-        "00000000000000000000000000000000000000000000000000000000000000a0"
-        "000000000000000000000000000000000000000000000000000000000000000d"
-        "48656c6c6f2c20776f726c642100000000000000000000000000000000000000");
+        auto correct = eevm::to_bytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000123"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
+            "3132333435363738393000000000000000000000000000000000000000000000"
+            "00000000000000000000000000000000000000000000000000000000000000a0"
+            "000000000000000000000000000000000000000000000000000000000000000d"
+            "48656c6c6f2c20776f726c642100000000000000000000000000000000000000");
 
-    CHECK(encoder.encode() == correct);
+        CHECK(encoder.encode() == correct);
+    }
+
+    SUBCASE("encoder two") {
+        vector<vector<std::string>> arrs = {{"0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe"},
+                                            {"0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe"}};
+        auto correct = eevm::to_bytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000020"
+            "0000000000000000000000000000000000000000000000000000000000000040"
+            "0000000000000000000000000000000000000000000000000000000000000080"
+            "0000000000000000000000000000000000000000000000000000000000000001"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
+            "0000000000000000000000000000000000000000000000000000000000000001"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae");
+
+        encoder.add_inputs("b", "address[][2]", arrs);
+        CHECK(encoder.encode() == correct);
+    }
+
+    SUBCASE("test string nil") {
+        string src = "";
+        encoder.add_inputs("a", "string", src);
+        auto correct = eevm::to_bytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000020"
+            "0000000000000000000000000000000000000000000000000000000000000000");
+
+        CHECK(encoder.encode() == correct);
+    }
+
+    SUBCASE("test string value is 0x") {
+        string src = "0x";
+        encoder.add_inputs("a", "string", src);
+        auto correct = eevm::to_bytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000020"
+            "0000000000000000000000000000000000000000000000000000000000000002"
+            "3078000000000000000000000000000000000000000000000000000000000000");
+
+        CHECK(encoder.encode() == correct);
+    }
+
+    SUBCASE("test bytes nil") {
+        string src = "0x";
+        encoder.add_inputs("a", "bytes", src);
+        auto correct = eevm::to_bytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000020"
+            "0000000000000000000000000000000000000000000000000000000000000000"); // 0x
+
+        CHECK(encoder.encode() == correct);
+    }
+
+    SUBCASE("test dynamic array when bytes type value is nil") {
+        vector<string> src = {};
+        encoder.add_inputs("a", "bytes[]", src);
+        auto correct = eevm::to_bytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000020"
+            "0000000000000000000000000000000000000000000000000000000000000000");
+        CHECK(encoder.encode() == correct);
+    }
+
+    SUBCASE("test dynamic array when string type value is nil") {
+        vector<string> src = {};
+        encoder.add_inputs("a", "string[]", src);
+        auto correct = eevm::to_bytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000020"
+            "0000000000000000000000000000000000000000000000000000000000000000");
+        CHECK(encoder.encode() == correct);
+    }
+
+    SUBCASE("test static array when string type value is nil") {
+        vector<string> src = {};
+        CHECK_THROWS(encoder.add_inputs("a", "string[2]", src)); // static array
+    }
 }
 
 TEST_CASE("Test function") {
@@ -228,5 +398,4 @@ TEST_CASE("Test function") {
         func.decode(correct);
     }
 }
-
-}  // namespace abicoder
+} // namespace abicoder

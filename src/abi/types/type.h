@@ -18,13 +18,8 @@
 #include "abi/exception.h"
 #include "abi/utils.h"
 #include "fmt/format.h"
-#include "nlohmann/json.hpp"
-#include "string"
 
-#include <algorithm>
-#include <app/utils.h>
-#include <iostream>
-#include <sys/types.h>
+#include <string>
 #include <vector>
 
 namespace abicoder {
@@ -50,8 +45,7 @@ using TypePtrLst = std::vector<TypePrt>;
 
 class Address : public Type {
  public:
-    Address() {}
-    explicit Address(const std::string& _value) : value(to_bytes(_value, LENGTH)) {}
+    explicit Address(const std::string& _value = "") : value(to_bytes(_value, LENGTH)) {}
 
     std::vector<uint8_t> encode() override {
         return value;
@@ -93,7 +87,6 @@ class Address : public Type {
 
 class NumericType : public Type {
  public:
-    NumericType() {}
     explicit NumericType(const std::vector<uint8_t>& val) {
         value = eevm::from_big_endian(val.data(), val.size());
     }
@@ -104,7 +97,7 @@ class NumericType : public Type {
     NumericType(const std::string& _type, const std::string& _value) :
         value(eevm::to_uint256(_value)), type(_type) {}
 
-    explicit NumericType(const size_t& length) : value(eevm::to_uint256(std::to_string(length))) {}
+    explicit NumericType(const size_t& length) : value(length) {}
 
     uint64_t to_uint64() {
         const auto val = value;
@@ -146,20 +139,22 @@ class NumericType : public Type {
     }
 
  private:
+    NumericType() = delete;
+
     std::string type;
     intx::uint256 value;
 };
 
 class IntType : public NumericType {
  public:
-    IntType() {}
-
     explicit IntType(const size_t& bitSize,
                      const uint256& value = 0u,
                      const std::string& typePrefix = "") :
         NumericType(parse(typePrefix, bitSize), value) {}
 
  private:
+    IntType() = delete;
+
     bool isValidBitSize(const size_t& bitSize) {
         return bitSize % 8 == 0 && bitSize > 0 && bitSize <= MAX_BIT_LENGTH;
     }
@@ -230,8 +225,7 @@ class Uint : public IntType {
 
 class Boolean : public Type {
  public:
-    Boolean() {}
-    explicit Boolean(const bool& _value) {
+    explicit Boolean(const bool& _value = false) {
         value = _value;
     }
 
@@ -319,6 +313,7 @@ inline std::vector<uint8_t> encode_to_vector(const size_t& value) {
 class BytesType : public Type {
  public:
     explicit BytesType(const std::string& _type) : type(_type) {}
+
     BytesType(const std::string& _type, const std::vector<uint8_t>& src) :
         type(_type), value(src) {}
 
@@ -372,7 +367,10 @@ class Bytes : public BytesType {
         BytesType(BYTES + std::to_string(_value.size()), _value), length(byteSize) {
         if (!isValid(byteSize, value)) {
             throw ABIException(
-                "Input byte array must be in range 0 < M <= 32 and length must match type");
+                fmt::format("Input bytes must be in range 0 < M <= 32 and length must match type, "
+                            "get bytes size {}, but value size {}",
+                            byteSize,
+                            value.size()));
         }
     }
 
@@ -382,8 +380,7 @@ class Bytes : public BytesType {
     std::vector<uint8_t> encode() override {
         size_t mod = value.size() % MAX_BYTE_LENGTH;
         if (mod != 0) {
-            size_t padding = MAX_BYTE_LENGTH - mod;
-            auto pad = std::vector<uint8_t>(padding);
+            auto pad = std::vector<uint8_t>(MAX_BYTE_LENGTH - mod);
             value.insert(value.end(), pad.begin(), pad.end());
         }
         return value;
@@ -407,8 +404,8 @@ class Bytes : public BytesType {
 
  private:
     bool isValid(const size_t& byteSize, const std::vector<uint8_t>& _value) {
-        size_t length = _value.size();
-        return length > 0 && length <= MAX_BYTE_LENGTH && length == byteSize;
+        size_t len = _value.size();
+        return len > 0 && len <= MAX_BYTE_LENGTH && len == byteSize;
     }
 
     size_t length;
@@ -417,12 +414,20 @@ class Bytes : public BytesType {
 class DynamicBytes : public BytesType {
  public:
     DynamicBytes() : BytesType(BYTES) {}
-    explicit DynamicBytes(const std::vector<uint8_t>& _value) : BytesType(BYTES, _value) {}
 
     explicit DynamicBytes(const std::string& src) : DynamicBytes(bytes_strip(src)) {}
 
     bool dynamicType() override {
         return true;
+    }
+
+ private:
+    explicit DynamicBytes(const std::vector<uint8_t>& _value) : BytesType(BYTES, _value) {}
+
+    void isValid(const std::string& src) {
+        if (src.size() == 0) {
+            throw ABIException("Invalid inputs argument, bytes default value is 0x");
+        }
     }
 };
 

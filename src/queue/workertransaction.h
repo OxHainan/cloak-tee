@@ -36,29 +36,6 @@
 #include <msgpack/msgpack.hpp>
 
 namespace evm4ccf {
-enum class Status {
-    PENDING,
-    REQUESTING_OLD_STATES,
-    SYNCING,
-    SYNCED,
-    SYNC_FAILED,
-    DROPPED,
-};
-
-DECLARE_JSON_ENUM(Status,
-                  {
-                      {Status::PENDING, "PENDING"},
-                      {Status::REQUESTING_OLD_STATES, "REQUESTING_OLD_STATES"},
-                      {Status::SYNCING, "SYNCING"},
-                      {Status::SYNCED, "SYNCED"},
-                      {Status::SYNC_FAILED, "SYNC_FAILED"},
-                      {Status::DROPPED, "DROPPED"},
-                  })
-} // namespace evm4ccf
-
-MSGPACK_ADD_ENUM(evm4ccf::Status);
-
-namespace evm4ccf {
 using namespace eevm;
 using namespace rpcparams;
 using ByteData = std::string;
@@ -75,23 +52,6 @@ using PrivacyDigests = kv::Map<Address, h256>;
 using CloakPolicys = kv::Map<h256, CloakPolicyTransaction>;
 using CloakDigests = kv::Map<Address, h256>;
 using StatesDigests = kv::Map<h256, h256>;
-
-struct MPT_CALL {
-    struct In {
-        std::string id = {};
-    };
-
-    struct Out {
-        Status status = {};
-        std::string output = {};
-    };
-};
-
-DECLARE_JSON_TYPE(MPT_CALL::In)
-DECLARE_JSON_REQUIRED_FIELDS(MPT_CALL::In, id)
-
-DECLARE_JSON_TYPE(MPT_CALL::Out)
-DECLARE_JSON_REQUIRED_FIELDS(MPT_CALL::Out, status, output)
 
 struct MultiPartyTransaction {
     size_t nonce;
@@ -171,9 +131,9 @@ struct CloakPolicyTransaction {
         return status;
     }
 
-    void set_content(const std::vector<policy::MultiInput>& inputs) {
-        for (size_t i = 0; i < inputs.size(); i++) {
-            function.padding(inputs[i]);
+    void set_content(const std::map<std::string, nlohmann::json>& inputs) {
+        for (auto&& [name, value] : inputs) {
+            function.padding(name, value);
         }
     }
 
@@ -190,6 +150,7 @@ struct CloakPolicyTransaction {
             read.push_back(to_hex_string_fixed(function.get_keys_size(state.name)));
             read.insert(read.end(), keys.begin(), keys.end());
         }
+
         CLOAK_DEBUG_FMT("read:{}", fmt::join(read, ", "));
         return read;
     }

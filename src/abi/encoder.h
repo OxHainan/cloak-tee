@@ -28,14 +28,9 @@ class Encoder {
         add_params(_name, _type);
     }
 
-    void add_inputs(const std::string& _name, const std::string& _type, const std::string& _value) {
-        add_params(_name, _type);
-        paramsCoder(_type, _value);
-    }
-
     void add_inputs(const std::string& _name,
                     const std::string& _type,
-                    const std::vector<std::string>& _value) {
+                    const nlohmann::json& _value) {
         add_params(_name, _type);
         paramsCoder(_type, _value);
     }
@@ -44,7 +39,7 @@ class Encoder {
         return Coder::pack(coders);
     }
 
-    static std::vector<uint8_t> encode(const std::string& type, const std::string& value) {
+    static std::vector<uint8_t> encode(const std::string& type, const nlohmann::json& value) {
         Encoder encoder;
         encoder.add_inputs("", type, value);
         return encoder.encode();
@@ -79,24 +74,8 @@ class Encoder {
     }
 
  private:
-    void paramsCoder(const std::string& _type, const std::string& _value) {
+    void paramsCoder(const std::string& _type, const nlohmann::json& _value) {
         auto coder = generate_coders(_type, _value);
-        coders.push_back(coder);
-    }
-
-    void paramsCoder(const std::string& _type, const std::vector<std::string>& _value) {
-        auto [type, expectedSize, boolean] = Parsing(_type).result();
-        TypePrt coder;
-        if (boolean) {
-            if (expectedSize > 0)
-                coder = std::make_shared<StaticArray>(type, _value);
-            else
-                coder = std::make_shared<DynamicArray>(type, _value);
-        } else {
-            throw ABIException(
-                fmt::format("Hangle type failed, beacuse it doesn't array, get {}", _type));
-        }
-
         coders.push_back(coder);
     }
 

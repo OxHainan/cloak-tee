@@ -13,16 +13,16 @@
 // limitations under the License.
 
 #pragma once
+#include "cloak_exception.h"
 #include "string"
 
-#include <exception>
 namespace Ethereum {
 
-class Exception : public std::exception {
+class Exception : public cloak4ccf::CloakException {
  public:
     explicit Exception(const std::string& msg_) : msg(msg_) {}
 
-    virtual const char* what() const throw() {
+    const char* what() const noexcept {
         return msg.c_str();
     }
 

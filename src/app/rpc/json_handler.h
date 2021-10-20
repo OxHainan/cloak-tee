@@ -13,12 +13,11 @@
 // limitations under the License.
 
 #pragma once
-#include "abi/exception.h"
 #include "app/rpc/context.h"
-#include "ethereum/exception.h"
+#include "cloak_exception.h"
 #include "jsonrpc.h"
 #include "node/rpc/json_handler.h"
-#include "transaction/exception.h"
+
 namespace cloak4ccf {
 
 using JsonAdapterResponse = ccf::jsonhandler::JsonAdapterResponse;
@@ -61,11 +60,7 @@ JsonAdapterResponse func(std::function<JsonAdapterResponse()> f, T&& ctx) {
         return f();
     } catch (std::logic_error& e) {
         return make_error(ctx, HTTP_STATUS_NOT_FOUND, e.what());
-    } catch (const Transaction::TransactionException& e) {
-        return make_error(ctx, HTTP_STATUS_NOT_FOUND, e.what());
-    } catch (const Ethereum::Exception& e) {
-        return make_error(ctx, HTTP_STATUS_NOT_FOUND, e.what());
-    } catch (const abicoder::ABIException& e) {
+    } catch (const CloakException& e) {
         return make_error(ctx, HTTP_STATUS_NOT_FOUND, e.what());
     }
 }

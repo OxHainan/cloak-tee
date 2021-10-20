@@ -13,19 +13,14 @@
 // limitations under the License.
 
 #pragma once
-#include "cloak_exception.h"
-#include "string"
+#include <exception>
 
-namespace abicoder {
+namespace cloak4ccf {
 
-class ABIException : public cloak4ccf::CloakException {
+class CloakException : public std::exception {
  public:
-    explicit ABIException(const std::string& msg_) : msg(msg_) {}
-    const char* what() const noexcept {
-        return msg.c_str();
+    virtual const char* what() const noexcept {
+        return "";
     }
-
- private:
-    const std::string msg;
 };
-} // namespace abicoder
+} // namespace cloak4ccf
