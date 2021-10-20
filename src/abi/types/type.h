@@ -45,8 +45,7 @@ using TypePtrLst = std::vector<TypePrt>;
 
 class Address : public Type {
  public:
-    Address() {}
-    explicit Address(const std::string& _value) : value(to_bytes(_value, LENGTH)) {}
+    explicit Address(const std::string& _value = "") : value(to_bytes(_value, LENGTH)) {}
 
     std::vector<uint8_t> encode() override {
         return value;
@@ -226,8 +225,7 @@ class Uint : public IntType {
 
 class Boolean : public Type {
  public:
-    Boolean() {}
-    explicit Boolean(const bool& _value) {
+    explicit Boolean(const bool& _value = false) {
         value = _value;
     }
 

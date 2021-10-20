@@ -21,7 +21,7 @@ namespace abicoder {
 class ABIException : public cloak4ccf::CloakException {
  public:
     explicit ABIException(const std::string& msg_) : msg(msg_) {}
-    const char* what() const throw() {
+    const char* what() const noexcept {
         return msg.c_str();
     }
 

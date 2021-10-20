@@ -132,8 +132,8 @@ struct CloakPolicyTransaction {
     }
 
     void set_content(const std::map<std::string, nlohmann::json>& inputs) {
-        for (auto& it : inputs) {
-            function.padding(it);
+        for (auto&& [name, value] : inputs) {
+            function.padding(name, value);
         }
     }
 

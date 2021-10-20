@@ -294,9 +294,17 @@ TEST_CASE("Test encode") {
     SUBCASE("encoder two") {
         vector<vector<std::string>> arrs = {{"0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe"},
                                             {"0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe"}};
-        encoder.add_inputs("a", "uint", "0x123");
+        auto correct = eevm::to_bytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000020"
+            "0000000000000000000000000000000000000000000000000000000000000040"
+            "0000000000000000000000000000000000000000000000000000000000000080"
+            "0000000000000000000000000000000000000000000000000000000000000001"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
+            "0000000000000000000000000000000000000000000000000000000000000001"
+            "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae");
+
         encoder.add_inputs("b", "address[][2]", arrs);
-        // std::cout << eevm::to_hex_string(encoder.encode()) << std::endl;
+        CHECK(encoder.encode() == correct);
     }
 
     SUBCASE("test string nil") {

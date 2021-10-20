@@ -127,18 +127,18 @@ struct Function {
         return encoder.encode(entry);
     }
 
-    void padding(const std::pair<std::string, nlohmann::json>& p) {
+    void padding(const std::string& name_, const nlohmann::json& value) {
         if (complete())
             return;
 
         for (size_t i = 0; i < inputs.size(); i++) {
-            if (p.first == inputs[i].name) {
-                inputs[i].set_value(p.second);
+            if (name_ == inputs[i].name) {
+                inputs[i].set_value(value);
                 return;
             }
         }
 
-        throw std::logic_error(fmt::format("input params doesn`t match, get {}", p.first));
+        throw std::logic_error(fmt::format("input params doesn`t match, get {}", name_));
     }
 
     bool complete() const {
