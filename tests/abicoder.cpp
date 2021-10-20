@@ -298,6 +298,60 @@ TEST_CASE("Test encode") {
         encoder.add_inputs("b", "address[][2]", arrs);
         // std::cout << eevm::to_hex_string(encoder.encode()) << std::endl;
     }
+
+    SUBCASE("test string nil") {
+        string src = "";
+        encoder.add_inputs("a", "string", src);
+        auto correct = eevm::to_bytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000020"
+            "0000000000000000000000000000000000000000000000000000000000000000");
+
+        CHECK(encoder.encode() == correct);
+    }
+
+    SUBCASE("test string value is 0x") {
+        string src = "0x";
+        encoder.add_inputs("a", "string", src);
+        auto correct = eevm::to_bytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000020"
+            "0000000000000000000000000000000000000000000000000000000000000002"
+            "3078000000000000000000000000000000000000000000000000000000000000");
+
+        CHECK(encoder.encode() == correct);
+    }
+
+    SUBCASE("test bytes nil") {
+        string src = "0x";
+        encoder.add_inputs("a", "bytes", src);
+        auto correct = eevm::to_bytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000020"
+            "0000000000000000000000000000000000000000000000000000000000000000"); // 0x
+
+        CHECK(encoder.encode() == correct);
+    }
+
+    SUBCASE("test dynamic array when bytes type value is nil") {
+        vector<string> src = {};
+        encoder.add_inputs("a", "bytes[]", src);
+        auto correct = eevm::to_bytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000020"
+            "0000000000000000000000000000000000000000000000000000000000000000");
+        CHECK(encoder.encode() == correct);
+    }
+
+    SUBCASE("test dynamic array when string type value is nil") {
+        vector<string> src = {};
+        encoder.add_inputs("a", "string[]", src);
+        auto correct = eevm::to_bytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000020"
+            "0000000000000000000000000000000000000000000000000000000000000000");
+        CHECK(encoder.encode() == correct);
+    }
+
+    SUBCASE("test static array when string type value is nil") {
+        vector<string> src = {};
+        CHECK_THROWS(encoder.add_inputs("a", "string[2]", src)); // static array
+    }
 }
 
 TEST_CASE("Test function") {

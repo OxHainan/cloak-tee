@@ -41,14 +41,7 @@ class ArrayType : public Type {
             return std::vector<uint8_t>(32);
         }
 
-        bool isArray = value[0].is_array();
         for (size_t i = 0; i < value.size(); i++) {
-            if (isArray) {
-                auto parameter = generate_coders(type, value[i]);
-                parameters.push_back(parameter);
-                continue;
-            }
-
             auto parameter = generate_coders(type, value[i]);
             parameters.push_back(parameter);
         }
@@ -159,14 +152,25 @@ class DynamicArray : public ArrayType {
 
 class StaticArray : public ArrayType {
  public:
+    StaticArray(const std::string& _type, const size_t& _expectedSize) :
+        ArrayType(_type, false), dynamic(check_dynamic(_type)), expectedSize(_expectedSize) {
+        if (expectedSize < 1) {
+            throw ABIException(
+                fmt::format("Invalid expected size in static array, get {}", expectedSize));
+        }
+    }
+
     StaticArray(const std::string& _type,
                 const size_t& _expectedSize,
-                const nlohmann::json& _value = vector<string>()) :
+                const nlohmann::json& _value) :
         ArrayType(_type, _value, false),
-        dynamic(check_dynamic(_type)), expectedSize(_expectedSize) {}
+        dynamic(check_dynamic(_type)), expectedSize(_expectedSize) {
+        isValid();
+    }
 
     StaticArray(const std::string& _type, const nlohmann::json& _value) :
         ArrayType(_type, _value, false), dynamic(check_dynamic(_type)), expectedSize(value.size()) {
+        isValid();
     }
 
     void decode(const std::vector<uint8_t>& inputs) override {

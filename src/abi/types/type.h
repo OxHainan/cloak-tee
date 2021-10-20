@@ -88,7 +88,6 @@ class Address : public Type {
 
 class NumericType : public Type {
  public:
-    NumericType() {}
     explicit NumericType(const std::vector<uint8_t>& val) {
         value = eevm::from_big_endian(val.data(), val.size());
     }
@@ -141,20 +140,22 @@ class NumericType : public Type {
     }
 
  private:
+    NumericType() = delete;
+
     std::string type;
     intx::uint256 value;
 };
 
 class IntType : public NumericType {
  public:
-    IntType() {}
-
     explicit IntType(const size_t& bitSize,
                      const uint256& value = 0u,
                      const std::string& typePrefix = "") :
         NumericType(parse(typePrefix, bitSize), value) {}
 
  private:
+    IntType() = delete;
+
     bool isValidBitSize(const size_t& bitSize) {
         return bitSize % 8 == 0 && bitSize > 0 && bitSize <= MAX_BIT_LENGTH;
     }
@@ -368,7 +369,10 @@ class Bytes : public BytesType {
         BytesType(BYTES + std::to_string(_value.size()), _value), length(byteSize) {
         if (!isValid(byteSize, value)) {
             throw ABIException(
-                "Input byte array must be in range 0 < M <= 32 and length must match type");
+                fmt::format("Input bytes must be in range 0 < M <= 32 and length must match type, "
+                            "get bytes size {}, but value size {}",
+                            byteSize,
+                            value.size()));
         }
     }
 
@@ -378,8 +382,7 @@ class Bytes : public BytesType {
     std::vector<uint8_t> encode() override {
         size_t mod = value.size() % MAX_BYTE_LENGTH;
         if (mod != 0) {
-            size_t padding = MAX_BYTE_LENGTH - mod;
-            auto pad = std::vector<uint8_t>(padding);
+            auto pad = std::vector<uint8_t>(MAX_BYTE_LENGTH - mod);
             value.insert(value.end(), pad.begin(), pad.end());
         }
         return value;
@@ -413,12 +416,20 @@ class Bytes : public BytesType {
 class DynamicBytes : public BytesType {
  public:
     DynamicBytes() : BytesType(BYTES) {}
-    explicit DynamicBytes(const std::vector<uint8_t>& _value) : BytesType(BYTES, _value) {}
 
     explicit DynamicBytes(const std::string& src) : DynamicBytes(bytes_strip(src)) {}
 
     bool dynamicType() override {
         return true;
+    }
+
+ private:
+    explicit DynamicBytes(const std::vector<uint8_t>& _value) : BytesType(BYTES, _value) {}
+
+    void isValid(const std::string& src) {
+        if (src.size() == 0) {
+            throw ABIException("Invalid inputs argument, bytes default value is 0x");
+        }
     }
 };
 
