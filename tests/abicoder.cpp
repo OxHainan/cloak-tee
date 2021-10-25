@@ -157,7 +157,7 @@ TEST_CASE("Test dynamic array") {
             "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
             "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae");
 
-        auto array = DynamicArray("address", one);
+        auto array = DynamicArray(common_type("address"), one);
         test_basic(&array, move(correct));
     }
 
@@ -174,7 +174,7 @@ TEST_CASE("Test dynamic array") {
             "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
             "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae");
 
-        auto array = DynamicArray("address[]", src);
+        auto array = DynamicArray(make_common_array("address"), src);
         test_basic(&array, move(correct));
     }
 
@@ -195,7 +195,7 @@ TEST_CASE("Test dynamic array") {
             "0000000000000000000000000000000000000000000000000000000000000001"
             "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae");
 
-        auto array = DynamicArray("address[][]", vec);
+        auto array = DynamicArray(make_common_array("address", {0, 0}), vec);
         test_basic(&array, move(correct));
     }
 }
@@ -206,7 +206,7 @@ TEST_CASE("Test static array") {
         auto correct =
             eevm::to_bytes("000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae");
 
-        auto array = StaticArray("address", one);
+        auto array = StaticArray(common_type("address"), one);
         CHECK_FALSE(array.dynamicType()); // address[1] false
         test_basic(&array, move(correct));
 
@@ -215,7 +215,7 @@ TEST_CASE("Test static array") {
             "0000000000000000000000000000000000000000000000000000000000000014"
             "de0b295669a9fd93d5f28d9ec85e40f4cb697bae000000000000000000000000");
 
-        auto array1 = StaticArray("bytes", one); // bytes[1] true
+        auto array1 = StaticArray(common_type("bytes"), one); // bytes[1] true
         CHECK(array1.dynamicType());
         CHECK(array1.encode() == correct1);
     }
@@ -230,11 +230,11 @@ TEST_CASE("Test static array") {
             "0000000000000000000000000000000000000000000000000000000000000001"
             "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae");
 
-        auto array = StaticArray("address[]", two); // address[][2]  true
+        auto array = StaticArray(make_common_array("address"), two); // address[][2]  true
         CHECK(array.dynamicType());
         test_basic(&array, move(correct));
 
-        auto array1 = StaticArray("address[1]", two);
+        auto array1 = StaticArray(make_common_array("address", {1}), two);
         auto correct1 = eevm::to_bytes(
             "0x000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
             "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae");
@@ -262,7 +262,7 @@ TEST_CASE("Test static array") {
             "0000000000000000000000000000000000000000000000000000000000000001"
             "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae");
 
-        auto array = StaticArray("address[][]", src); // address[][][2] true
+        auto array = StaticArray(make_common_array("address", {0, 0}), src); // address[][][2] true
         CHECK(array.dynamicType());
         test_basic(&array, move(correct));
     }
@@ -274,10 +274,10 @@ TEST_CASE("Test encode") {
         std::vector<std::string> arrs = {"0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe",
                                          "0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe"};
 
-        encoder.add_inputs("a", "uint", "0x123");
-        encoder.add_inputs("b", "address[2]", arrs);
-        encoder.add_inputs("c", "bytes10", "1234567890");
-        encoder.add_inputs("d", "string", "Hello, world!");
+        encoder.add_inputs("a", "uint", "0x123", number_type());
+        encoder.add_inputs("b", "address[2]", arrs, make_common_array("address", {2}));
+        encoder.add_inputs("c", "bytes10", "1234567890", common_type("bytes", 10));
+        encoder.add_inputs("d", "string", "Hello, world!", common_type("string"));
 
         auto correct = eevm::to_bytes(
             "0x0000000000000000000000000000000000000000000000000000000000000123"
@@ -303,13 +303,13 @@ TEST_CASE("Test encode") {
             "0000000000000000000000000000000000000000000000000000000000000001"
             "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae");
 
-        encoder.add_inputs("b", "address[][2]", arrs);
+        encoder.add_inputs("b", "address[][2]", arrs, make_common_array("address", {0, 2}));
         CHECK(encoder.encode() == correct);
     }
 
     SUBCASE("test string nil") {
         string src = "";
-        encoder.add_inputs("a", "string", src);
+        encoder.add_inputs("a", "string", src, common_type("string"));
         auto correct = eevm::to_bytes(
             "0x0000000000000000000000000000000000000000000000000000000000000020"
             "0000000000000000000000000000000000000000000000000000000000000000");
@@ -319,7 +319,7 @@ TEST_CASE("Test encode") {
 
     SUBCASE("test string value is 0x") {
         string src = "0x";
-        encoder.add_inputs("a", "string", src);
+        encoder.add_inputs("a", "string", src, common_type("string"));
         auto correct = eevm::to_bytes(
             "0x0000000000000000000000000000000000000000000000000000000000000020"
             "0000000000000000000000000000000000000000000000000000000000000002"
@@ -330,7 +330,7 @@ TEST_CASE("Test encode") {
 
     SUBCASE("test bytes nil") {
         string src = "0x";
-        encoder.add_inputs("a", "bytes", src);
+        encoder.add_inputs("a", "bytes", src, common_type("bytes"));
         auto correct = eevm::to_bytes(
             "0x0000000000000000000000000000000000000000000000000000000000000020"
             "0000000000000000000000000000000000000000000000000000000000000000"); // 0x
@@ -340,7 +340,8 @@ TEST_CASE("Test encode") {
 
     SUBCASE("test dynamic array when bytes type value is nil") {
         vector<string> src = {};
-        encoder.add_inputs("a", "bytes[]", src);
+
+        encoder.add_inputs("a", "bytes[]", src, make_bytes_array());
         auto correct = eevm::to_bytes(
             "0x0000000000000000000000000000000000000000000000000000000000000020"
             "0000000000000000000000000000000000000000000000000000000000000000");
@@ -349,7 +350,17 @@ TEST_CASE("Test encode") {
 
     SUBCASE("test dynamic array when string type value is nil") {
         vector<string> src = {};
-        encoder.add_inputs("a", "string[]", src);
+        const nlohmann::json str = {
+            R"xxx(
+            {
+                "type": "array",
+                "value_type": {
+                    "type": "string"
+                }
+            }
+        )xxx"_json};
+
+        encoder.add_inputs("a", "string[]", src, make_common_array("string"));
         auto correct = eevm::to_bytes(
             "0x0000000000000000000000000000000000000000000000000000000000000020"
             "0000000000000000000000000000000000000000000000000000000000000000");
@@ -358,17 +369,18 @@ TEST_CASE("Test encode") {
 
     SUBCASE("test static array when string type value is nil") {
         vector<string> src = {};
-        CHECK_THROWS(encoder.add_inputs("a", "string[2]", src)); // static array
+        CHECK_THROWS(encoder.add_inputs(
+            "a", "string[2]", src, make_common_array("string", {2}))); // static array
     }
 }
 
 TEST_CASE("Test function") {
     auto func = Decoder();
     SUBCASE("Include static array") {
-        func.add_params("a", "uint256");
-        func.add_params("address", "address[2]");
-        func.add_params("c", "bytes");
-        func.add_params("d", "uint");
+        func.add_params("a", "uint256", number_type());
+        func.add_params("address", "address[2]", make_common_array("address", {2}));
+        func.add_params("c", "bytes", common_type("bytes"));
+        func.add_params("d", "uint", number_type());
         auto correct = eevm::to_bytes(
             "0x0000000000000000000000000000000000000000000000000000000000000002"
             "000000000000000000000000de0b295669a9fd93d5f28d9ec85e40f4cb697bae"
@@ -381,10 +393,10 @@ TEST_CASE("Test function") {
     }
 
     SUBCASE("Include dynamic array") {
-        func.add_params("a", "uint256");
-        func.add_params("address", "address[]");
-        func.add_params("c", "bytes");
-        func.add_params("d", "uint");
+        func.add_params("a", "uint256", number_type());
+        func.add_params("address", "address[]", make_common_array("address"));
+        func.add_params("c", "bytes", common_type("bytes"));
+        func.add_params("d", "uint", number_type());
         auto correct = eevm::to_bytes(
             "0x0000000000000000000000000000000000000000000000000000000000000002"
             "0000000000000000000000000000000000000000000000000000000000000080"

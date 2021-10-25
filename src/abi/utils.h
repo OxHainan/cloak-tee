@@ -14,7 +14,6 @@
 
 #pragma once
 #include "abi/exception.h"
-#include "abi/parsing.h"
 #include "app/utils.h"
 #include "iostream"
 #include "math.h"
@@ -112,13 +111,28 @@ std::vector<uint8_t> string_to_bytes(const std::string& _s) {
     return h;
 }
 
-bool check_dynamic(const std::string& type) {
-    auto [boolean, _type] = Parsing::check_dynamic(type);
-    if (boolean)
-        return boolean;
-    if (_type.empty())
-        return false;
-    return check_dynamic(_type);
+inline nlohmann::json make_array_type(const nlohmann::json& j,
+                                      const std::vector<size_t>& num = {}) {
+    if (!num.size())
+        return array_type(j, 0);
+    return array_type::make_array_type(j, num);
+}
+
+inline nlohmann::json make_number_array(const bool isSigned = false,
+                                        const size_t& len = 256,
+                                        const std::vector<size_t>& num = {}) {
+    auto type = number_type(isSigned, len);
+    return make_array_type(type, num);
+}
+
+inline nlohmann::json make_bytes_array(const size_t& len = 0, const std::vector<size_t>& num = {}) {
+    auto type = common_type("bytes", len);
+    return make_array_type(type, num);
+}
+
+inline nlohmann::json make_common_array(const std::string& t, const std::vector<size_t>& num = {}) {
+    auto type = common_type(t);
+    return make_array_type(type, num);
 }
 
 inline std::vector<std::string> decode_uint256_array(const std::vector<uint8_t>& states) {

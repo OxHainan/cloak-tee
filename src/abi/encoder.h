@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "abi/parse_types.h"
 #include "abi/types/array.h"
 #include "abi/types/type.h"
 
@@ -30,18 +31,21 @@ class Encoder {
 
     void add_inputs(const std::string& _name,
                     const std::string& _type,
-                    const nlohmann::json& _value) {
+                    const nlohmann::json& _value,
+                    const nlohmann::json& _type_value) {
         add_params(_name, _type);
-        paramsCoder(_type, _value);
+        paramsCoder(_type_value, _value);
     }
 
     std::vector<uint8_t> encode() {
         return Coder::pack(coders);
     }
 
-    static std::vector<uint8_t> encode(const std::string& type, const nlohmann::json& value) {
+    static std::vector<uint8_t> encode(const std::string& type,
+                                       const nlohmann::json& value,
+                                       const nlohmann::json& j_type) {
         Encoder encoder;
-        encoder.add_inputs("", type, value);
+        encoder.add_inputs("", type, value, j_type);
         return encoder.encode();
     }
 
@@ -74,8 +78,8 @@ class Encoder {
     }
 
  private:
-    void paramsCoder(const std::string& _type, const nlohmann::json& _value) {
-        auto coder = generate_coders(_type, _value);
+    void paramsCoder(const nlohmann::json& _type_value, const nlohmann::json& _value) {
+        auto coder = generate_coders(_type_value, _value);
         coders.push_back(coder);
     }
 

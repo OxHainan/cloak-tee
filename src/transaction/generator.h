@@ -245,10 +245,15 @@ class Generator {
 
         auto old_states_len = cpt.get_states_return_len(true);
         auto encoder = abicoder::Encoder("set_states");
-        encoder.add_inputs("read", "bytes[]", cpt.get_states_read());
-        encoder.add_inputs("old_states_len", "uint256", eevm::to_hex_string(old_states_len));
-        encoder.add_inputs("data", "bytes[]", encrypted_states);
-        encoder.add_inputs("proof", "uint256[]", get_proof(cpt, target_digest));
+
+        encoder.add_inputs("read", "bytes[]", cpt.get_states_read(), abicoder::make_bytes_array());
+        encoder.add_inputs("old_states_len",
+                           "uint256",
+                           eevm::to_hex_string(old_states_len),
+                           abicoder::number_type());
+        encoder.add_inputs("data", "bytes[]", encrypted_states, abicoder::make_bytes_array());
+        encoder.add_inputs(
+            "proof", "uint256[]", get_proof(cpt, target_digest), abicoder::make_number_array());
         auto packed = encoder.encodeWithSignatrue();
         CLOAK_DEBUG_FMT("encoded data:{}", abicoder::split_abi_data_to_str(packed));
 
