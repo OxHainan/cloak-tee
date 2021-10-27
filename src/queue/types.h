@@ -71,12 +71,11 @@ DECLARE_JSON_REQUIRED_FIELDS(MultiPartyParams, function, inputs)
 struct Params {
  public:
     ByteData name = {};
-    ByteData type = {};
     nlohmann::json structural_type;
     nlohmann::json owner;
     std::optional<nlohmann::json> value = std::nullopt;
 
-    MSGPACK_DEFINE(name, type, structural_type, owner, value);
+    MSGPACK_DEFINE(name, structural_type, owner, value);
 
     nlohmann::json getValue() const {
         if (!value.has_value()) {
@@ -93,8 +92,8 @@ struct Params {
 };
 
 DECLARE_JSON_TYPE_WITH_OPTIONAL_FIELDS(Params)
-DECLARE_JSON_OPTIONAL_FIELDS(Params, name, value, structural_type)
-DECLARE_JSON_REQUIRED_FIELDS(Params, type, owner)
+DECLARE_JSON_OPTIONAL_FIELDS(Params, name, value)
+DECLARE_JSON_REQUIRED_FIELDS(Params, owner, structural_type)
 
 struct stateParams {
     ByteData name = {};
@@ -122,8 +121,9 @@ struct Function {
     ByteString packed_to_data() {
         auto encoder = abicoder::Encoder();
         for (int i = 0; i < inputs.size(); i++) {
-            encoder.add_inputs(inputs[i].name, inputs[i].type, inputs[i].getValue());
+            encoder.add_inputs(inputs[i].name, "", inputs[i].getValue(), inputs[i].structural_type);
         }
+
         return encoder.encode(entry);
     }
 
@@ -179,8 +179,8 @@ struct Function {
                         for (auto&& input : inputs) {
                             if (input.name == single_key) {
                                 if (encoded) {
-                                    auto data =
-                                        abicoder::Encoder::encode(input.type, input.value.value());
+                                    auto data = abicoder::Encoder::encode(
+                                        "", input.value.value(), input.structural_type);
                                     res.push_back(eevm::to_hex_string(data));
                                 } else {
                                     res.push_back(input.value.value());

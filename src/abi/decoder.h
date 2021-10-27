@@ -25,9 +25,11 @@ class Decoder {
  public:
     Decoder() {}
 
-    void add_params(const std::string& _name, const std::string& _type) {
+    void add_params(const std::string& _name,
+                    const std::string& _type,
+                    const nlohmann::json& _type_value = "") {
         abi.push_back({_name, _type});
-        auto coder = entry_identity(_type);
+        auto coder = entry_identity(_type_value);
         coders.push_back(coder);
     }
 
@@ -47,10 +49,11 @@ class Decoder {
     }
 
     static std::vector<TypePrt> decode(const std::vector<uint8_t>& inputs,
-                                       const std::vector<std::string>& _type) {
+                                       const std::vector<std::string>& _type,
+                                       const std::vector<nlohmann::json>& _type_value) {
         Decoder decoder;
         for (size_t i = 0; i < _type.size(); i++) {
-            decoder.add_params("", _type[i]);
+            decoder.add_params("", _type[i], _type_value[i]);
         }
 
         return decoder.decode(inputs);
@@ -59,7 +62,7 @@ class Decoder {
     static std::vector<std::string> decode_bytes_array(const std::vector<uint8_t>& inputs) {
         std::vector<std::string> res;
         Decoder decoder;
-        decoder.add_params("", "bytes[]");
+        decoder.add_params("", "bytes[]", make_array_type(common_type("bytes")));
         auto arr_ptr = std::dynamic_pointer_cast<DynamicArray>(decoder.decode(inputs)[0]);
         if (!arr_ptr) {
             throw std::logic_error("Internal Error");

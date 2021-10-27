@@ -136,7 +136,7 @@ std::vector<uint8_t> execute_mpt(cloak4ccf::CloakContext& ctx,
                                  const std::vector<std::string>& decryped_states) {
     kv::Tx& tx = ctx.tx;
     auto encoder = abicoder::Encoder("set_states");
-    encoder.add_inputs("data", "bytes[]", decryped_states);
+    encoder.add_inputs("data", "bytes[]", decryped_states, abicoder::make_bytes_array());
     auto set_states_call_data = encoder.encodeWithSignatrue();
 
     CLOAK_DEBUG_FMT("splited decryped_states_packed:\n{}",

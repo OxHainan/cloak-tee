@@ -86,14 +86,6 @@ struct PrivacyTransactionWithSignature : public SignatureAbstract, public Privac
         v = std::get<4>(tup);
         r = std::get<5>(tup);
         s = std::get<6>(tup);
-        CLOAK_DEBUG_FMT("verifierAddr:{}, codeHash:{}, to:{}, data:{} , v:{}, r:{}, s:{}",
-                        eevm::to_hex_string(verifierAddr),
-                        eevm::to_hex_string(codeHash),
-                        eevm::to_hex_string(to),
-                        eevm::to_hex_string(data),
-                        v,
-                        eevm::to_hex_string(r),
-                        eevm::to_hex_string(s));
     }
 
     PrivacyTransactionWithSignature(const PrivacyTransaction& tx,
@@ -121,7 +113,6 @@ struct PrivacyTransactionWithSignature : public SignatureAbstract, public Privac
         PrivacyTransaction::to_transaction(tc);
         const auto tbs = to_be_signed();
         tc.from = SignatureAbstract::signatureAndVerify(tbs);
-        CLOAK_DEBUG_FMT("recoverd from:{}", to_checksum_address(tc.from));
         return calc_policy_hash();
     }
 };
@@ -206,7 +197,6 @@ struct CloakTransactionWithSignature : public SignatureAbstract, public CloakTra
         CloakTransaction::to_transaction_call(mpt);
         const auto tbs = to_be_signed();
         mpt.from = SignatureAbstract::signatureAndVerify(tbs);
-        CLOAK_DEBUG_FMT("recoverd from:{}", to_checksum_address(mpt.from));
     }
 };
 } // namespace evm4ccf
