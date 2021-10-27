@@ -86,7 +86,7 @@ class EVMHandlers : public AbstractEndpointRegistry {
             const auto r = results_view->get(tx_hash);
 
             // "or null when no receipt was found"
-            Ethereum::ReceiptResponse response = nullopt;
+            Ethereum::ReceiptResponse response = std::nullopt;
             if (r.has_value()) {
                 const auto& tx_result = r.value();
 

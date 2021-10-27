@@ -14,8 +14,6 @@
 
 #pragma once
 #include "abi/abicoder.h"
-#include "abi/common.h"
-#include "abi/utils.h"
 #include "app/utils.h"
 #include "ds/logger.h"
 #include "ethereum/syncstate.h"
@@ -179,8 +177,9 @@ struct CloakPolicyTransaction {
             "get_states_call_data, return_len:{}, read:{}", return_len, fmt::join(read, ", "));
 
         auto encoder = abicoder::Encoder("get_states");
-        encoder.add_inputs("read", "bytes[]", read);
-        encoder.add_inputs("return_len", "uint256", to_hex_string(return_len));
+        encoder.add_inputs("read", "bytes[]", read, abicoder::make_bytes_array());
+        encoder.add_inputs(
+            "return_len", "uint256", to_hex_string(return_len), abicoder::number_type());
         auto data = encoder.encodeWithSignatrue();
         CLOAK_DEBUG_FMT("encoded:{}", fmt::join(abicoder::split_abi_data(data), "\n"));
         return data;
@@ -236,7 +235,7 @@ struct CloakPolicyTransaction {
         CLOAK_DEBUG_FMT("requested_addresses:{}", fmt::join(requested_addresses, ", "));
 
         auto encoder = abicoder::Encoder("getPk");
-        encoder.add_inputs("read", "address[]", res);
+        encoder.add_inputs("read", "address[]", res, abicoder::make_common_array("address"));
         auto data = encoder.encodeWithSignatrue();
 
         auto response =
@@ -321,7 +320,8 @@ struct CloakPolicyTransaction {
         // identifier owner addresses
         std::map<std::string, std::string> addresses;
         visit_states(new_states, false, [this, &addresses](size_t id, size_t idx) {
-            if (states[id].type == "address" && states[id].owner["owner"] == "all") {
+            if (states[id].structural_type["type"] == "address" &&
+                states[id].owner["owner"] == "all") {
                 addresses[states[id].name] =
                     eevm::to_checksum_address(eevm::to_uint256(old_states[idx + 1]));
             }

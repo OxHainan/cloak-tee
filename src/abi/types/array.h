@@ -16,7 +16,7 @@
 #include "abi/coder.h"
 #include "abi/common.h"
 #include "abi/exception.h"
-#include "abi/parsing.h"
+#include "abi/parse_types.h"
 #include "abi/utils.h"
 #include "type.h"
 
@@ -27,13 +27,13 @@
 namespace abicoder {
 class Encoder;
 
-TypePrt entry_identity(const std::string& rawType);
-TypePrt generate_coders(const std::string& rawType, const nlohmann::json& value);
+TypePrt entry_identity(const nlohmann::json& rawType);
+TypePrt generate_coders(const nlohmann::json& j_type, const nlohmann::json& value);
 
 class ArrayType : public Type {
  public:
     std::string getTypeAsString() override {
-        return type;
+        return "";
     }
 
     std::vector<uint8_t> encode() override {
@@ -95,15 +95,16 @@ class ArrayType : public Type {
     }
 
  protected:
-    ArrayType(const std::string& _type, bool _dynamicType) :
+    ArrayType(const nlohmann::json& _type, bool _dynamicType) :
         isDynamicType(_dynamicType), type(_type) {}
 
-    ArrayType(const std::string& _type, const nlohmann::json& _value, bool _isDynamicType) :
+    ArrayType(const nlohmann::json& _type, const nlohmann::json& _value, bool _isDynamicType) :
         value(_value.get<std::vector<nlohmann::json>>()), isDynamicType(_isDynamicType),
         type(_type) {
-        if (!valid(_type)) {
-            throw std::logic_error("If empty string value is provided, use empty array instance");
-        }
+        // if (!valid(_type)) {
+        //     throw std::logic_error("If empty string value is provided, use empty array
+        //     instance");
+        // }
     }
 
     void basic_decode(const std::vector<uint8_t>& inputs, size_t& offset) {
@@ -127,18 +128,18 @@ class ArrayType : public Type {
  private:
     ArrayType() = delete;
 
-    bool valid(const std::string& _type) {
-        return !_type.empty();
-    }
+    // bool valid(const std::string& _type) {
+    //     return !_type.empty();
+    // }
 
     bool isDynamicType;
-    std::string type;
+    nlohmann::json type;
 };
 
 class DynamicArray : public ArrayType {
  public:
-    explicit DynamicArray(const std::string& _type,
-                          const nlohmann::json& _value = vector<string>()) :
+    explicit DynamicArray(const nlohmann::json& _type,
+                          const nlohmann::json& _value = std::vector<std::string>()) :
         ArrayType(_type, _value, dynamicType()) {}
 
     bool dynamicType() override {
@@ -152,7 +153,7 @@ class DynamicArray : public ArrayType {
 
 class StaticArray : public ArrayType {
  public:
-    StaticArray(const std::string& _type, const size_t& _expectedSize) :
+    StaticArray(const nlohmann::json& _type, const size_t& _expectedSize) :
         ArrayType(_type, false), dynamic(check_dynamic(_type)), expectedSize(_expectedSize) {
         if (expectedSize < 1) {
             throw ABIException(
@@ -160,7 +161,7 @@ class StaticArray : public ArrayType {
         }
     }
 
-    StaticArray(const std::string& _type,
+    StaticArray(const nlohmann::json& _type,
                 const size_t& _expectedSize,
                 const nlohmann::json& _value) :
         ArrayType(_type, _value, false),
@@ -168,7 +169,7 @@ class StaticArray : public ArrayType {
         isValid();
     }
 
-    StaticArray(const std::string& _type, const nlohmann::json& _value) :
+    StaticArray(const nlohmann::json& _type, const nlohmann::json& _value) :
         ArrayType(_type, _value, false), dynamic(check_dynamic(_type)), expectedSize(value.size()) {
         isValid();
     }
@@ -195,7 +196,7 @@ class StaticArray : public ArrayType {
     }
 
     std::string getTypeAsString() override {
-        return ArrayType::getTypeAsString() + "[" + to_string(expectedSize) + "]";
+        return ArrayType::getTypeAsString() + "[" + std::to_string(expectedSize) + "]";
     }
 
  private:
@@ -239,27 +240,27 @@ inline TypePrt generate_coders(const std::string& rawType,
     throw ABIException(fmt::format("Unrecognized type: {}", rawType));
 }
 
-inline TypePrt entry_identity(const std::string& rawType) {
-    auto [type, expectedSize, boolean] = Parsing(rawType).result();
-    if (boolean) {
-        if (expectedSize > 0) {
-            return std::make_shared<StaticArray>(type, expectedSize);
+inline TypePrt entry_identity(const nlohmann::json& type_) {
+    auto type = parse_types(type_);
+    if (type->type == type_value::ARRAY) {
+        if (type->length > 0) {
+            return std::make_shared<StaticArray>(type->name, type->length);
         }
-        return std::make_shared<DynamicArray>(type);
+        return std::make_shared<DynamicArray>(type->name);
     }
-    return generate_coders(type, expectedSize);
+    return generate_coders(type->name.get<std::string>(), type->length);
 }
 
-inline TypePrt generate_coders(const std::string& rawType, const nlohmann::json& value) {
-    auto [type, expectedSize, boolean] = Parsing(rawType).result();
-    if (boolean) {
-        if (expectedSize > 0) {
-            return std::make_shared<StaticArray>(type, expectedSize, value);
+inline TypePrt generate_coders(const nlohmann::json& j_type, const nlohmann::json& value) {
+    auto type = parse_types(j_type);
+    if (type->type == type_value::ARRAY) {
+        if (type->length > 0) {
+            return std::make_shared<StaticArray>(type->name, type->length, value);
         }
-        return std::make_shared<DynamicArray>(type, value);
+        return std::make_shared<DynamicArray>(type->name, value);
     }
 
-    return generate_coders(type, expectedSize, value);
+    return generate_coders(type->name.get<std::string>(), type->length, value);
 }
 
 } // namespace abicoder
