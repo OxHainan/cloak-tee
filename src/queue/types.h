@@ -197,12 +197,13 @@ struct Function {
     size_t get_keys_size(const std::string& name) {
         auto ps = read;
         ps.insert(ps.end(), mutate.begin(), mutate.end());
+        size_t sum = 0;
         for (auto&& x : ps) {
             if (x.name == name) {
-                return x.keys.size();
+                sum += x.keys.size();
             }
         }
-        return 0;
+        return sum;
     }
 };
 
