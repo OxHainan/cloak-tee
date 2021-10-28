@@ -35,7 +35,6 @@ def get_args():
     setup_service.add_argument('--build-path', help='cloak-tee build path', required=True)
     setup_service.add_argument('--cloak-tee-port', type=int, help='cloak tee port', default=8000)
     setup_service.add_argument('--blockchain-http-uri', help='blockchain http uri', default="http://127.0.0.1:8545")
-    setup_service.add_argument('--pki-address', help='deployed pki address', default=None)
     setup_service.add_argument('--cloak-service-address', help='deployed cloak service address', default=None)
 
     args = parser.parse_args()
@@ -45,7 +44,6 @@ def get_args():
 class Cloak:
     def __init__(self, args):
         self.args = args
-        self.pki_addr = getattr(args, 'pki_address', None)
         self.cloak_service_addr = getattr(args, 'cloak_service_address', None)
 
     def run(self):
@@ -55,15 +53,11 @@ class Cloak:
 
     def deploy_sol_contracts(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        pki_file = current_dir + "/solidity/CloakPKI.sol"
         cloak_service_file = current_dir + "/solidity/CloakService.sol"
         w3 = web3.Web3(web3.HTTPProvider(args.blockchain_http_uri))
         acc = web3.Account.create()
-        if self.pki_addr is None:
-            self.pki_addr = utils.deploy_contract(pki_file, "CloakPKI", w3, acc, nonce=0)
-            print(f"PKI_ADDR: {self.pki_addr}")
         if self.cloak_service_addr is None:
-            self.cloak_service_addr = utils.deploy_contract(cloak_service_file, "CloakService", w3, acc, nonce=1)
+            self.cloak_service_addr = utils.deploy_contract(cloak_service_file, "CloakService", w3, acc, nonce=0)
             print(f"CLOAK_SERVICE_ADDR: {self.cloak_service_addr}")
 
     def setup_cloak_service(self):
@@ -107,7 +101,6 @@ class Cloak:
     def prepare_cloak_tee(self):
         ccf_client = utils.get_ccf_client(self.args)
         ccf_client.call("/app/cloak_prepare", {
-            "pki_addr": self.pki_addr,
             "cloak_service_addr": self.cloak_service_addr
         })
         print("cloak-prepare DONE")

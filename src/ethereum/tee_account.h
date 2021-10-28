@@ -28,7 +28,7 @@ inline constexpr auto PRIVATEKEY = "tee.account.privateKey";
 inline constexpr auto PUBLICADDR = "tee.account.publicAddr";
 inline constexpr auto BALANCES = "tee.account.balance";
 inline constexpr auto NONCES = "tee.account.nonce";
-inline constexpr auto PKI = "tee.account.pki";
+inline constexpr auto SERVICE = "tee.account.service";
 
 struct KeyPair {
     using PrivateKey = kv::Map<eevm::Address, tls::Pem>;
@@ -66,14 +66,14 @@ struct Accounts {
 
     Accounts() : balances(BALANCES), nonces(NONCES) {}
 };
-using Pki = kv::Map<std::string, eevm::Address>;
+using CloakService = kv::Map<std::string, eevm::Address>;
 
 struct Table {
     tables::Accounts acc;
     tables::KeyPair key_pair;
-    tables::Pki pki;
+    tables::CloakService service;
 
-    Table() : acc(), key_pair(), pki(tables::PKI) {}
+    Table() : acc(), key_pair(), service(tables::SERVICE) {}
 };
 
 } // namespace tables

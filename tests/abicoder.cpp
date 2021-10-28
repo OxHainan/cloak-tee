@@ -350,15 +350,6 @@ TEST_CASE("Test encode") {
 
     SUBCASE("test dynamic array when string type value is nil") {
         vector<string> src = {};
-        const nlohmann::json str = {
-            R"xxx(
-            {
-                "type": "array",
-                "value_type": {
-                    "type": "string"
-                }
-            }
-        )xxx"_json};
 
         encoder.add_inputs("a", "string[]", src, make_common_array("string"));
         auto correct = eevm::to_bytes(

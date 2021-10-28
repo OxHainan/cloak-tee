@@ -154,7 +154,7 @@ inline std::vector<uint8_t> generate_symmetric_key(tls::KeyPairPtr kp, const tls
     auto ctx = tls::KeyExchangeContext(kp, pk);
     auto ikm = ctx.compute_shared_secret();
     auto info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
-    std::vector<uint8_t> key(256);
+    std::vector<uint8_t> key(32);
     mbedtls_hkdf(info, NULL, 0, ikm.data(), ikm.size(), NULL, 0, key.data(), key.size());
     return key;
 }

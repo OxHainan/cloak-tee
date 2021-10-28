@@ -214,8 +214,8 @@ def read_multiPartyTransfer_mpt_data(to: str) -> str:
     """
     return v1, v2
 
-def cloak_prepare(ccf_client: ccf.clients.CCFClient, cloak_service_addr: str, pki_addr: str):
-    ccf_client.call("/app/cloak_prepare", {"cloak_service_addr": cloak_service_addr, "pki_addr": pki_addr})
+def cloak_prepare(ccf_client: ccf.clients.CCFClient, cloak_service_addr: str):
+    ccf_client.call("/app/cloak_prepare", {"cloak_service_addr": cloak_service_addr})
 
 def get_pk_pem(key: str) -> str:
     cmd = f"echo 302e0201010420 {key[2:]} a00706052b8104000a | xxd -r -p | openssl ec -inform d -pubout"

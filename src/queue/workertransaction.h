@@ -187,7 +187,7 @@ struct CloakPolicyTransaction {
 
     bool request_public_keys(h256& target_digest,
                              cloak4ccf::TeeManager::AccountPtr acc,
-                             Address& pki_addr) {
+                             Address& service_addr) {
         // state => address
         std::map<std::string, std::string> addresses;
         visit_states(old_states, true, [this, &addresses](auto id, size_t idx) {
@@ -239,7 +239,7 @@ struct CloakPolicyTransaction {
         auto data = encoder.encodeWithSignatrue();
 
         auto response =
-            Ethereum::SyncStateResponse(target_digest, acc->get_address(), pki_addr, data);
+            Ethereum::SyncStateResponse(target_digest, acc->get_address(), service_addr, data);
         Utils::cloak_agent_log("request_public_keys", response);
         return true;
     }
@@ -281,8 +281,10 @@ struct CloakPolicyTransaction {
                     // tag and iv
                     auto&& [tag, iv] = Utils::split_tag_and_iv(to_bytes(old_states[data_pos + 1]));
                     auto data = to_bytes(old_states[data_pos]);
-                    CLOAK_DEBUG_FMT(
-                        "decryption, iv:{}, tag:{}, data:{}", iv, tag, old_states[data_pos]);
+                    CLOAK_DEBUG_FMT("decryption, iv:{}, tag:{}, data:{}",
+                                    to_hex_string(iv),
+                                    to_hex_string(tag),
+                                    old_states[data_pos]);
                     data.insert(data.end(), tag.begin(), tag.end());
                     auto decrypted = Utils::decrypt_data(tee_kp, pk, iv, data);
                     res.push_back(to_hex_string(decrypted));
