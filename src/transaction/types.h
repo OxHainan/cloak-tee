@@ -18,12 +18,11 @@
 namespace cloak4ccf {
 
 struct TeePrepare {
-    eevm::Address pki_addr;
     eevm::Address cloak_service_addr;
 };
 
 DECLARE_JSON_TYPE(TeePrepare)
-DECLARE_JSON_REQUIRED_FIELDS(TeePrepare, pki_addr, cloak_service_addr)
+DECLARE_JSON_REQUIRED_FIELDS(TeePrepare, cloak_service_addr)
 
 struct SyncStates {
     std::string data;

@@ -190,8 +190,9 @@ class Generator {
         cp_opt->old_states = old_states;
 
         auto acc = TeeManager::State::make_account(ctx.tx, ctx.cloakTables.tee_table);
-        auto pki_addr = TeeManager::get_pki_addr(ctx.tx.get_view(ctx.cloakTables.tee_table.pki));
-        if (!cp_opt->request_public_keys(target_digest, acc, pki_addr)) {
+        auto service_addr =
+            TeeManager::get_service_addr(ctx.tx.get_view(ctx.cloakTables.tee_table.service));
+        if (!cp_opt->request_public_keys(target_digest, acc, service_addr)) {
             auto new_states =
                 Ethereum::execute_mpt(ctx, cp_opt.value(), acc->get_address(), old_states);
             sync_result(target_digest, cp_opt.value(), acc, new_states);

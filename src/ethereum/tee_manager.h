@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "abi/abicoder.h"
 #include "app/utils.h"
 #include "ethereum/types.h"
 #include "kv/tx.h"
@@ -89,12 +90,12 @@ struct Account : public eevm::Account {
 
 using AccountPtr = std::shared_ptr<Account>;
 
-Address get_pki_addr(tables::Pki::TxView* view) {
-    auto pki_it = view->get("TEE_PKI");
-    if (!pki_it.has_value()) {
+Address get_service_addr(tables::CloakService::TxView* view) {
+    auto it = view->get("CLOAK_SERVICE");
+    if (!it.has_value()) {
         throw std::logic_error("TEE is not prepare");
     }
-    return pki_it.value();
+    return it.value();
 }
 
 class State {
@@ -162,15 +163,19 @@ class State {
 void prepare(kv::Tx& tx, tables::Table& tee_table, TeePrepare& tee_prepare) {
     auto tee_acc = State::make_state(tx, tee_table).create();
     // register tee address on chain
-    std::vector<uint8_t> data = Utils::make_function_selector("setTEEAddress()");
-    Ethereum::MessageCall mc(tee_acc->get_address(), tee_prepare.cloak_service_addr, data);
+    auto encoder = abicoder::Encoder("setTEEAddress");
+    auto pubKey = evm4ccf::public_key_asn1(tee_acc->get_tee_kp()->get_raw_context());
+    encoder.add_inputs("", "string", eevm::to_hex_string(pubKey), abicoder::common_type("string"));
+
+    Ethereum::MessageCall mc(
+        tee_acc->get_address(), tee_prepare.cloak_service_addr, encoder.encodeWithSignatrue());
     auto signed_data = evm4ccf::sign_eth_tx(tee_acc->get_tee_kp(), mc, tee_acc->get_nonce());
     Utils::cloak_agent_log("register_tee_addr", eevm::to_hex_string(signed_data));
 
     tee_acc->increment_nonce();
 
-    auto pki_view = tx.get_view(tee_table.pki);
-    pki_view->put("TEE_PKI", tee_prepare.pki_addr);
+    auto service_view = tx.get_view(tee_table.service);
+    service_view->put("CLOAK_SERVICE", tee_prepare.cloak_service_addr);
 }
 
 } // namespace TeeManager

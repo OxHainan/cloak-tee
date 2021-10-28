@@ -67,6 +67,10 @@ class AbstractEVM {
     std::pair<eevm::ExecResult, eevm::AccountState> run(Address& to) {
         eevm::Transaction eth_tx(call_data.from, log_handler);
         auto account_state = es.get(to);
+        if (!account_state.acc.has_code()) {
+            throw Exception(
+                fmt::format("this address [{}] is a common address", eevm::to_hex_string(to)));
+        }
 #ifdef RECORD_TRACE
         Trace tr;
 #endif // RECORD_TRACE
