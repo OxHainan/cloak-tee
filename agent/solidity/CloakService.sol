@@ -10,15 +10,15 @@ contract CloakService {
     function setTEEAddress(string memory pk) public {
         require(teeAddr == address(0), "TEE has already register");
         teeAddr = msg.sender;
-        pks[msg.sender] = pk;
+        announcePk(pk);
     }
 
     function getTEEAddress() public view returns (address) {
         return teeAddr;
     }
     
-    function announcePk(string calldata pk) external {
-        require(hasAnnounced[msg.sender], "Address has no announced");
+    function announcePk(string memory pk) public {
+        require(!hasAnnounced[msg.sender], "Address has already announced");
         pks[msg.sender] = pk;
         hasAnnounced[msg.sender] = true;
     }
