@@ -21,6 +21,7 @@
 #include "app/rpc/endpoint_registry.h"
 #include "app/rpc/json_handler.h"
 #include "ethereum/state.h"
+#include "ethereum/tee_manager.h"
 #include "transaction/generator.h"
 
 namespace cloak4ccf {
@@ -94,6 +95,14 @@ class CloakEndpointRegistry : public EVMHandlers {
                                           eevm::to_hex_string(cpt_opt->function.raw_outputs)};
         };
 
+        auto get_cloak_service = [this](CloakContext& ctx, const nlohmann::json&) {
+            auto tee_acc = TeeManager::State::make_account(ctx.tx, cloakTables.tee_table);
+            auto service_addr =
+                TeeManager::get_service_addr(ctx.tx.get_view(cloakTables.tee_table.service));
+            return Ethereum::CloakInfo(
+                tee_acc->get_address(), service_addr, tee_acc->get_public_Key());
+        };
+
         make_endpoint("cloak_sendRawPrivacyTransaction",
                       HTTP_POST,
                       json_adapter(send_raw_privacy_transaction, cloakTables))
@@ -120,6 +129,10 @@ class CloakEndpointRegistry : public EVMHandlers {
             .install();
 
         make_endpoint("cloak_sync_report", HTTP_POST, json_adapter(sync_report, cloakTables))
+            .install();
+
+        make_endpoint(
+            "cloak_get_cloak_service", HTTP_GET, json_adapter(get_cloak_service, cloakTables))
             .install();
     }
 };

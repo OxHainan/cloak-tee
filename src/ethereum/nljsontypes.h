@@ -154,6 +154,20 @@ inline void from_json(const nlohmann::json& j, MessageCall& s) {
     }
 }
 
+inline void to_json(nlohmann::json& j, const CloakInfo& s) {
+    j = nlohmann::json::object();
+    j["tee_addr"] = eevm::to_checksum_address(s.tee_addr);
+    j["cloak_service"] = eevm::to_checksum_address(s.cloak_service);
+    j["tee_public_key"] = eevm::to_hex_string(s.tee_public_key);
+}
+
+inline void from_json(const nlohmann::json& j, CloakInfo& s) {
+    evm4ccf::require_object(j);
+    s.tee_addr = eevm::to_uint256(j["tee_addr"]);
+    s.cloak_service = eevm::to_uint256(j["cloak_service"]);
+    s.tee_public_key = eevm::to_bytes(j["tee_public_key"]);
+}
+
 //
 inline void to_json(nlohmann::json& j, const AddressWithBlock& s) {
     j = nlohmann::json::array();

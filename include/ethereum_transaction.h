@@ -120,6 +120,36 @@ inline std::vector<uint8_t> public_key_asn1(mbedtls_pk_context* raw_ctx) {
     return {first, buf + buf_size};
 }
 
+inline std::vector<uint8_t> get_der_from_public_key(mbedtls_pk_context* raw_ctx) {
+    static constexpr size_t max_der_key_size = 2048;
+    uint8_t data[max_der_key_size]; // NOLINT
+
+    int len = mbedtls_pk_write_pubkey_der(raw_ctx, data, max_der_key_size);
+    if (len < 0) {
+        throw std::logic_error("mbedtls_pk_write_pubkey_der: " + tls::error_string(len));
+    }
+
+    return {data + max_der_key_size - len, data + max_der_key_size};
+}
+
+inline std::vector<uint8_t> get_der_from_public_key_asn1(const std::vector<uint8_t>& asn1) {
+    static const auto ASN1_PREFIX_PUBKEY =
+        eevm::to_bytes("0x3056301006072a8648ce3d020106052b8104000a034200");
+
+    if (asn1.size() != 65) {
+        throw std::logic_error("Invalid public key length");
+    }
+
+    if (asn1[0] != 0x04) {
+        throw std::invalid_argument("Unkown public key format");
+    }
+
+    std::vector<uint8_t> result;
+    result.insert(result.end(), ASN1_PREFIX_PUBKEY.begin(), ASN1_PREFIX_PUBKEY.end());
+    result.insert(result.end(), asn1.begin(), asn1.end());
+    return result;
+}
+
 inline eevm::Address get_address_from_public_key_asn1(const std::vector<uint8_t>& asn1) {
     // Check the bytes are prefixed with the ASN.1 type tag we expect,
     // then return raw bytes without type tag prefix.

@@ -149,8 +149,9 @@ inline std::vector<uint8_t> make_function_selector(const std::string& sign) {
 }
 
 // generate symmetric key using ECDH and HKDF
-inline std::vector<uint8_t> generate_symmetric_key(tls::KeyPairPtr kp, const tls::Pem& pk_pem) {
-    auto pk = tls::make_public_key(pk_pem);
+inline std::vector<uint8_t> generate_symmetric_key(tls::KeyPairPtr kp,
+                                                   const std::vector<uint8_t>& pk_der) {
+    auto pk = tls::make_public_key(pk_der);
     auto ctx = tls::KeyExchangeContext(kp, pk);
     auto ikm = ctx.compute_shared_secret();
     auto info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
@@ -161,10 +162,10 @@ inline std::vector<uint8_t> generate_symmetric_key(tls::KeyPairPtr kp, const tls
 
 using Bytes = std::vector<uint8_t>;
 inline std::pair<Bytes, Bytes> encrypt_data_s(tls::KeyPairPtr kp,
-                                              const tls::Pem& pk_pem,
+                                              const std::vector<uint8_t>& pk_der,
                                               const std::vector<uint8_t>& iv,
                                               const std::vector<uint8_t>& data) {
-    auto key = generate_symmetric_key(kp, pk_pem);
+    auto key = generate_symmetric_key(kp, pk_der);
     crypto::KeyAesGcm key_aes_gcm(key);
     std::vector<uint8_t> res(data.size());
     std::vector<uint8_t> tag(crypto::GCM_SIZE_TAG);
@@ -173,10 +174,10 @@ inline std::pair<Bytes, Bytes> encrypt_data_s(tls::KeyPairPtr kp,
 }
 
 inline std::vector<uint8_t> decrypt_data(tls::KeyPairPtr kp,
-                                         const tls::Pem& pk_pem,
+                                         const std::vector<uint8_t>& pk_der,
                                          const std::vector<uint8_t>& iv,
                                          const std::vector<uint8_t>& data) {
-    auto key = generate_symmetric_key(kp, pk_pem);
+    auto key = generate_symmetric_key(kp, pk_der);
     crypto::KeyAesGcm key_aes_gcm(key);
     size_t c_size = data.size() - crypto::GCM_SIZE_TAG;
     std::vector<uint8_t> res(c_size);

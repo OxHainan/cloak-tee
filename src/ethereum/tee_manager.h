@@ -86,6 +86,11 @@ struct Account : public eevm::Account {
         }
         return tls::make_key_pair(kp_it.value());
     }
+
+    std::vector<uint8_t> get_public_Key() const {
+        auto kp = get_tee_kp();
+        return evm4ccf::public_key_asn1(kp->get_raw_context());
+    }
 };
 
 using AccountPtr = std::shared_ptr<Account>;
@@ -164,8 +169,10 @@ void prepare(kv::Tx& tx, tables::Table& tee_table, TeePrepare& tee_prepare) {
     auto tee_acc = State::make_state(tx, tee_table).create();
     // register tee address on chain
     auto encoder = abicoder::Encoder("setTEEAddress");
-    auto pubKey = evm4ccf::public_key_asn1(tee_acc->get_tee_kp()->get_raw_context());
-    encoder.add_inputs("", "string", eevm::to_hex_string(pubKey), abicoder::common_type("string"));
+    encoder.add_inputs("",
+                       "bytes",
+                       eevm::to_hex_string(tee_acc->get_public_Key()),
+                       abicoder::common_type("bytes"));
 
     Ethereum::MessageCall mc(
         tee_acc->get_address(), tee_prepare.cloak_service_addr, encoder.encodeWithSignatrue());
