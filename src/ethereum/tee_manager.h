@@ -108,7 +108,6 @@ class State {
     tables::Accounts::Views accounts;
     tables::KeyPair::Views key_pair;
 
-    template <typename... Ts>
     State(const tables::Accounts::Views& acc_, const tables::KeyPair::Views& key_pair_) :
         accounts(acc_), key_pair(key_pair_) {}
 

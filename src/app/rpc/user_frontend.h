@@ -95,7 +95,7 @@ class CloakEndpointRegistry : public EVMHandlers {
                                           eevm::to_hex_string(cpt_opt->function.raw_outputs)};
         };
 
-        auto get_cloak_service = [this](CloakContext& ctx, const nlohmann::json&) {
+        auto get_cloak = [this](CloakContext& ctx, const nlohmann::json&) {
             auto tee_acc = TeeManager::State::make_account(ctx.tx, cloakTables.tee_table);
             auto service_addr =
                 TeeManager::get_service_addr(ctx.tx.get_view(cloakTables.tee_table.service));
@@ -131,9 +131,7 @@ class CloakEndpointRegistry : public EVMHandlers {
         make_endpoint("cloak_sync_report", HTTP_POST, json_adapter(sync_report, cloakTables))
             .install();
 
-        make_endpoint(
-            "cloak_get_cloak_service", HTTP_GET, json_adapter(get_cloak_service, cloakTables))
-            .install();
+        make_endpoint("cloak_get_cloak", HTTP_GET, json_adapter(get_cloak, cloakTables)).install();
     }
 };
 

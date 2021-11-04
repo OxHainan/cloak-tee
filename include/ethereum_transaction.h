@@ -132,7 +132,7 @@ inline std::vector<uint8_t> get_der_from_public_key(mbedtls_pk_context* raw_ctx)
     return {data + max_der_key_size - len, data + max_der_key_size};
 }
 
-inline std::vector<uint8_t> get_der_from_public_key_asn1(const std::vector<uint8_t>& asn1) {
+inline std::vector<uint8_t> get_der_from__raw_public_key(const std::vector<uint8_t>& asn1) {
     static const auto ASN1_PREFIX_PUBKEY =
         eevm::to_bytes("0x3056301006072a8648ce3d020106052b8104000a034200");
 

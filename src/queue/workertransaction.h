@@ -278,7 +278,7 @@ struct CloakPolicyTransaction {
                         continue;
                     }
                     auto pk = public_keys.at(to_checksum_address(sender_addr));
-                    auto der = evm4ccf::get_der_from_public_key_asn1(eevm::to_bytes(pk));
+                    auto der = evm4ccf::get_der_from__raw_public_key(eevm::to_bytes(pk));
 
                     // tag and iv
                     auto&& [tag, iv] = Utils::split_tag_and_iv(to_bytes(old_states[data_pos + 1]));
@@ -307,7 +307,7 @@ struct CloakPolicyTransaction {
                 // tag and iv
                 auto pk_der = p.owner["owner"] == "tee" ?
                     get_der_from_public_key(tee_kp->get_raw_context()) :
-                    get_der_from_public_key_asn1(eevm::to_bytes(public_keys.at(sender_addr)));
+                    get_der_from__raw_public_key(eevm::to_bytes(public_keys.at(sender_addr)));
 
                 auto&& [tag, iv] = Utils::split_tag_and_iv(eevm::to_bytes(old_states[idx + 2]));
                 CLOAK_DEBUG_FMT("tag:{}, iv:{}", tag, iv);
@@ -367,7 +367,7 @@ struct CloakPolicyTransaction {
                         auto msg_sender =
                             eevm::to_checksum_address(eevm::to_uint256(mapping_keys[j]));
 
-                        auto der = evm4ccf::get_der_from_public_key_asn1(
+                        auto der = evm4ccf::get_der_from__raw_public_key(
                             eevm::to_bytes(public_keys.at(msg_sender)));
                         auto&& [encrypted, tag] = Utils::encrypt_data_s(
                             tee_kp, der, iv, to_bytes(new_states[idx + 3 + j * 2]));
@@ -384,7 +384,7 @@ struct CloakPolicyTransaction {
 
                     auto pk_der = ps.owner["owner"] == "tee" ?
                         get_der_from_public_key(tee_kp->get_raw_context()) :
-                        get_der_from_public_key_asn1(eevm::to_bytes(public_keys.at(sender_addr)));
+                        get_der_from__raw_public_key(eevm::to_bytes(public_keys.at(sender_addr)));
 
                     auto iv = tls::create_entropy()->random(crypto::GCM_SIZE_IV);
                     auto&& [encrypted, tag] =
