@@ -278,6 +278,8 @@ struct CloakPolicyTransaction {
                         continue;
                     }
                     auto pk = public_keys.at(to_checksum_address(sender_addr));
+                    auto der = evm4ccf::get_der_from__raw_public_key(eevm::to_bytes(pk));
+
                     // tag and iv
                     auto&& [tag, iv] = Utils::split_tag_and_iv(to_bytes(old_states[data_pos + 1]));
                     auto data = to_bytes(old_states[data_pos]);
@@ -286,7 +288,7 @@ struct CloakPolicyTransaction {
                                     to_hex_string(tag),
                                     old_states[data_pos]);
                     data.insert(data.end(), tag.begin(), tag.end());
-                    auto decrypted = Utils::decrypt_data(tee_kp, pk, iv, data);
+                    auto decrypted = Utils::decrypt_data(tee_kp, der, iv, data);
                     res.push_back(to_hex_string(decrypted));
                 }
             } else {
@@ -303,16 +305,19 @@ struct CloakPolicyTransaction {
                     return;
                 }
                 // tag and iv
-                tls::Pem pk = p.owner["owner"] == "tee" ? tee_kp->public_key_pem() :
-                                                          tls::Pem(public_keys.at(sender_addr));
+                auto pk_der = p.owner["owner"] == "tee" ?
+                    get_der_from_public_key(tee_kp->get_raw_context()) :
+                    get_der_from__raw_public_key(eevm::to_bytes(public_keys.at(sender_addr)));
+
                 auto&& [tag, iv] = Utils::split_tag_and_iv(eevm::to_bytes(old_states[idx + 2]));
                 CLOAK_DEBUG_FMT("tag:{}, iv:{}", tag, iv);
                 auto data = eevm::to_bytes(old_states[idx + 1]);
                 data.insert(data.end(), tag.begin(), tag.end());
-                auto decrypted = Utils::decrypt_data(tee_kp, pk, iv, data);
+                auto decrypted = Utils::decrypt_data(tee_kp, pk_der, iv, data);
                 res.push_back(eevm::to_hex_string(decrypted));
             }
         });
+
         CLOAK_DEBUG_FMT("old_states:{}, res:{}", fmt::join(old_states, ", "), fmt::join(res, ", "));
         return res;
     }
@@ -336,7 +341,6 @@ struct CloakPolicyTransaction {
             [this, &res, &addresses, &tee_kp, &new_states](size_t id, size_t idx) {
                 // policy state
                 auto tee_addr_hex = to_hex_string(get_addr_from_kp(tee_kp));
-                auto tee_pk_pem = tee_kp->public_key_pem();
                 auto ps = states[id];
                 res.push_back(new_states[idx]);
                 CLOAK_DEBUG_FMT("ps:{}", nlohmann::json(ps).dump());
@@ -362,11 +366,11 @@ struct CloakPolicyTransaction {
                         auto iv = tls::create_entropy()->random(crypto::GCM_SIZE_IV);
                         auto msg_sender =
                             eevm::to_checksum_address(eevm::to_uint256(mapping_keys[j]));
-                        auto&& [encrypted, tag] =
-                            Utils::encrypt_data_s(tee_kp,
-                                                  tls::Pem(public_keys.at(msg_sender)),
-                                                  iv,
-                                                  to_bytes(new_states[idx + 3 + j * 2]));
+
+                        auto der = evm4ccf::get_der_from__raw_public_key(
+                            eevm::to_bytes(public_keys.at(msg_sender)));
+                        auto&& [encrypted, tag] = Utils::encrypt_data_s(
+                            tee_kp, der, iv, to_bytes(new_states[idx + 3 + j * 2]));
                         CLOAK_DEBUG_FMT("iv:{}, tag:{}, data:{}", iv, tag, encrypted);
                         tag.insert(tag.end(), iv.begin(), iv.end());
                         res.insert(res.end(),
@@ -377,12 +381,14 @@ struct CloakPolicyTransaction {
                     CLOAK_DEBUG_FMT("id:{}, owner:{}", id, ps.owner.dump());
                     std::string sender_addr =
                         ps.owner["owner"] == "tee" ? tee_addr_hex : addresses.at(ps.owner["owner"]);
-                    tls::Pem pk_pem = ps.owner["owner"] == "tee" ?
-                        tee_pk_pem :
-                        tls::Pem(public_keys.at(sender_addr));
+
+                    auto pk_der = ps.owner["owner"] == "tee" ?
+                        get_der_from_public_key(tee_kp->get_raw_context()) :
+                        get_der_from__raw_public_key(eevm::to_bytes(public_keys.at(sender_addr)));
+
                     auto iv = tls::create_entropy()->random(crypto::GCM_SIZE_IV);
                     auto&& [encrypted, tag] =
-                        Utils::encrypt_data_s(tee_kp, pk_pem, iv, to_bytes(new_states[idx + 1]));
+                        Utils::encrypt_data_s(tee_kp, pk_der, iv, to_bytes(new_states[idx + 1]));
                     tag.insert(tag.end(), iv.begin(), iv.end());
                     res.insert(res.end(),
                                {to_hex_string(encrypted), to_hex_string(tag), sender_addr});

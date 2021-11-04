@@ -32,6 +32,18 @@ using ContractParticipants = std::set<eevm::Address>;
 
 constexpr auto DefaultBlockID = "latest";
 
+struct CloakInfo {
+    eevm::Address tee_addr;
+    eevm::Address cloak_service;
+    std::vector<uint8_t> tee_public_key;
+
+    CloakInfo(const eevm::Address& tee_addr_,
+              const eevm::Address& cloak_service_,
+              const std::vector<uint8_t>& public_key) :
+        tee_addr(tee_addr_),
+        cloak_service(cloak_service_), tee_public_key(public_key) {}
+};
+
 struct BlockHeader {
     uint64_t number = {};
     uint64_t difficulty = {};

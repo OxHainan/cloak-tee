@@ -152,9 +152,8 @@ class Generator {
         }
 
         std::map<std::string, std::string> public_keys;
-        auto public_keys_vec = eevm::to_bytes(syncKeys.data);
-        auto public_key_list =
-            abicoder::decode_string_array({public_keys_vec.begin() + 32, public_keys_vec.end()});
+        auto public_keys_data = eevm::to_bytes(syncKeys.data);
+        auto public_key_list = abicoder::Decoder::decode_bytes_array(public_keys_data);
 
         for (size_t i = 0; i < cp_opt->requested_addresses.size(); i++) {
             public_keys[cp_opt->requested_addresses[i]] = public_key_list[i];
