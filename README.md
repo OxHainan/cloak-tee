@@ -1,4 +1,4 @@
-<img  width="280" src="https://oxhainan-cloak-docs.readthedocs-hosted.com/en/latest/_static/logo.png" alt="cloak-logo" align="left">
+<img  width="280" src="https://cloak-docs.readthedocs.io/en/latest/_static/logo.png" alt="cloak-logo" align="left">
 
 <h1 align="center">
     <a>
@@ -19,7 +19,7 @@
   <a href="https://www.codefactor.io/repository/github/oxhainan/cloak-tee">
     <img src="https://www.codefactor.io/repository/github/oxhainan/cloak-tee/badge" alt="CodeFactor." />
   </a>
-  <a href="https://oxhainan-cloak-docs.readthedocs-hosted.com/en/latest/started/contribute.html">
+  <a href="https://cloak-docs.readthedocs.io/en/latest/started/contribute.html">
     <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs welcome!" />
   </a>
 </p>
@@ -38,7 +38,7 @@ This service looks in many ways like a traditional Ethereum node, but has some f
 - There are no local nodes. Users do not run their own node, trusting it with key access and potentially private state. Instead all nodes run inside enclaves, maintaining privacy and guaranteeing execution integrity, regardless of where those enclaves are actually hosted.
 - State is confidential, and that confidentiality is entirely controlled by smart contract logic. The app does not produce a public log of all transactions, and it does not reveal the resulting state to all users. The only access to state is by calling methods on smart contracts, where arbitrarily complex and dynamic restrictions can be applied.
 
-[cloak-networks]: https://oxhainan-cloak-docs.readthedocs-hosted.com/en/latest/tee-blockchain-architecture/cloak-network.html#cloak-network
+[cloak-networks]: https://cloak-docs.readthedocs.io/en/latest/tee-blockchain-architecture/cloak-network.html#cloak-network
 [tee]: https://en.wikipedia.org/wiki/Trusted_execution_environment
 
 ## Contents
@@ -85,14 +85,14 @@ ctest
 
 User initialize a Cloak Service as described in the [initialize Cloak Network on Blockchain][initialize-cloak-network-on-blockchain], and deploy confidential smart contract to Block chain as described in the [deploy cloak smart contract][deploy-cloak-smart-contract]
 
-[deploy-cloak-smart-contract]: https://oxhainan-cloak-docs.readthedocs-hosted.com/en/latest/deploy-cloak-smart-contract/deploy.html
-[initialize-cloak-network-on-blockchain]: https://oxhainan-cloak-docs.readthedocs-hosted.com/en/latest/tee-blockchain-architecture/initialize-cloak-network-on-blockchain.html
+[deploy-cloak-smart-contract]: https://cloak-docs.readthedocs.io/en/latest/deploy-cloak-smart-contract/deploy.html
+[initialize-cloak-network-on-blockchain]: https://cloak-docs.readthedocs.io/en/latest/tee-blockchain-architecture/initialize-cloak-network-on-blockchain.html
 
 ## 📖 Documentation
 
 The full documentation for Cloak can found on our [Cloak documentation][cloak-docs]
 
-[cloak-docs]: https://oxhainan-cloak-docs.readthedocs-hosted.com/en/latest/#
+[cloak-docs]: https://cloak-docs.readthedocs.io/en/latest/#
 
 ## 👏 How to Contribute
 
@@ -104,19 +104,19 @@ Read below to learn how you can take part in improving Cloak TEE.
 Cloak TEE has adopted a Code of Conduct that we expect project participants to adhere to.
 Please read the [full text][code] so that you can understand what actions will and will not be tolerated.
 
-[code]: https://oxhainan-cloak-docs.readthedocs-hosted.com/en/latest/started/contribute.html#documentation-style-guide
+[code]: https://cloak-docs.readthedocs.io/en/latest/started/contribute.html#documentation-style-guide
 
 ### [Contributing Guide][contribute]
 
 Read our [**Call for Contributions**][contribute] to learn about our development process, how to propose bugfixed and improvements, and how to build and test your changes to Cloak.
 
-[contribute]: https://oxhainan-cloak-docs.readthedocs-hosted.com/en/latest/started/contribute.html#all-contributions-counts
+[contribute]: https://cloak-docs.readthedocs.io/en/latest/started/contribute.html#all-contributions-counts
 
 ### [Open Source Roadmap][roadmap]
 
 You can learn more about our vision for Cloak Networks in the [**Roadmap**][roadmap].
 
-[roadmap]: https://oxhainan-cloak-docs.readthedocs-hosted.com/en/latest/roadmap/index.html#roadmap
+[roadmap]: https://cloak-docs.readthedocs.io/en/latest/roadmap/index.html#roadmap
 
 ### Submit Issues
 
