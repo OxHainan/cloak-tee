@@ -15,6 +15,7 @@
 #pragma once
 #include <eEVM/address.h>
 #include <eEVM/bigint.h>
+#include <eEVM/rlp.h>
 #include <eEVM/transaction.h>
 #include <eEVM/util.h>
 #include <kv/tx.h>
@@ -59,6 +60,89 @@ inline bool operator==(const BlockHeader& l, const BlockHeader& r) {
         l.gas_used == r.gas_used && l.timestamp == r.timestamp && l.miner == r.miner &&
         l.block_hash == r.block_hash;
 }
+
+struct BlockHeader1 {
+    BlockHash parent_hash;
+    BlockHash sha3_uncles;
+    eevm::Address miner;
+    EthHash state_root;
+    EthHash transactions_root;
+    EthHash receipts_root;
+    std::array<uint8_t, 256> logs_bloom;
+    uint64_t difficulty;
+    uint64_t number;
+    uint64_t gas_limit;
+    uint64_t gas_used;
+    uint64_t timestamp;
+    std::vector<uint8_t> extra_data;
+    EthHash mix_hash;
+    std::array<uint8_t, 8> nonce;
+    BlockHash block_hash;
+    BlockHeader1() = default;
+    explicit BlockHeader1(const std::vector<uint8_t>& encoded) {
+        auto tup = eevm::rlp::decode<BlockHash,
+                                     BlockHash,
+                                     eevm::Address,
+                                     EthHash,
+                                     EthHash,
+                                     EthHash,
+                                     std::array<uint8_t, 256>,
+                                     uint64_t,
+                                     uint64_t,
+                                     uint64_t,
+                                     uint64_t,
+                                     uint64_t,
+                                     std::vector<uint8_t>,
+                                     EthHash,
+                                     std::array<uint8_t, 8>>(encoded);
+        parent_hash = std::get<0>(tup);
+        sha3_uncles = std::get<1>(tup);
+        miner = std::get<2>(tup);
+        state_root = std::get<3>(tup);
+        transactions_root = std::get<4>(tup);
+        receipts_root = std::get<5>(tup);
+        logs_bloom = std::get<6>(tup);
+        difficulty = std::get<7>(tup);
+        number = std::get<8>(tup);
+        gas_limit = std::get<9>(tup);
+        gas_used = std::get<10>(tup);
+        timestamp = std::get<11>(tup);
+        extra_data = std::get<12>(tup);
+        mix_hash = std::get<13>(tup);
+        nonce = std::get<14>(tup);
+        block_hash = hash();
+    }
+
+    std::vector<uint8_t> encode() const {
+        return eevm::rlp::encode(parent_hash,
+                                 sha3_uncles,
+                                 miner,
+                                 state_root,
+                                 transactions_root,
+                                 receipts_root,
+                                 logs_bloom,
+                                 difficulty,
+                                 number,
+                                 gas_limit,
+                                 gas_used,
+                                 timestamp,
+                                 extra_data,
+                                 mix_hash,
+                                 nonce);
+    }
+
+    BlockHash hash() const {
+        return eevm::from_big_endian(eevm::keccak_256(encode()).data());
+    }
+
+    void verify() const {
+        if (block_hash != hash()) {
+            throw std::logic_error(fmt::format("Validator block error, want {} but get {}",
+                                               eevm::to_hex_string(hash()),
+                                               eevm::to_hex_string(block_hash)));
+        }
+    }
+};
 
 struct TxResult {
     std::optional<eevm::Address> contract_address;

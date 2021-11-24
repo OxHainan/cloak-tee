@@ -9,7 +9,6 @@ using namespace evm4ccf;
 
 inline void to_json(nlohmann::json& j, const BlockHeader& s) {
     j = nlohmann::json::object();
-
     j["number"] = eevm::to_hex_string(s.number);
     j["difficulty"] = eevm::to_hex_string(s.difficulty);
     j["gasLimit"] = eevm::to_hex_string(s.gas_limit);
@@ -30,6 +29,47 @@ inline void from_json(const nlohmann::json& j, BlockHeader& s) {
     s.miner = eevm::to_uint256(j["miner"]);
     s.block_hash = eevm::to_uint256(j["hash"]);
 }
+
+inline void to_json(nlohmann::json& j, const BlockHeader1& s) {
+    j = nlohmann::json::object();
+    j["number"] = s.number;
+    j["difficulty"] = s.difficulty;
+    j["gasLimit"] = s.gas_limit;
+    j["gasUsed"] = s.gas_used;
+    j["timestamp"] = s.timestamp;
+    j["miner"] = eevm::to_checksum_address(s.miner);
+    j["hash"] = eevm::to_hex_string(s.block_hash);
+    j["stateRoot"] = eevm::to_hex_string(s.state_root);
+    j["parentHash"] = eevm::to_hex_string(s.parent_hash);
+    j["sha3Uncles"] = eevm::to_hex_string(s.sha3_uncles);
+    j["transactionsRoot"] = eevm::to_hex_string(s.transactions_root);
+    j["mixHash"] = eevm::to_hex_string(s.mix_hash);
+    j["receiptsRoot"] = eevm::to_hex_string(s.receipts_root);
+    j["extraData"] = eevm::to_hex_string(s.extra_data);
+    j["logsBloom"] = eevm::to_hex_string(s.logs_bloom);
+    j["nonce"] = eevm::to_hex_string(s.nonce);
+}
+
+inline void from_json(const nlohmann::json& j, BlockHeader1& s) {
+    require_object(j);
+    s.number = evm4ccf::to_uint64(j["number"]);
+    s.difficulty = evm4ccf::to_uint64(j["difficulty"]);
+    s.gas_limit = evm4ccf::to_uint64(j["gasLimit"]);
+    s.gas_used = evm4ccf::to_uint64(j["gasUsed"]);
+    s.timestamp = evm4ccf::to_uint64(j["timestamp"]);
+    s.miner = eevm::to_uint256(j["miner"]);
+    s.block_hash = eevm::to_uint256(j["hash"]);
+    s.parent_hash = eevm::to_uint256(j["parentHash"]);
+    s.sha3_uncles = eevm::to_uint256(j["sha3Uncles"]);
+    s.state_root = eevm::to_uint256(j["stateRoot"]);
+    s.transactions_root = eevm::to_uint256(j["transactionsRoot"]);
+    s.mix_hash = eevm::to_uint256(j["mixHash"]);
+    s.receipts_root = eevm::to_uint256(j["receiptsRoot"]);
+    array_from_hex_string(s.logs_bloom, j["logsBloom"]);
+    array_from_hex_string(s.nonce, j["nonce"]);
+    s.extra_data = eevm::to_bytes(j["extraData"]);
+}
+
 inline void from_json(const nlohmann::json& j, TxResult& txr) {
     const auto it = j.find("address");
     if (it != j.end() && !it->is_null()) {

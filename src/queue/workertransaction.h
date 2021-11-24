@@ -346,7 +346,7 @@ struct CloakPolicyTransaction {
                 CLOAK_DEBUG_FMT("ps:{}", nlohmann::json(ps).dump());
                 if (ps.owner["owner"] == "all") {
                     if (ps.structural_type["type"] == "mapping") {
-                        auto size = to_uint64(new_states[idx + 1]);
+                        auto size = eevm::to_uint64(new_states[idx + 1]);
                         size_t depth = ps.structural_type["depth"].get<size_t>();
                         res.insert(res.end(),
                                    new_states.begin() + idx + 1,
@@ -402,13 +402,13 @@ struct CloakPolicyTransaction {
                       bool is_encryped,
                       std::function<void(size_t, size_t)> f) {
         for (size_t i = 0; i < v_states.size();) {
-            size_t id = to_uint64(v_states[i]);
+            size_t id = eevm::to_uint64(v_states[i]);
             f(id, i);
             auto state = states[id];
             int factor = is_encryped && state.owner["owner"] != "all" ? 3 : 1;
             if (state.structural_type["type"] == "mapping") {
                 size_t depth = state.structural_type["depth"].get<size_t>();
-                i += 2 + to_uint64(v_states[i + 1]) * (factor + depth);
+                i += 2 + eevm::to_uint64(v_states[i + 1]) * (factor + depth);
             } else {
                 i += 1 + factor;
             }
