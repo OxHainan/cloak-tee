@@ -71,5 +71,9 @@ struct AccountProxy : public eevm::Account, public eevm::Storage {
     bool remove(const uint256_t& key) override {
         return storage.remove(translate(key));
     }
+
+    bool store_runtime_state(const HashState& hash_state, const uint256_t& value) override {
+        return true;
+    }
 };
 } // namespace Ethereum
