@@ -28,8 +28,12 @@ using MessageCall = Ethereum::MessageCall;
 using Address = eevm::Address;
 class AbstractEVM {
  protected:
-    AbstractEVM(const MessageCall& _call_data, EthereumState& _es, eevm::LogHandler& _log_handler) :
-        call_data(_call_data), es(_es), log_handler(_log_handler) {}
+    AbstractEVM(const MessageCall& _call_data,
+                EthereumState& _es,
+                eevm::LogHandler& _log_handler,
+                const std::string& _mpt_id) :
+        call_data(_call_data),
+        es(_es), log_handler(_log_handler), mpt_id(_mpt_id) {}
 
     std::tuple<eevm::ExecResult, evm4ccf::TxHash, Address> run_in_evm() {
         Address to;
@@ -79,7 +83,8 @@ class AbstractEVM {
                                      call_data.from,
                                      account_state,
                                      eevm::to_bytes(call_data.data),
-                                     call_data.value
+                                     call_data.value,
+                                     mpt_id
 #ifdef RECORD_TRACE
                                      ,
                                      &tr
@@ -95,6 +100,7 @@ class AbstractEVM {
 
     EthereumState& es;
     eevm::LogHandler& log_handler;
+    std::string mpt_id;
 };
 
 class EVMC : public AbstractEVM {
@@ -103,8 +109,12 @@ class EVMC : public AbstractEVM {
     tables::Results::TxView* results_view;
 
  public:
-    EVMC(const MessageCall& call_data, EthereumState& es, tables::Results::TxView* views) :
-        AbstractEVM(call_data, es, vlh), results_view(views) {}
+    EVMC(const MessageCall& call_data,
+         EthereumState& es,
+         tables::Results::TxView* views,
+         const std::string& mpt_id) :
+        AbstractEVM(call_data, es, vlh, mpt_id),
+        results_view(views) {}
     eevm::VectorLogHandler vlh;
     evm4ccf::TxHash run() {
         const auto [exec_result, tx_hash, to_address] = run_in_evm();
@@ -137,7 +147,8 @@ class EVMC : public AbstractEVM {
 std::vector<uint8_t> execute_mpt(cloak4ccf::CloakContext& ctx,
                                  evm4ccf::CloakPolicyTransaction& ct,
                                  const Address& tee_addr,
-                                 const std::vector<std::string>& decryped_states) {
+                                 const std::vector<std::string>& decryped_states,
+                                 const std::string& mpt_id) {
     kv::Tx& tx = ctx.tx;
     auto encoder = abicoder::Encoder("set_states");
     encoder.add_inputs("data", "bytes[]", decryped_states, abicoder::make_bytes_array());
@@ -150,14 +161,15 @@ std::vector<uint8_t> execute_mpt(cloak4ccf::CloakContext& ctx,
     CLOAK_DEBUG_FMT("call_data:{}", eevm::to_hex_string(set_states_call_data));
     auto es = EthereumState::make_state(tx, ctx.cloakTables.acc_state);
     auto set_states_res =
-        EVMC(set_states_mc, es, tx.get_view(ctx.cloakTables.tx_results)).run_with_result();
+        EVMC(set_states_mc, es, tx.get_view(ctx.cloakTables.tx_results), mpt_id).run_with_result();
 
     // run in evm
     auto data = ct.function.packed_to_data();
     MessageCall mc(ct.from, ct.to, data);
 
     CLOAK_DEBUG_FMT("ct function data: {}", mc.data);
-    const auto res = EVMC(mc, es, tx.get_view(ctx.cloakTables.tx_results)).run_with_result();
+    const auto res =
+        EVMC(mc, es, tx.get_view(ctx.cloakTables.tx_results), mpt_id).run_with_result();
     ct.function.raw_outputs = res.output;
 
     // == get new states ==
@@ -166,7 +178,8 @@ std::vector<uint8_t> execute_mpt(cloak4ccf::CloakContext& ctx,
     MessageCall get_new_states_mc(tee_addr, ct.to, get_new_states_call_data);
 
     auto get_new_states_res =
-        EVMC(get_new_states_mc, es, tx.get_view(ctx.cloakTables.tx_results)).run_with_result();
+        EVMC(get_new_states_mc, es, tx.get_view(ctx.cloakTables.tx_results), mpt_id)
+            .run_with_result();
     CLOAK_DEBUG_FMT("get_new_states res:{}, {}, {}, {}",
                     get_new_states_res.er,
                     get_new_states_res.ex,
