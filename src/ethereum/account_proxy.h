@@ -15,12 +15,16 @@ struct AccountProxy : public eevm::Account, public eevm::Storage {
     eevm::Address address;
     mutable tables::Accounts::Views accounts_views;
     tables::Storage::TxView& storage;
+    tables::ReferenceKv::TxView& reference_kv;
+    tables::SstoreKv::TxView& sstore_kv;
 
     AccountProxy(const eevm::Address& a,
                  const tables::Accounts::Views& av,
-                 tables::Storage::TxView& st) :
+                 tables::Storage::TxView& st,
+                 tables::ReferenceKv::TxView& rv,
+                 tables::SstoreKv::TxView& sv) :
         address(a),
-        accounts_views(av), storage(st) {}
+        accounts_views(av), storage(st), reference_kv(rv), sstore_kv(sv) {}
 
     // Implementation of eevm::Account
     eevm::Address get_address() const override {
@@ -60,14 +64,16 @@ struct AccountProxy : public eevm::Account, public eevm::Storage {
 
     // SNIPPET_START: store_impl
     void store(const uint256_t& key, const uint256_t& value, const std::string& mpt_id) override {
-        to_reference_kv(key, mpt_id);
-        to_store_kv(key, value, mpt_id);
-        storage.put(translate(key), value);
+        if (!set_reference_kv(mpt_id, key))
+            return false;
+        if (!set_sstore_kv(mpt_id, key, value))
+            return false;
+        return storage.put(translate(key), value);
     }
     // SNIPPET_END: store_impl
 
     uint256_t load(const uint256_t& key, const std::string& mpt_id) override {
-        to_reference_kv(key, mpt_id);
+        set_reference_kv(mpt_id, key);
         return storage.get(translate(key)).value_or(0);
     }
 
@@ -93,20 +99,21 @@ struct AccountProxy : public eevm::Account, public eevm::Storage {
         return false;
     }
 
-    bool hash_state_to_var_info(const HashState& hash_state, VarInfo& var_info) {
-        assert(hash_state.var_type != 0);
+    void hash_state_to_var_info(const HashState& hash_state, VarInfo& var_info) {
+        assert(hash_state.var_type == VarType::kMapping || hash_state.var_type == VarType::kArray ||
+               hash_state.var_type == VarType::kStatic);
         var_info.var_type = hash_state.var_type;
         var_info.addr = hash_state.addr;
-        if (hash_state.var_type == 1) {
+        if (hash_state.var_type == VarType::kMapping) {
             var_info.key = hash_state.mem_low_32;
             var_info.slot = hash_state.mem_high_32;
-        } else if (hash_state.var_type == 2) {
+        } else if (hash_state.var_type == VarType::kArray) {
             var_info.slot = hash_state.mem_low_32;
         }
         return true;
     }
 
-    bool to_reference_kv(const uint256_t& key, const std::string& mpt_id) {
+    bool set_reference_kv(const std::string& mpt_id, const uint256_t& key) {
         HashState hash_state;
         bool exist = get_hash_state(key, hash_state);
         if (!exist) {
@@ -115,15 +122,34 @@ struct AccountProxy : public eevm::Account, public eevm::Storage {
 
         VarInfo var_info;
         hash_state_to_var_info(hash_state, var_info);
+        std::cout << "[set_reference_kv]"
+                  << "mpt_id=" << mpt_id << ",var_type=" << var_info.var_type
+                  << ",addr=" << var_info.addr << ",key=" << var_info.key
+                  << ",slot=" << var_info.slot << std::endl;
+        std::string v;
+        serialize_var_info(var_info, v);
+        reference_kv.put(std::make_pair(mpt_id, key), v);
+        return reference_kv.put(std::make_pair(mpt_id, key), v);
+    }
 
-        std::cout << "[to_reference_kv]"
+    bool get_reference_kv(const std::string& mpt_id, const uint256_t& key, VarInfo& var_info) {
+        std::string var_info_json = reference_kv.get(std::make_pair(mpt_id, key)).value_or("");
+        if (var_info_json == "") {
+            std::cout << "[get_reference_kv]"
+                      << "mpt_id=" << mpt_id << ",var_type=" << var_info.var_type
+                      << ",addr=" << var_info.addr << ",key=" << var_info.key
+                      << ",slot=" << var_info.slot << std::endl;
+            return false;
+        }
+        deserialize_var_info(var_info_json, var_info);
+        std::cout << "[get_reference_kv]"
                   << "mpt_id=" << mpt_id << ",var_type=" << var_info.var_type
                   << ",addr=" << var_info.addr << ",key=" << var_info.key
                   << ",slot=" << var_info.slot << std::endl;
         return true;
     }
 
-    bool to_store_kv(const uint256_t& key, const uint256_t& value, const std::string& mpt_id) {
+    bool set_sstore_kv(const std::string& mpt_id, const uint256_t& key, const uint256_t& value) {
         HashState hash_state;
         bool exist = get_hash_state(key, hash_state);
         if (!exist) {
@@ -133,12 +159,48 @@ struct AccountProxy : public eevm::Account, public eevm::Storage {
         VarInfo var_info;
         hash_state_to_var_info(hash_state, var_info);
         var_info.value = value;
-
-        std::cout << "[to_store_kv]"
+        std::cout << "[set_sstore_kv]"
                   << "mpt_id=" << mpt_id << ",var_type=" << var_info.var_type
                   << ",addr=" << var_info.addr << ",key=" << var_info.key
                   << ",value=" << var_info.value << ",slot=" << var_info.slot << std::endl;
+        std::string v;
+        serialize_var_info(var_info, v);
+        return sstore_kv.put(std::make_pair(mpt_id, key), v);
+    }
+
+    bool get_sstore_kv(const std::string& mpt_id, const uint256_t& key, VarInfo& var_info) {
+        std::string var_info_json = sstore_kv.get(std::make_pair(mpt_id, key)).value_or("");
+        if (var_info_json == "") {
+            std::cout << "[get_sstore_kv]"
+                      << "mpt_id=" << mpt_id << ",var_type=" << var_info.var_type
+                      << ",addr=" << var_info.addr << ",key=" << var_info.key
+                      << ",slot=" << var_info.slot << std::endl;
+            return false;
+        }
+        deserialize_var_info(var_info_json, var_info);
+        std::cout << "[get_sstore_kv]"
+                  << "mpt_id=" << mpt_id << ",var_type=" << var_info.var_type
+                  << ",addr=" << var_info.addr << ",key=" << var_info.key
+                  << ",slot=" << var_info.slot << std::endl;
         return true;
+    }
+
+    void serialize_var_info(const VarInfo& var_info, std::string& v) {
+        nlohmann::json j{{"var_type", var_info.var_type},
+                         {"addr", var_info.addr},
+                         {"key", var_info.key},
+                         {"value", var_info.value},
+                         {"slot", var_info.slot}};
+        v = j.dump();
+    }
+
+    void deserialize_var_info(const std::string& str, VarInfo& var_info) {
+        nlohmann::json j = nlohmann::json::parse(str);
+        var_info.var_type = j["var_type"];
+        var_info.addr = j["addr"];
+        var_info.key = j["key"];
+        var_info.value = j["value"];
+        var_info.slot = j["slot"];
     }
 };
 } // namespace Ethereum

@@ -24,12 +24,16 @@ class EthereumState : public eevm::GlobalState {
 
     tables::Accounts::Views accounts;
     tables::Storage::TxView& tx_storage;
+    tables::ReferenceKv::TxView& tx_reference_kv;
+    tables::SstoreKv::TxView& tx_sstore_kv;
 
     std::map<eevm::Address, std::unique_ptr<AccountProxy>> cache;
 
     eevm::AccountState add_to_cache(const eevm::Address& address) {
         auto ib = cache.insert(
-            std::make_pair(address, std::make_unique<AccountProxy>(address, accounts, tx_storage)));
+            std::make_pair(address,
+                           std::make_unique<AccountProxy>(
+                               address, accounts, tx_storage, tx_reference_kv, tx_sstore_kv)));
 
         if (!ib.second) {
             throw Exception(
@@ -44,8 +48,12 @@ class EthereumState : public eevm::GlobalState {
 
  public:
     template <typename... Ts>
-    EthereumState(const tables::Accounts::Views& acc_views, tables::Storage::TxView* views) :
-        accounts(acc_views), tx_storage(*views) {}
+    EthereumState(const tables::Accounts::Views& acc_views,
+                  tables::Storage::TxView* views,
+                  tables::ReferenceKv::TxView* ref_views,
+                  tables::SstoreKv::TxView* sstore_views) :
+        accounts(acc_views),
+        tx_storage(*views), tx_reference_kv(*ref_views), tx_sstore_kv(*sstore_views) {}
 
     void remove(const eevm::Address& addr) override {
         LOG_INFO_FMT("addr to be removed is currently {}", addr);
@@ -121,7 +129,10 @@ class EthereumState : public eevm::GlobalState {
     }
 
     static EthereumState make_state(kv::Tx& tx, tables::AccountsState& as) {
-        return EthereumState(as.accounts.get_views(tx), tx.get_view(as.storage));
+        return EthereumState(as.accounts.get_views(tx),
+                             tx.get_view(as.storage),
+                             tx.get_view(as.reference_kv),
+                             tx.get_view(as.sstore_kv));
     }
 };
 

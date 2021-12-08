@@ -17,6 +17,7 @@
 // eEVM
 #include <eEVM/account.h>
 #include <eEVM/address.h>
+#include <eEVM/storage.h>
 
 // STL/3rd-party
 #include "msgpack/address.h"
@@ -49,6 +50,8 @@ inline constexpr auto CODES = "eth.account.code";
 inline constexpr auto NONCES = "eth.account.nonce";
 inline constexpr auto STORAGE = "eth.storage";
 inline constexpr auto TXRESULT = "eth.txresults";
+inline constexpr auto REFERENCE_KV = "eth.reference_kv";
+inline constexpr auto SSTORE_KV = "eth.sstore_kv";
 
 struct Accounts {
     using Balances = kv::Map<eevm::Address, uint256_t>;
@@ -74,15 +77,21 @@ struct Accounts {
 using StorageKey = std::pair<eevm::Address, uint256_t>;
 using Storage = kv::Map<StorageKey, uint256_t>;
 
+using StateKey = std::pair<std::string, uint256_t>; // mpt_id + addr
+using ReferenceKv = kv::Map<StateKey, std::string>;
+using SstoreKv = kv::Map<StateKey, std::string>;
+
 using Results = kv::Map<TxHash, TxResult>;
 
 struct AccountsState {
     Accounts accounts;
     Storage storage;
+    ReferenceKv reference_kv;
+    SstoreKv sstore_kv;
 
     AccountsState() :
         accounts{Accounts::Balances(BALANCES), Accounts::Codes(CODES), Accounts::Nonces(NONCES)},
-        storage(STORAGE) {}
+        storage(STORAGE), reference_kv(REFERENCE_KV), sstore_kv(SSTORE_KV) {}
 };
 
 } // namespace tables
