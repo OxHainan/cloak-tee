@@ -113,15 +113,23 @@ struct AccountProxy : public eevm::Account, public eevm::Storage {
         return true;
     }
 
+    void static_type_to_var_info(const uint256_t& key, VarInfo& var_info) {
+        var_info.var_type = VarType::kStatic;
+        var_info.slot = key;
+        var_info.addr = key;
+    }
+
     bool set_reference_kv(const std::string& mpt_id, const uint256_t& key) {
         HashState hash_state;
         bool exist = get_hash_state(key, hash_state);
-        if (!exist) {
-            return true;
-        }
-
         VarInfo var_info;
-        hash_state_to_var_info(hash_state, var_info);
+        if (exist) {
+            // dynamic type
+            hash_state_to_var_info(hash_state, var_info);
+        } else {
+            // non-dynamic type
+            static_type_to_var_info(key, var_info);
+        }
         std::cout << "[set_reference_kv]"
                   << "mpt_id=" << mpt_id << ",var_type=" << var_info.var_type
                   << ",addr=" << var_info.addr << ",key=" << var_info.key
@@ -152,13 +160,15 @@ struct AccountProxy : public eevm::Account, public eevm::Storage {
     bool set_sstore_kv(const std::string& mpt_id, const uint256_t& key, const uint256_t& value) {
         HashState hash_state;
         bool exist = get_hash_state(key, hash_state);
-        if (!exist) {
-            return true;
-        }
-
         VarInfo var_info;
-        hash_state_to_var_info(hash_state, var_info);
         var_info.value = value;
+        if (exist) {
+            // dynamic type
+            hash_state_to_var_info(hash_state, var_info);
+        } else {
+            // non-dynamic type
+            static_type_to_var_info(key, var_info);
+        }
         std::cout << "[set_sstore_kv]"
                   << "mpt_id=" << mpt_id << ",var_type=" << var_info.var_type
                   << ",addr=" << var_info.addr << ",key=" << var_info.key
