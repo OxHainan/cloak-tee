@@ -67,14 +67,11 @@ struct AccountProxy : public eevm::Account, public eevm::Storage {
 
     // SNIPPET_START: store_impl
     void store(const uint256_t& key, const uint256_t& value, const std::string& mpt_id) override {
-        set_reference_kv(mpt_id, key);
-        set_sstore_kv(mpt_id, key, value);
         storage.put(translate(key), value);
     }
     // SNIPPET_END: store_impl
 
     uint256_t load(const uint256_t& key, const std::string& mpt_id) override {
-        set_reference_kv(mpt_id, key);
         return storage.get(translate(key)).value_or(0);
     }
 
@@ -82,55 +79,9 @@ struct AccountProxy : public eevm::Account, public eevm::Storage {
         return storage.remove(translate(key));
     }
 
-    bool get_hash_state(const uint256_t& key, HashState& hash_state) {
-        bool exist = false;
-        uint256_t exist_key;
-        for (auto& [k, v] : hash_states) {
-            if (key.hi == k.hi) {
-                exist = true;
-                exist_key = k;
-            }
-        }
-        if (exist) {
-            hash_states[key] = hash_states[exist_key];
-            hash_states[key].addr = key;
-            hash_state = hash_states[key];
-            return true;
-        }
-        return false;
-    }
-
-    void hash_state_to_var_info(const HashState& hash_state, VarInfo& var_info) {
-        assert(hash_state.var_type == VarType::kMapping || hash_state.var_type == VarType::kArray ||
-               hash_state.var_type == VarType::kStatic);
-        var_info.var_type = hash_state.var_type;
-        var_info.addr = hash_state.addr;
-        if (hash_state.var_type == VarType::kMapping) {
-            var_info.key = hash_state.mem_low_32;
-            var_info.slot = hash_state.mem_high_32;
-        } else if (hash_state.var_type == VarType::kArray) {
-            var_info.slot = hash_state.mem_low_32;
-        }
-        return true;
-    }
-
-    void static_type_to_var_info(const uint256_t& key, VarInfo& var_info) {
-        var_info.var_type = VarType::kStatic;
-        var_info.slot = key;
-        var_info.addr = key;
-    }
-
-    void set_reference_kv(const std::string& mpt_id, const uint256_t& key) {
-        HashState hash_state;
-        bool exist = get_hash_state(key, hash_state);
-        VarInfo var_info;
-        if (exist) {
-            // dynamic type
-            hash_state_to_var_info(hash_state, var_info);
-        } else {
-            // non-dynamic type
-            static_type_to_var_info(key, var_info);
-        }
+    void set_reference_kv(const std::string& mpt_id,
+                          const uint256_t& key,
+                          const VarInfo& var_info) {
         CLOAK_DEBUG_FMT("set_reference_kv, mpt_id:{}, var_type:{}, addr:{}, key:{}, slot:{}",
                         mpt_id,
                         var_info.var_type,
@@ -163,18 +114,7 @@ struct AccountProxy : public eevm::Account, public eevm::Storage {
         return true;
     }
 
-    void set_sstore_kv(const std::string& mpt_id, const uint256_t& key, const uint256_t& value) {
-        HashState hash_state;
-        bool exist = get_hash_state(key, hash_state);
-        VarInfo var_info;
-        var_info.value = value;
-        if (exist) {
-            // dynamic type
-            hash_state_to_var_info(hash_state, var_info);
-        } else {
-            // non-dynamic type
-            static_type_to_var_info(key, var_info);
-        }
+    void set_sstore_kv(const std::string& mpt_id, const uint256_t& key, const VarInfo& var_info) {
         CLOAK_DEBUG_FMT("set_sstore_kv, mpt_id:{}, var_type:{}, addr:{}, key:{}, value:{}, slot:{}",
                         mpt_id,
                         var_info.var_type,
