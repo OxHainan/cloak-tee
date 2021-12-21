@@ -70,12 +70,13 @@ DECLARE_JSON_REQUIRED_FIELDS(MultiPartyParams, function, inputs)
 
 struct Params {
  public:
+    int slot;
     ByteData name = {};
     nlohmann::json structural_type;
     nlohmann::json owner;
     std::optional<nlohmann::json> value = std::nullopt;
 
-    MSGPACK_DEFINE(name, structural_type, owner, value);
+    MSGPACK_DEFINE(slot, name, structural_type, owner, value);
 
     nlohmann::json getValue() const {
         if (!value.has_value()) {
@@ -92,7 +93,7 @@ struct Params {
 };
 
 DECLARE_JSON_TYPE_WITH_OPTIONAL_FIELDS(Params)
-DECLARE_JSON_OPTIONAL_FIELDS(Params, name, value)
+DECLARE_JSON_OPTIONAL_FIELDS(Params, name, value, slot)
 DECLARE_JSON_REQUIRED_FIELDS(Params, owner, structural_type)
 
 struct stateParams {

@@ -72,8 +72,12 @@ class EVMHandlers : public AbstractEndpointRegistry {
             Ethereum::MessageCall tc;
             eth_tx.to_transaction_call(tc);
             auto es = make_state(ctx.tx);
-            auto tx_result =
-                Ethereum::EVMC(tc, es, ctx.tx.get_view(cloakTables.tx_results), "").run();
+            auto tx_result = Ethereum::EVMC(tc,
+                                            es,
+                                            ctx.tx.get_view(cloakTables.tx_results),
+                                            "",
+                                            std::map<int, std::string>{})
+                                 .run();
             return eevm::to_hex_string(tx_result);
         };
 
