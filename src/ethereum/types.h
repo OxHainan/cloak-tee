@@ -13,12 +13,15 @@
 // limitations under the License.
 
 #pragma once
+#include "ds/json.h"
+#include "ds/logger.h"
+
 #include <eEVM/address.h>
 #include <eEVM/bigint.h>
+#include <eEVM/rlp.h>
 #include <eEVM/transaction.h>
 #include <eEVM/util.h>
 #include <kv/tx.h>
-
 namespace Ethereum {
 using Balance = uint256_t;
 using EthHash = uint256_t;
@@ -44,6 +47,25 @@ struct CloakInfo {
         cloak_service(cloak_service_), tee_public_key(public_key) {}
 };
 
+struct MessageCall {
+    eevm::Address from = {};
+    std::optional<eevm::Address> to = std::nullopt;
+    uint256_t gas = 5006112;
+    uint256_t gas_price = 0;
+    uint256_t value = 0;
+    ByteData data = {};
+
+    MessageCall() = default;
+    friend void to_json(nlohmann::json& j, const MessageCall& s);
+    friend void from_json(const nlohmann::json& j, MessageCall& s);
+
+    MessageCall(const eevm::Address& from_, const eevm::Address& to_, const ByteString& data_) :
+        from(from_), to(to_), data(eevm::to_hex_string(data_)) {}
+
+    MessageCall(const eevm::Address& from_, const ByteString& data_) :
+        from(from_), data(eevm::to_hex_string(data_)) {}
+};
+
 struct BlockHeader {
     uint64_t number = {};
     uint64_t difficulty = {};
@@ -60,6 +82,10 @@ inline bool operator==(const BlockHeader& l, const BlockHeader& r) {
         l.block_hash == r.block_hash;
 }
 
+struct SendPop {
+    std::vector<ByteData> blocks;
+    ByteString tx;
+};
 struct TxResult {
     std::optional<eevm::Address> contract_address;
     std::vector<eevm::LogEntry> logs;
@@ -82,19 +108,6 @@ struct TxReceipt {
 };
 
 using ReceiptResponse = std::optional<TxReceipt>;
-
-struct MessageCall {
-    eevm::Address from = {};
-    std::optional<eevm::Address> to = std::nullopt;
-    uint256_t gas = 890000;
-    uint256_t gas_price = 0;
-    uint256_t value = 0;
-    ByteData data = {};
-    std::optional<ContractParticipants> private_for = std::nullopt;
-    MessageCall() {}
-    MessageCall(const eevm::Address& from_, const eevm::Address& to_, const ByteString& data_) :
-        from(from_), to(to_), data(eevm::to_hex_string(data_)) {}
-};
 
 struct AddressWithBlock {
     eevm::Address address = {};

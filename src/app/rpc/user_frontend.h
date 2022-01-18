@@ -56,8 +56,7 @@ class CloakEndpointRegistry : public EVMHandlers {
         };
 
         auto call_prepare = [this](CloakContext& ctx, const nlohmann::json& params) {
-            auto prepare = params.get<TeePrepare>();
-            cloak4ccf::TeeManager::prepare(ctx.tx, cloakTables.tee_table, prepare);
+            cloak4ccf::TeeManager::prepare(ctx.tx, cloakTables.tee_table, params);
             return true;
         };
 
@@ -72,6 +71,12 @@ class CloakEndpointRegistry : public EVMHandlers {
             auto report = params.get<SyncReport>();
             Transaction::Generator gen(ctx);
             gen.sync_report(report);
+            return true;
+        };
+
+        auto sync_propose = [this](CloakContext& ctx, const nlohmann::json& params) {
+            Transaction::Generator gen(ctx);
+            gen.sync_propose(params);
             return true;
         };
 
@@ -124,14 +129,17 @@ class CloakEndpointRegistry : public EVMHandlers {
             .install();
 
         make_read_only_endpoint(
-            "cloak_get_mpt", HTTP_GET, json_read_only_adapter(get_mpt, cloakTables))
+            "cloak_get_mpt", HTTP_POST, json_read_only_adapter(get_mpt, cloakTables))
             .set_auto_schema<evm4ccf::MPT_CALL>()
             .install();
 
         make_endpoint("cloak_sync_report", HTTP_POST, json_adapter(sync_report, cloakTables))
             .install();
 
-        make_endpoint("cloak_get_cloak", HTTP_GET, json_adapter(get_cloak, cloakTables)).install();
+        make_endpoint("cloak_sync_propose", HTTP_POST, json_adapter(sync_propose, cloakTables))
+            .install();
+
+        make_endpoint("cloak_get_cloak", HTTP_POST, json_adapter(get_cloak, cloakTables)).install();
     }
 };
 

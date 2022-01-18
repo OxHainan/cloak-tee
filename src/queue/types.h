@@ -17,6 +17,8 @@
 #include "transaction/exception.h"
 
 namespace evm4ccf {
+using ByteData = std::string;
+
 enum class Status {
     PENDING,
     REQUESTING_OLD_STATES,
@@ -109,7 +111,7 @@ struct Function {
  public:
     ByteData type;
     ByteData name;
-    ByteString entry;
+    std::vector<uint8_t> entry;
     std::vector<Params> inputs;
     std::vector<stateParams> read;
     std::vector<stateParams> mutate;
@@ -118,7 +120,7 @@ struct Function {
 
     MSGPACK_DEFINE(name, entry, type, inputs, read, mutate, outputs, raw_outputs);
 
-    ByteString packed_to_data() {
+    std::vector<uint8_t> packed_to_data() {
         auto encoder = abicoder::Encoder();
         for (int i = 0; i < inputs.size(); i++) {
             encoder.add_inputs(inputs[i].name, "", inputs[i].getValue(), inputs[i].structural_type);

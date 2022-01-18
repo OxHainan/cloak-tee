@@ -18,6 +18,7 @@ import subprocess
 import agent
 import time
 import os
+import json
 import signal
 import select
 import traceback
@@ -25,7 +26,6 @@ import utils
 import web3
 from multiprocessing import Process
 from ccf.clients import CCFClient, Identity
-
 
 def get_args():
     parser = argparse.ArgumentParser(description='cloak manager')
@@ -36,6 +36,8 @@ def get_args():
     setup_service.add_argument('--cloak-tee-port', type=int, help='cloak tee port', default=8000)
     setup_service.add_argument('--blockchain-http-uri', help='blockchain http uri', default="http://127.0.0.1:8545")
     setup_service.add_argument('--cloak-service-address', help='deployed cloak service address', default=None)
+    setup_service.add_argument('--cloak-service-path', help='cloak service path', default=None)
+    setup_service.add_argument('--manager-address', help='manager cloak service address', default=None)
 
     args = parser.parse_args()
     return args
@@ -48,17 +50,8 @@ class Cloak:
 
     def run(self):
         if (self.args.command == "setup"):
-            self.deploy_sol_contracts()
+            # self.deploy_sol_contracts()
             self.setup_cloak_service()
-
-    def deploy_sol_contracts(self):
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        cloak_service_file = current_dir + "/solidity/CloakService.sol"
-        w3 = web3.Web3(web3.HTTPProvider(args.blockchain_http_uri))
-        acc = web3.Account.create()
-        if self.cloak_service_addr is None:
-            self.cloak_service_addr = utils.deploy_contract(cloak_service_file, "CloakService", w3, acc, nonce=0)
-            print(f"CLOAK_SERVICE_ADDR: {self.cloak_service_addr}")
 
     def setup_cloak_service(self):
         try:
@@ -100,9 +93,14 @@ class Cloak:
 
     def prepare_cloak_tee(self):
         ccf_client = utils.get_ccf_client(self.args)
+        f = open(self.args.cloak_service_path + '/CloakService.json', 'r')
+        contract = json.loads(f.read())
+        f.close()
         ccf_client.call("/app/cloak_prepare", {
-            "cloak_service_addr": self.cloak_service_addr
+            "manager": self.args.manager_address,
+            "cloakServiceContract": contract['bytecode']
         })
+        
         print("cloak-prepare DONE")
 
 

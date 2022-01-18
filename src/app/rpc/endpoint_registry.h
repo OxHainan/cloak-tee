@@ -14,10 +14,12 @@
 
 #pragma once
 #include "app/rpc/json_handler.h"
+#include "ethereum/block_validator.h"
 #include "ethereum/execute_transaction.h"
 #include "ethereum/json_rpc.h"
 #include "ethereum/types.h"
 #include "node/rpc/user_frontend.h"
+#include "pop/controller.h"
 
 #include <kv/tx.h>
 namespace cloak4ccf {
@@ -80,7 +82,7 @@ class EVMHandlers : public AbstractEndpointRegistry {
                                               const nlohmann::json& params) {
             auto gtrp = params.get<Ethereum::GetTransactionReceipt>();
 
-            const evm4ccf::TxHash& tx_hash = gtrp.tx_hash;
+            const Ethereum::TxHash& tx_hash = gtrp.tx_hash;
 
             auto results_view = ctx.tx.get_read_only_view(cloakTables.tx_results);
             const auto r = results_view->get(tx_hash);
@@ -103,20 +105,34 @@ class EVMHandlers : public AbstractEndpointRegistry {
             return response;
         };
 
+        auto send_pop = [this](CloakContext& ctx, const nlohmann::json& params) {
+            auto con = Pop::Controller(ctx);
+            return con.complete(params);
+        };
+
+        auto send_setup = [this](CloakContext& ctx, const nlohmann::json& params) {
+            return Pop::Controller::setup(ctx, params);
+        };
+
+        auto get_proposal = [this](CloakContext& ctx, const nlohmann::json& params) {
+            auto con = Pop::Controller(ctx);
+            return con.get_proposal(params);
+        };
+
         make_endpoint(
-            Ethereum::ethrpc::GetChainId::name, HTTP_GET, json_adapter(get_chainId, cloakTables))
+            Ethereum::ethrpc::GetChainId::name, HTTP_POST, json_adapter(get_chainId, cloakTables))
             .install();
 
         make_endpoint(
-            Ethereum::ethrpc::GetGasPrice::name, HTTP_GET, json_adapter(get_gasPrice, cloakTables))
+            Ethereum::ethrpc::GetGasPrice::name, HTTP_POST, json_adapter(get_gasPrice, cloakTables))
             .install();
 
         make_endpoint(
-            Ethereum::ethrpc::GetBalance::name, HTTP_GET, json_adapter(get_balance, cloakTables))
+            Ethereum::ethrpc::GetBalance::name, HTTP_POST, json_adapter(get_balance, cloakTables))
             .install();
 
         make_endpoint(Ethereum::ethrpc::GetTransactionCount::name,
-                      HTTP_GET,
+                      HTTP_POST,
                       json_adapter(get_transaction_count, cloakTables))
             .install();
 
@@ -126,8 +142,13 @@ class EVMHandlers : public AbstractEndpointRegistry {
             .install();
 
         make_read_only_endpoint(Ethereum::ethrpc::GetTransactionReceipt::name,
-                                HTTP_GET,
+                                HTTP_POST,
                                 json_read_only_adapter(get_transaction_receipt, cloakTables))
+            .install();
+
+        make_endpoint("eth_sendPop", HTTP_POST, json_adapter(send_pop, cloakTables)).install();
+        make_endpoint("eth_sendSetup", HTTP_POST, json_adapter(send_setup, cloakTables)).install();
+        make_endpoint("eth_getProposal", HTTP_POST, json_adapter(get_proposal, cloakTables))
             .install();
     }
 

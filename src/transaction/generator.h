@@ -71,7 +71,6 @@ class Generator {
 
         // mpt hash
         auto multi_digest = decoded.digest();
-
         if (mpt.check_transaction_type()) {
             eevm::KeccakHash target_digest = Utils::vec_to_KeccakHash(mpt.to);
             auto cpt_opt = cp->get(target_digest);
@@ -85,12 +84,14 @@ class Generator {
                 LOG_AND_THROW("mpt is not PENDING");
             }
 
-            cpt_opt->set_content(mpt.params.inputs);
+            cpt_opt->set_content(mpt);
             cp->put(target_digest, cpt_opt.value());
 
             if (cpt_opt->function.complete()) {
+                // commit propose
                 auto acc = TeeManager::State::make_account(ctx.tx, ctx.cloakTables.tee_table);
-                request_old_state(target_digest, cpt_opt.value(), acc);
+                propose(target_digest, cpt_opt.value(), acc);
+                // request_old_state(target_digest, cpt_opt.value(), acc);
             }
 
             return target_digest;
@@ -109,14 +110,15 @@ class Generator {
 
         CloakPolicyTransaction cpt(ppt, mpt.name());
 
-        cpt.set_content(mpt.params.inputs);
+        cpt.set_content(mpt);
         cp->put(multi_digest, cpt);
         cd->put(to, multi_digest);
         LOG_INFO_FMT("add user transaction digests {}", eevm::to_hex_string(multi_digest));
 
         if (cpt.function.complete()) {
             auto acc = TeeManager::State::make_account(ctx.tx, ctx.cloakTables.tee_table);
-            request_old_state(multi_digest, cpt, acc);
+            propose(multi_digest, cpt, acc);
+            // request_old_state(multi_digest, cpt, acc);
         }
 
         return multi_digest;
@@ -136,6 +138,26 @@ class Generator {
             cp_opt->set_status(Status::SYNCED);
         } else {
             cp_opt->set_status(Status::SYNC_FAILED);
+        }
+
+        cp_handler->put(target_digest, cp_opt.value());
+    }
+
+    void sync_propose(const SyncPropose& report) {
+        auto cp_handler = ctx.tx.get_view(tables.cloak_policys);
+        auto target_digest = Utils::to_KeccakHash(report.id);
+        auto cp_opt = cp_handler->get(target_digest);
+        if (!cp_opt.has_value()) {
+            throw TransactionException(
+                fmt::format("multi party transaction digests doesn't exists (digests {})",
+                            eevm::to_hex_string(target_digest)));
+        }
+
+        if (report.success) {
+            auto acc = TeeManager::State::make_account(ctx.tx, ctx.cloakTables.tee_table);
+            request_old_state(target_digest, cp_opt.value(), acc);
+        } else {
+            cp_opt->set_status(Status::DROPPED);
         }
 
         cp_handler->put(target_digest, cp_opt.value());
@@ -232,6 +254,19 @@ class Generator {
         Utils::cloak_agent_log("request_old_state", response);
     }
 
+    void propose(evm4ccf::h256& target_digest,
+                 const CloakPolicyTransaction& cpt,
+                 TeeManager::AccountPtr acc) {
+        auto packed = cpt.packedPropose(target_digest);
+        auto service_addr =
+            TeeManager::get_service_addr(ctx.tx.get_view(ctx.cloakTables.tee_table.service));
+        Ethereum::MessageCall mc(acc->get_address(), service_addr, packed);
+        auto signed_data = evm4ccf::sign_eth_tx(acc->get_tee_kp(), mc, acc->get_nonce());
+        auto response = Ethereum::SyncStateResponse(target_digest, signed_data);
+        Utils::cloak_agent_log("propose", response);
+        acc->increment_nonce();
+    }
+
     // == Sync new states ==
     void sync_result(evm4ccf::h256& target_digest,
                      CloakPolicyTransaction& cpt,
@@ -257,7 +292,23 @@ class Generator {
         auto packed = encoder.encodeWithSignatrue();
         CLOAK_DEBUG_FMT("encoded data:{}", abicoder::split_abi_data_to_str(packed));
 
-        Ethereum::MessageCall mc(acc->get_address(), cpt.verifierAddr, packed);
+        // packed complete tx;
+        auto encoderCom = abicoder::Encoder("complete");
+        encoderCom.add_inputs(
+            "txid", "uint256", eevm::to_hex_string(target_digest), abicoder::number_type());
+        encoderCom.add_inputs(
+            "data", "bytes", eevm::to_hex_string(packed), abicoder::common_type("bytes"));
+        encoderCom.add_inputs("returnCommit",
+                              "bytes",
+                              eevm::to_hex_string(cpt.function.raw_outputs),
+                              abicoder::common_type("bytes"));
+
+        auto service_addr =
+            TeeManager::get_service_addr(ctx.tx.get_view(ctx.cloakTables.tee_table.service));
+
+        Ethereum::MessageCall mc(
+            acc->get_address(), service_addr, encoderCom.encodeWithSignatrue());
+
         // TODO(DUMMY): choose a better value based on concrete contract
         CLOAK_DEBUG_FMT("data:{}", mc.data);
         auto signed_data = evm4ccf::sign_eth_tx(acc->get_tee_kp(), mc, acc->get_nonce());

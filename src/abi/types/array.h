@@ -233,6 +233,9 @@ inline TypePrt generate_coders(const std::string& rawType,
     } else if (!rawType.find(BYTES)) {
         if (std::strcmp(rawType.c_str(), BYTES) == 0 && length == 0)
             return std::make_shared<DynamicBytes>(value);
+        if (value.size() == 0) {
+            return std::make_shared<Bytes>(length);
+        }
         return std::make_shared<Bytes>(length, value);
     } else if (!rawType.find(FIXED) || !rawType.find(UFIXED)) {
         throw ABIException(fmt::format("Unsupported type: {}", rawType));

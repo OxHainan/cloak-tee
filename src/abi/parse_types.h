@@ -46,9 +46,9 @@ BTypePtr parse_types(const nlohmann::json& j) {
 
         default:
             break;
-
-            throw std::logic_error(fmt::format("{} can`t parsing", type));
     }
+
+    throw std::logic_error(fmt::format("{} can`t parsing", type));
 }
 
 bool check_dynamic(const nlohmann::json& j) {

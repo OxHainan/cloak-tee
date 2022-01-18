@@ -62,7 +62,7 @@ class Decoder {
     static std::vector<std::string> decode_bytes_array(const std::vector<uint8_t>& inputs) {
         std::vector<std::string> res;
         Decoder decoder;
-        decoder.add_params("", "bytes[]", make_array_type(common_type("bytes")));
+        decoder.add_params("", "bytes[]", make_bytes_array());
         auto arr_ptr = std::dynamic_pointer_cast<DynamicArray>(decoder.decode(inputs)[0]);
         if (!arr_ptr) {
             throw std::logic_error("Internal Error");

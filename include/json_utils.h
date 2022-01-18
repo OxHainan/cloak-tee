@@ -82,4 +82,11 @@ inline void from_array_to_object(const nlohmann::json& j, const std::string& s, 
     }
 }
 
+inline uint64_t to_uint64(const uint64_t& v) {
+    if (v > std::numeric_limits<uint64_t>::max()) {
+        throw std::logic_error(fmt::format("Invalid uint64, get {}", v));
+    }
+
+    return v;
+}
 } // namespace evm4ccf

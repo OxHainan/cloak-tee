@@ -374,8 +374,7 @@ class Bytes : public BytesType {
         }
     }
 
-    Bytes(const size_t& byteSize, const std::string& src) :
-        Bytes(byteSize, std::vector<uint8_t>(src.begin(), src.end())) {}
+    Bytes(const size_t& byteSize, const std::string& src) : Bytes(byteSize, bytes_strip(src)) {}
 
     std::vector<uint8_t> encode() override {
         size_t mod = value.size() % MAX_BYTE_LENGTH;
@@ -417,13 +416,13 @@ class DynamicBytes : public BytesType {
 
     explicit DynamicBytes(const std::string& src) : DynamicBytes(bytes_strip(src)) {}
 
+    explicit DynamicBytes(const std::vector<uint8_t>& _value) : BytesType(BYTES, _value) {}
+
     bool dynamicType() override {
         return true;
     }
 
  private:
-    explicit DynamicBytes(const std::vector<uint8_t>& _value) : BytesType(BYTES, _value) {}
-
     void isValid(const std::string& src) {
         if (src.size() == 0) {
             throw ABIException("Invalid inputs argument, bytes default value is 0x");

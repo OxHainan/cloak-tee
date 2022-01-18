@@ -2,8 +2,8 @@
 // Licensed under the MIT License.
 #pragma once
 
+#include "app/utils.h"
 #include "ethereum/types.h"
-
 // CCF
 #include "tls/key_pair.h"
 
@@ -13,7 +13,6 @@
 #include <stdint.h>
 
 namespace evm4ccf {
-using namespace Ethereum;
 struct ChainIDs {
     static constexpr size_t pre_eip_155 = 0;
     static constexpr size_t ethereum_mainnet = 1;
@@ -132,7 +131,7 @@ inline std::vector<uint8_t> get_der_from_public_key(mbedtls_pk_context* raw_ctx)
     return {data + max_der_key_size - len, data + max_der_key_size};
 }
 
-inline std::vector<uint8_t> get_der_from__raw_public_key(const std::vector<uint8_t>& asn1) {
+inline std::vector<uint8_t> get_der_from_raw_public_key(const std::vector<uint8_t>& asn1) {
     static const auto ASN1_PREFIX_PUBKEY =
         eevm::to_bytes("0x3056301006072a8648ce3d020106052b8104000a034200");
 
@@ -181,7 +180,7 @@ struct EthereumTransaction {
     uint256_t value;
     eevm::rlp::ByteString data;
 
-    EthereumTransaction(size_t nonce_, const MessageCall& tc) {
+    EthereumTransaction(size_t nonce_, const Ethereum::MessageCall& tc) {
         nonce = nonce_;
         gas_price = tc.gas_price;
         gas = tc.gas;
@@ -210,7 +209,7 @@ struct EthereumTransaction {
         return eevm::rlp::encode(nonce, gas_price, gas, to, value, data);
     }
 
-    virtual eevm::KeccakHash to_be_signed() const {
+    virtual eevm::KeccakHash to_be_signed(bool includeSignature = false) const {
         return eevm::keccak_256(encode());
     }
 
@@ -219,7 +218,7 @@ struct EthereumTransaction {
             eevm::rlp::encode(nonce, gas_price, gas, to, value, data, current_chain_id, 0, 0));
     }
 
-    virtual void to_transaction_call(MessageCall& tc) const {
+    virtual void to_transaction_call(Ethereum::MessageCall& tc) const {
         tc.gas_price = gas_price;
         tc.gas = gas;
         if (to.empty()) {
@@ -238,12 +237,12 @@ struct EthereumTransactionWithSignature : public EthereumTransaction {
     static constexpr size_t r_fixed_length = 32u;
 
     using PointCoord = uint256_t;
-    uint8_t v;
+    size_t v;
     PointCoord r;
     PointCoord s;
-
+    EthereumTransactionWithSignature() = default;
     EthereumTransactionWithSignature(const EthereumTransaction& tx,
-                                     uint8_t v_,
+                                     size_t v_,
                                      const PointCoord& r_,
                                      const PointCoord& s_) :
         EthereumTransaction(tx) {
@@ -269,7 +268,7 @@ struct EthereumTransactionWithSignature : public EthereumTransaction {
                                      eevm::rlp::ByteString,
                                      uint256_t,
                                      eevm::rlp::ByteString,
-                                     uint8_t,
+                                     size_t,
                                      PointCoord,
                                      PointCoord>(encoded);
 
@@ -296,26 +295,33 @@ struct EthereumTransactionWithSignature : public EthereumTransaction {
         eevm::to_big_endian(s, s_begin);
     }
 
-    eevm::KeccakHash to_be_signed() const override {
+    eevm::KeccakHash to_be_signed(bool includeSignature = false) const override {
         if (is_pre_eip_155(v)) {
-            return EthereumTransaction::to_be_signed();
+            return EthereumTransaction::to_be_signed(includeSignature);
         }
 
         // EIP-155 adds (CHAIN_ID, 0, 0) to the data which is hashed, but _only_
         // for signing/recovering. The canonical transaction hash (produced by
         // encode(), used as transaction ID) is unaffected
+        if (includeSignature) {
+            return eevm::keccak_256(encode());
+        }
+
         return eevm::keccak_256(
             eevm::rlp::encode(nonce, gas_price, gas, to, value, data, current_chain_id, 0, 0));
     }
 
-    void to_transaction_call(MessageCall& tc) const override {
+    void to_transaction_call(Ethereum::MessageCall& tc) const override {
         EthereumTransaction::to_transaction_call(tc);
+        tc.from = get_sender_address();
+    }
 
+    eevm::Address get_sender_address() const {
         tls::RecoverableSignature rs;
         to_recoverable_signature(rs);
         const auto tbs = to_be_signed();
         auto pubk = tls::PublicKey_k1Bitcoin::recover_key(rs, {tbs.data(), tbs.size()});
-        tc.from = get_address_from_public_key_asn1(public_key_asn1(pubk.get_raw_context()));
+        return get_address_from_public_key_asn1(public_key_asn1(pubk.get_raw_context()));
     }
 };
 
@@ -332,17 +338,19 @@ inline EthereumTransactionWithSignature sign_transaction(tls::KeyPair_k1Bitcoin&
     return EthereumTransactionWithSignature(tx, signature);
 }
 
-inline std::vector<uint8_t> sign_eth_tx(tls::KeyPairPtr kp, const MessageCall& mc, size_t nonce) {
+inline std::vector<uint8_t> sign_eth_tx(tls::KeyPairPtr kp,
+                                        const Ethereum::MessageCall& mc,
+                                        size_t nonce) {
     auto bkp = std::dynamic_pointer_cast<tls::KeyPair_k1Bitcoin>(kp);
     if (!bkp) {
         CLOAK_DEBUG_FMT("tee_kp is not k1Bitcoin");
         throw std::logic_error("internal error");
     }
 
-    if (!mc.to.has_value()) {
-        CLOAK_DEBUG_FMT("mc.to is empty");
-        throw std::logic_error("internal error");
-    }
+    // if (!mc.to.has_value()) {
+    //     CLOAK_DEBUG_FMT("mc.to is empty");
+    //     throw std::logic_error("internal error");
+    // }
 
     auto ethTx = sign_transaction(*bkp, evm4ccf::EthereumTransaction(nonce, mc), true);
     return ethTx.encode();

@@ -15,8 +15,8 @@
 #pragma once
 #include "ethereum/tables.h"
 #include "ethereum/tee_account.h"
+#include "pop/tables.h"
 #include "transaction/tables.h"
-
 namespace cloak4ccf {
 using SeqNo = int64_t;
 
@@ -25,7 +25,10 @@ struct CloakTables {
     Ethereum::tables::AccountsState acc_state;
     Ethereum::tables::Results tx_results;
     TeeManager::tables::Table tee_table;
-    CloakTables() : txTables(), acc_state(), tx_results("eth.txresults"), tee_table() {}
+    Pop::Tables popTables;
+
+    CloakTables() :
+        txTables(), acc_state(), tx_results("eth.txresults"), tee_table(), popTables() {}
 };
 
 template <typename TX>
