@@ -13,28 +13,52 @@
 // limitations under the License.
 
 #pragma once
-#include "queue"
+#include "block_header.h"
+#include "transaction.h"
 #include "types.h"
-
 namespace Ethereum {
-
-class BlockValidator {
+class BlocksValidator : public Transaction {
  public:
-    explicit BlockValidator(const std::queue<std::optional<BlockHeader1>>& blocks_) :
-        blocks(blocks_) {}
-
-    bool verify() {
-        if (blocks.empty())
-            return false;
-        if (!parent_block.has_value()) {
-            parent_block = blocks.front();
-            blocks.pop();
-            parent_block->verify();
+    BlocksValidator(const std::vector<std::string>& rawBlocks, const std::vector<uint8_t>& rawTx) :
+        Transaction(rawTx) {
+        blocks.resize(rawBlocks.size());
+        for (size_t i = 0; i < rawBlocks.size(); i++) {
+            blocks[i] = BlockHeader1(rawBlocks[i]);
         }
     }
 
-    std::queue<std::optional<BlockHeader1>> blocks;
-    std::optional<BlockHeader1> parent_block = std::nullopt;
+    explicit BlocksValidator(const SendPop& sp) : BlocksValidator(sp.blocks, sp.tx) {}
+
+    bool validateBody() {
+        if (blocks.size() < 1)
+            return false;
+
+        BlockHash parentHash = blocks[0].hash();
+        for (size_t i = 1; i < blocks.size(); i++) {
+            if (!blocks[i].verifyHeader(parentHash)) {
+                throw std::logic_error(fmt::format("Block validator failed, get 0x{}", parentHash));
+            }
+
+            parentHash = blocks[i].hash();
+        }
+
+        return true;
+    }
+
+    bool validateTransaction(uint256_t& blockHash, const uint256_t& timestamp) {
+        if (!validate(blockHash, timestamp)) {
+            throw std::runtime_error("Invalid transaction");
+        }
+
+        return true;
+    }
+
+    // auto get_transaction_hash() const {
+    //     return ethTx.to_be_signed(true);
+    // }
+
+ private:
+    std::vector<BlockHeader1> blocks;
 };
 
 } // namespace Ethereum

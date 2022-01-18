@@ -29,7 +29,8 @@ struct SignatureAbstract {
     PointCoord r;
     PointCoord s;
 
-    SignatureAbstract(uint8_t v_, const PointCoord& r_, const PointCoord& s_) : v(v_), r(r_), s(s_) {}
+    SignatureAbstract(uint8_t v_, const PointCoord& r_, const PointCoord& s_) :
+        v(v_), r(r_), s(s_) {}
 
     explicit SignatureAbstract(const tls::RecoverableSignature& sig) {
         v = to_ethereum_recovery_id(sig.recovery_id);
@@ -39,10 +40,14 @@ struct SignatureAbstract {
     }
 
     eevm::Address signatureAndVerify(const eevm::KeccakHash& tbs) const {
+        return get_address_from_public_key_asn1(getPublicKey(tbs));
+    }
+
+    std::vector<uint8_t> getPublicKey(const eevm::KeccakHash& tbs) const {
         tls::RecoverableSignature rs;
         to_recoverable_signature(rs);
         auto pubk = tls::PublicKey_k1Bitcoin::recover_key(rs, {tbs.data(), tbs.size()});
-        return get_address_from_public_key_asn1(public_key_asn1(pubk.get_raw_context()));
+        return public_key_asn1(pubk.get_raw_context());
     }
 
  private:
@@ -54,4 +59,4 @@ struct SignatureAbstract {
     }
 };
 
-}  // namespace evm4ccf
+} // namespace evm4ccf

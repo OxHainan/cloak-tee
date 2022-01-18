@@ -164,24 +164,33 @@ class State {
     }
 };
 
-void prepare(kv::Tx& tx, tables::Table& tee_table, TeePrepare& tee_prepare) {
+void append_argument(std::vector<uint8_t>& code, const std::vector<uint8_t>& arg) {
+    code.insert(code.end(), arg.begin(), arg.end());
+}
+
+void prepare(kv::Tx& tx, tables::Table& tee_table, const TeePrepare& tee_prepare) {
     auto tee_acc = State::make_state(tx, tee_table).create();
     // register tee address on chain
-    auto encoder = abicoder::Encoder("setTEEAddress");
-    encoder.add_inputs("",
+    auto encoder = abicoder::Encoder();
+    encoder.add_inputs("manager", "address", tee_prepare.manager, abicoder::common_type("address"));
+
+    encoder.add_inputs("pubKey",
                        "bytes",
                        eevm::to_hex_string(tee_acc->get_public_Key()),
                        abicoder::common_type("bytes"));
 
-    Ethereum::MessageCall mc(
-        tee_acc->get_address(), tee_prepare.cloak_service_addr, encoder.encodeWithSignatrue());
+    auto contractCode = eevm::to_bytes(tee_prepare.cloakServiceContract);
+    append_argument(contractCode, encoder.encode());
+    const auto contractAddress =
+        eevm::generate_address(tee_acc->get_address(), tee_acc->get_nonce());
+    LOG_INFO_FMT("Cloak service address {}", eevm::to_hex_string(contractAddress));
+    Ethereum::MessageCall mc(tee_acc->get_address(), contractCode);
     auto signed_data = evm4ccf::sign_eth_tx(tee_acc->get_tee_kp(), mc, tee_acc->get_nonce());
     Utils::cloak_agent_log("register_tee_addr", eevm::to_hex_string(signed_data));
-
     tee_acc->increment_nonce();
 
     auto service_view = tx.get_view(tee_table.service);
-    service_view->put("CLOAK_SERVICE", tee_prepare.cloak_service_addr);
+    service_view->put("CLOAK_SERVICE", contractAddress);
 }
 
 } // namespace TeeManager

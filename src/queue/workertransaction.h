@@ -55,8 +55,9 @@ struct MultiPartyTransaction {
     size_t nonce;
     ByteString to;
     Address from;
+    ByteString publicKeys;
     policy::MultiPartyParams params;
-    MSGPACK_DEFINE(nonce, from, to, params);
+    MSGPACK_DEFINE(nonce, from, to, publicKeys, params);
 
     bool check_transaction_type() {
         if (to.size() == 20u)
@@ -100,6 +101,7 @@ struct CloakPolicyTransaction {
     std::vector<std::string> requested_addresses;
     std::map<std::string, std::string> public_keys;
     Status status = Status::PENDING;
+    std::map<ByteString, std::string> partys;
 
     MSGPACK_DEFINE(from,
                    to,
@@ -109,7 +111,9 @@ struct CloakPolicyTransaction {
                    states,
                    old_states,
                    requested_addresses,
-                   status);
+                   status,
+                   partys);
+
     CloakPolicyTransaction() {}
 
     CloakPolicyTransaction(const PrivacyPolicyTransaction& ppt, const ByteData& name) {
@@ -129,10 +133,41 @@ struct CloakPolicyTransaction {
         return status;
     }
 
-    void set_content(const std::map<std::string, nlohmann::json>& inputs) {
-        for (auto&& [name, value] : inputs) {
+    void set_content(const MultiPartyTransaction& mul) {
+        for (auto&& [name, value] : mul.params.inputs) {
             function.padding(name, value);
         }
+
+        partys[mul.publicKeys] = nlohmann::json(mul.params).dump();
+    }
+
+    std::tuple<std::vector<Address>, std::vector<std::string>> calcInputsHash() const {
+        auto party = std::vector<Address>();
+        auto inputsHash = std::vector<std::string>();
+        for (auto&& [key, value] : partys) {
+            auto hash = eevm::keccak_256(value);
+            party.push_back(get_address_from_public_key_asn1(key));
+            inputsHash.push_back(eevm::to_hex_string(hash));
+        }
+
+        return std::make_tuple(party, inputsHash);
+    }
+
+    std::vector<uint8_t> packedPropose(eevm::KeccakHash& txId) const {
+        auto [partys, inputHash] = calcInputsHash();
+
+        auto encoder = abicoder::Encoder("propose");
+        encoder.add_inputs("txId", "uint256", eevm::to_hex_string(txId), abicoder::number_type());
+        encoder.add_inputs(
+            "verifierAddr", "address", verifierAddr, abicoder::common_type("address"));
+        encoder.add_inputs("partys", "address[]", partys, abicoder::make_common_array("address"));
+        encoder.add_inputs("inputHash", "bytes32[]", inputHash, abicoder::make_bytes_array(32));
+        encoder.add_inputs("deposit", "uint256", uint256_t(10), abicoder::number_type());
+        encoder.add_inputs(
+            "maxBlockNumber4Response", "uint256", uint256_t(20), abicoder::number_type());
+        encoder.add_inputs(
+            "maxBlockNumber4Compete", "uint256", uint256_t(30), abicoder::number_type());
+        return encoder.encodeWithSignatrue();
     }
 
     std::vector<std::string> get_states_read() {
@@ -278,7 +313,7 @@ struct CloakPolicyTransaction {
                         continue;
                     }
                     auto pk = public_keys.at(to_checksum_address(sender_addr));
-                    auto der = evm4ccf::get_der_from__raw_public_key(eevm::to_bytes(pk));
+                    auto der = evm4ccf::get_der_from_raw_public_key(eevm::to_bytes(pk));
 
                     // tag and iv
                     auto&& [tag, iv] = Utils::split_tag_and_iv(to_bytes(old_states[data_pos + 1]));
@@ -307,7 +342,7 @@ struct CloakPolicyTransaction {
                 // tag and iv
                 auto pk_der = p.owner["owner"] == "tee" ?
                     get_der_from_public_key(tee_kp->get_raw_context()) :
-                    get_der_from__raw_public_key(eevm::to_bytes(public_keys.at(sender_addr)));
+                    get_der_from_raw_public_key(eevm::to_bytes(public_keys.at(sender_addr)));
 
                 auto&& [tag, iv] = Utils::split_tag_and_iv(eevm::to_bytes(old_states[idx + 2]));
                 CLOAK_DEBUG_FMT("tag:{}, iv:{}", tag, iv);
@@ -367,7 +402,7 @@ struct CloakPolicyTransaction {
                         auto msg_sender =
                             eevm::to_checksum_address(eevm::to_uint256(mapping_keys[j]));
 
-                        auto der = evm4ccf::get_der_from__raw_public_key(
+                        auto der = evm4ccf::get_der_from_raw_public_key(
                             eevm::to_bytes(public_keys.at(msg_sender)));
                         auto&& [encrypted, tag] = Utils::encrypt_data_s(
                             tee_kp, der, iv, to_bytes(new_states[idx + 3 + j * 2]));
@@ -384,7 +419,7 @@ struct CloakPolicyTransaction {
 
                     auto pk_der = ps.owner["owner"] == "tee" ?
                         get_der_from_public_key(tee_kp->get_raw_context()) :
-                        get_der_from__raw_public_key(eevm::to_bytes(public_keys.at(sender_addr)));
+                        get_der_from_raw_public_key(eevm::to_bytes(public_keys.at(sender_addr)));
 
                     auto iv = tls::create_entropy()->random(crypto::GCM_SIZE_IV);
                     auto&& [encrypted, tag] =

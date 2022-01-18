@@ -120,8 +120,8 @@ inline eevm::KeccakHash vec_to_KeccakHash(const std::vector<uint8_t>& data) {
     return res;
 }
 
-inline uint256_t vec32_to_uint256(const std::vector<uint8_t>& data) {
-    return eevm::to_uint256(eevm::to_hex_string(data));
+inline uint256_t vec32_to_uint256(const std::vector<uint8_t>& v) {
+    return eevm::from_big_endian(v.data(), v.size());
 }
 
 inline std::string to_lower(const std::string& str) {

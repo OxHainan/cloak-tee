@@ -17,6 +17,7 @@
 #include "ethereum/state.h"
 #include "ethereum/tee_manager.h"
 #include "ethereum/types.h"
+#include "ethereum_transaction.h"
 
 #include <eEVM/address.h>
 #include <eEVM/processor.h>
@@ -24,14 +25,13 @@
 
 namespace Ethereum {
 
-using MessageCall = Ethereum::MessageCall;
 using Address = eevm::Address;
 class AbstractEVM {
  protected:
     AbstractEVM(const MessageCall& _call_data, EthereumState& _es, eevm::LogHandler& _log_handler) :
         call_data(_call_data), es(_es), log_handler(_log_handler) {}
 
-    std::tuple<eevm::ExecResult, evm4ccf::TxHash, Address> run_in_evm() {
+    std::tuple<eevm::ExecResult, TxHash, Address> run_in_evm() {
         Address to;
         if (call_data.to.has_value()) {
             to = call_data.to.value();
@@ -106,7 +106,7 @@ class EVMC : public AbstractEVM {
     EVMC(const MessageCall& call_data, EthereumState& es, tables::Results::TxView* views) :
         AbstractEVM(call_data, es, vlh), results_view(views) {}
     eevm::VectorLogHandler vlh;
-    evm4ccf::TxHash run() {
+    Ethereum::TxHash run() {
         const auto [exec_result, tx_hash, to_address] = run_in_evm();
         if (exec_result.er == eevm::ExitReason::threw) {
             throw std::logic_error(exec_result.exmsg);

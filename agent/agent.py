@@ -42,6 +42,14 @@ class Handler(object):
         except Exception as err:
             self.ccf_client.call("/app/cloak_sync_report", {"id": msg["tx_hash"], "result": "FAILED"})
             raise
+    
+    def handle_sync_propose(self, msg):
+        try:
+            self.w3.eth.send_raw_transaction(msg["data"])
+            self.ccf_client.call("/app/cloak_sync_propose", {"id": msg["tx_hash"], "success": True})
+        except Exception as err:
+            self.ccf_client.call("/app/cloak_sync_propose", {"id": msg["tx_hash"], "success": False})
+            raise
 
     def handle_register_tee_addr(self, msg):
         self.w3.eth.send_raw_transaction(msg)
@@ -56,6 +64,8 @@ class Handler(object):
             self.handle_sync_result(info_json["message"])
         elif info_json["tag"] == "register_tee_addr":
             self.handle_register_tee_addr(info_json["message"])
+        elif info_json["tag"] == "propose": 
+            self.handle_sync_propose(info_json["message"])
         else:
             raise Exception(f"invalid tag: {info_json['tag']}");
         print(f"{info_json['tag']} succeeded")

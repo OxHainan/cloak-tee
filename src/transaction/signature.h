@@ -197,6 +197,7 @@ struct CloakTransactionWithSignature : public SignatureAbstract, public CloakTra
         CloakTransaction::to_transaction_call(mpt);
         const auto tbs = to_be_signed();
         mpt.from = SignatureAbstract::signatureAndVerify(tbs);
+        mpt.publicKeys = SignatureAbstract::getPublicKey(tbs);
     }
 };
 } // namespace evm4ccf

@@ -78,8 +78,7 @@ struct number_type {
         type(type_value::NUMBER), Signed(Signed_), bit_size(bit) {}
 
     BTypePtr get_value() const {
-        auto name = Signed ? "int" : "uint";
-        return std::make_shared<base_type>(type, name, bit_size, false);
+        return std::make_shared<base_type>(type, Signed ? "int" : "uint", bit_size, false);
     }
 };
 

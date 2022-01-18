@@ -18,11 +18,12 @@
 namespace cloak4ccf {
 
 struct TeePrepare {
-    eevm::Address cloak_service_addr;
+    std::string manager;
+    std::string cloakServiceContract;
 };
 
 DECLARE_JSON_TYPE(TeePrepare)
-DECLARE_JSON_REQUIRED_FIELDS(TeePrepare, cloak_service_addr)
+DECLARE_JSON_REQUIRED_FIELDS(TeePrepare, manager, cloakServiceContract)
 
 struct SyncStates {
     std::string data;
@@ -39,6 +40,14 @@ struct SyncReport {
 
 DECLARE_JSON_TYPE(SyncReport)
 DECLARE_JSON_REQUIRED_FIELDS(SyncReport, id, result)
+
+struct SyncPropose {
+    std::string id;
+    bool success;
+};
+
+DECLARE_JSON_TYPE(SyncPropose)
+DECLARE_JSON_REQUIRED_FIELDS(SyncPropose, id, success)
 
 struct SyncKeys {
     std::string tx_hash;
