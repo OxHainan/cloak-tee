@@ -117,7 +117,7 @@ struct CloakPolicyTransaction {
     CloakPolicyTransaction() {}
 
     CloakPolicyTransaction(const PrivacyPolicyTransaction& ppt, const ByteData& name) {
-        from = ppt.from;
+        // from = ppt.from;
         to = ppt.to;
         verifierAddr = ppt.verifierAddr;
         codeHash = ppt.codeHash;

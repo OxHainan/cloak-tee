@@ -109,7 +109,7 @@ class Generator {
         }
 
         CloakPolicyTransaction cpt(ppt, mpt.name());
-
+        cpt.from = mpt.from;
         cpt.set_content(mpt);
         cp->put(multi_digest, cpt);
         cd->put(to, multi_digest);

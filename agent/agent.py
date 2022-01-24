@@ -44,7 +44,13 @@ class Handler(object):
                 "timestamp": int(round(time.time() * 1000))
             })
 
-            self.w3.eth.send_raw_transaction(msg["data"])
+            tx_hash = self.w3.eth.send_raw_transaction(msg["data"])
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
+            utils.write2file({
+                "name": "commit_complete",
+                "id": msg["tx_hash"],
+                "gasUsed": receipt['gasUsed']
+            })
             self.ccf_client.call("/app/cloak_sync_report", {"id": msg["tx_hash"], "result": "SYNCED"})
         except Exception as err:
             self.ccf_client.call("/app/cloak_sync_report", {"id": msg["tx_hash"], "result": "FAILED"})
