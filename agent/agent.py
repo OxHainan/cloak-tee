@@ -36,6 +36,27 @@ class Handler(object):
         res = self.w3.eth.call({"to": msg["to"], "from": msg["from"], "data": msg["data"]})
         self.ccf_client.call("/app/eth_sync_public_keys", {"tx_hash": msg["tx_hash"], "data": res.hex()})
 
+    def handle_sync_commit(self, msg):
+        try:
+            utils.write2file({
+                "name": "complete_propose",
+                "id": msg["tx_hash"],
+                "timestamp": int(round(time.time() * 1000))
+            })
+
+            tx_hash = self.w3.eth.send_raw_transaction(msg["data"])
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
+
+            utils.write2file({
+                "name": "commit_comit",
+                "id": msg["tx_hash"],
+                "gasUsed": receipt['gasUsed']
+            })
+            self.ccf_client.call("/app/cloak_sync_report", {"id": msg["tx_hash"], "result": "COMPLETE"})
+        except Exception as err:
+            self.ccf_client.call("/app/cloak_sync_report", {"id": msg["tx_hash"], "result": "FAILED"})
+            raise
+
     def handle_sync_result(self, msg):
         try:
             utils.write2file({
@@ -100,6 +121,8 @@ class Handler(object):
             self.handle_request_public_keys(info_json["message"])
         elif info_json["tag"] == "sync_result":
             self.handle_sync_result(info_json["message"])
+        elif info_json["tag"] == "sync_commit":
+            self.handle_sync_commit(info_json["message"])
         elif info_json["tag"] == "register_tee_addr":
             self.handle_register_tee_addr(info_json["message"])
         elif info_json["tag"] == "propose": 

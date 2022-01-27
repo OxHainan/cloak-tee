@@ -173,6 +173,26 @@ inline std::pair<Bytes, Bytes> encrypt_data_s(tls::KeyPairPtr kp,
     return {res, tag};
 }
 
+inline std::pair<Bytes, Bytes> encrypt_data_s(const Bytes& key,
+                                              const Bytes& iv,
+                                              const Bytes& data) {
+    crypto::KeyAesGcm key_aes_gcm(key);
+    Bytes res(data.size());
+    Bytes tag(crypto::GCM_SIZE_TAG);
+    key_aes_gcm.encrypt(iv, data, {}, res.data(), tag.data());
+    return {res, tag};
+}
+
+inline Bytes decrypt_data(const Bytes& key, const Bytes& iv, const Bytes& data) {
+    crypto::KeyAesGcm key_aes_gcm(key);
+    size_t c_size = data.size() - crypto::GCM_SIZE_TAG;
+    Bytes res(c_size);
+    if (!key_aes_gcm.decrypt(iv, data.data() + c_size, {data.data(), c_size}, {}, res.data())) {
+        LOG_AND_THROW("decryption failed, please check your data");
+    }
+    return res;
+}
+
 inline std::vector<uint8_t> decrypt_data(tls::KeyPairPtr kp,
                                          const std::vector<uint8_t>& pk_der,
                                          const std::vector<uint8_t>& iv,

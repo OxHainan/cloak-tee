@@ -102,6 +102,9 @@ struct CloakPolicyTransaction {
     std::map<std::string, std::string> public_keys;
     Status status = Status::PENDING;
     std::map<ByteString, std::string> partys;
+    std::vector<std::string> completed;
+    std::vector<uint8_t> keys;
+    std::vector<uint8_t> m_iv;
 
     MSGPACK_DEFINE(from,
                    to,
@@ -110,13 +113,18 @@ struct CloakPolicyTransaction {
                    function,
                    states,
                    old_states,
+                   completed,
                    requested_addresses,
                    status,
-                   partys);
+                   partys,
+                   keys,
+                   m_iv);
 
     CloakPolicyTransaction() {}
 
-    CloakPolicyTransaction(const PrivacyPolicyTransaction& ppt, const ByteData& name) {
+    CloakPolicyTransaction(const PrivacyPolicyTransaction& ppt, const ByteData& name) :
+        keys(tls::create_entropy()->random(crypto::GCM_SIZE_KEY)),
+        m_iv(tls::create_entropy()->random(crypto::GCM_SIZE_IV)) {
         // from = ppt.from;
         to = ppt.to;
         verifierAddr = ppt.verifierAddr;
@@ -192,7 +200,7 @@ struct CloakPolicyTransaction {
         size_t res = 0;
         for (auto&& state : states) {
             std::string owner = state.owner["owner"].get<std::string>();
-            size_t factor = encrypted && owner != "all" ? 3 : 1;
+            size_t factor = encrypted && owner != "all" ? 5 : 1;
             if (state.structural_type["type"] == "mapping") {
                 size_t depth = state.structural_type["depth"].get<size_t>();
                 size_t keys_size = function.get_keys_size(state.name);
@@ -304,8 +312,8 @@ struct CloakPolicyTransaction {
                 res.push_back(old_states[idx + 1]);
                 for (size_t j = 0; j < keys_size; j++) {
                     res.insert(res.end(), it + j * depth, it + (j + 1) * depth);
-                    size_t data_pos = idx + 2 + depth + j * (depth + 3);
-                    auto sender_addr = to_uint256(old_states[data_pos + 2]);
+                    size_t data_pos = idx + 2 + depth + j * (depth + 5);
+                    auto sender_addr = to_uint256(old_states[data_pos + 4]);
                     CLOAK_DEBUG_FMT(
                         "data_pos:{}, sender_addr:{}", data_pos, to_checksum_address(sender_addr));
                     if (sender_addr == 0) {
@@ -316,14 +324,21 @@ struct CloakPolicyTransaction {
                     auto der = evm4ccf::get_der_from_raw_public_key(eevm::to_bytes(pk));
 
                     // tag and iv
-                    auto&& [tag, iv] = Utils::split_tag_and_iv(to_bytes(old_states[data_pos + 1]));
-                    auto data = to_bytes(old_states[data_pos]);
+                    auto&& [tag, iv] = Utils::split_tag_and_iv(to_bytes(old_states[data_pos + 3]));
+                    auto data = to_bytes(old_states[data_pos + 2]);
+
                     CLOAK_DEBUG_FMT("decryption, iv:{}, tag:{}, data:{}",
                                     to_hex_string(iv),
                                     to_hex_string(tag),
                                     old_states[data_pos]);
                     data.insert(data.end(), tag.begin(), tag.end());
-                    auto decrypted = Utils::decrypt_data(tee_kp, der, iv, data);
+                    auto key = Utils::decrypt_data(tee_kp, der, iv, data);
+
+                    auto&& [tag1, iv1] =
+                        Utils::split_tag_and_iv(to_bytes(old_states[data_pos + 1]));
+                    auto data1 = to_bytes(old_states[data_pos]);
+                    data1.insert(data1.end(), tag1.begin(), tag1.end());
+                    auto decrypted = Utils::decrypt_data(key, iv1, data1);
                     res.push_back(to_hex_string(decrypted));
                 }
             } else {
@@ -398,18 +413,29 @@ struct CloakPolicyTransaction {
                     auto it = mapping_keys.begin();
                     for (size_t j = 0; j < keys_size; j++) {
                         res.insert(res.end(), it + depth * j, it + depth * (j + 1));
-                        auto iv = tls::create_entropy()->random(crypto::GCM_SIZE_IV);
-                        auto msg_sender =
-                            eevm::to_checksum_address(eevm::to_uint256(mapping_keys[j]));
-
-                        auto der = evm4ccf::get_der_from_raw_public_key(
-                            eevm::to_bytes(public_keys.at(msg_sender)));
                         auto&& [encrypted, tag] = Utils::encrypt_data_s(
-                            tee_kp, der, iv, to_bytes(new_states[idx + 3 + j * 2]));
-                        CLOAK_DEBUG_FMT("iv:{}, tag:{}, data:{}", iv, tag, encrypted);
-                        tag.insert(tag.end(), iv.begin(), iv.end());
-                        res.insert(res.end(),
-                                   {to_hex_string(encrypted), to_hex_string(tag), mapping_keys[j]});
+                            keys, m_iv, to_bytes(new_states[idx + 3 + j * 2]));
+                        tag.insert(tag.end(), m_iv.begin(), m_iv.end());
+                        res.insert(res.end(), {to_hex_string(encrypted), to_hex_string(tag)});
+
+                        if (status == Status::COMPLETE) {
+                            auto iv = tls::create_entropy()->random(crypto::GCM_SIZE_IV);
+                            auto msg_sender =
+                                eevm::to_checksum_address(eevm::to_uint256(mapping_keys[j]));
+                            auto der = evm4ccf::get_der_from_raw_public_key(
+                                eevm::to_bytes(public_keys.at(msg_sender)));
+                            auto&& [encrypted, tag] = Utils::encrypt_data_s(tee_kp, der, iv, keys);
+                            CLOAK_DEBUG_FMT("iv:{}, tag:{}, data:{}", iv, tag, encrypted);
+                            tag.insert(tag.end(), iv.begin(), iv.end());
+                            res.insert(
+                                res.end(),
+                                {to_hex_string(encrypted), to_hex_string(tag), mapping_keys[j]});
+                        } else {
+                            res.insert(res.end(),
+                                       {abicoder::ZERO_HEX_STR,
+                                        abicoder::ZERO_HEX_STR,
+                                        abicoder::ZERO_HEX_STR});
+                        }
                     }
                 } else {
                     // tee and identifier
@@ -440,7 +466,7 @@ struct CloakPolicyTransaction {
             size_t id = eevm::to_uint64(v_states[i]);
             f(id, i);
             auto state = states[id];
-            int factor = is_encryped && state.owner["owner"] != "all" ? 3 : 1;
+            int factor = is_encryped && state.owner["owner"] != "all" ? 5 : 1;
             if (state.structural_type["type"] == "mapping") {
                 size_t depth = state.structural_type["depth"].get<size_t>();
                 i += 2 + eevm::to_uint64(v_states[i + 1]) * (factor + depth);

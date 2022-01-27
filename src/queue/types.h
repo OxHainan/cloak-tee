@@ -22,6 +22,8 @@ using ByteData = std::string;
 enum class Status {
     PENDING,
     REQUESTING_OLD_STATES,
+    COMMIT,
+    COMPLETE,
     SYNCING,
     SYNCED,
     SYNC_FAILED,
@@ -32,6 +34,8 @@ DECLARE_JSON_ENUM(Status,
                   {
                       {Status::PENDING, "PENDING"},
                       {Status::REQUESTING_OLD_STATES, "REQUESTING_OLD_STATES"},
+                      {Status::COMMIT, "COMMIT"},
+                      {Status::COMPLETE, "COMPLETE"},
                       {Status::SYNCING, "SYNCING"},
                       {Status::SYNCED, "SYNCED"},
                       {Status::SYNC_FAILED, "SYNC_FAILED"},

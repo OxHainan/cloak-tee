@@ -133,7 +133,18 @@ class Generator {
                 fmt::format("multi party transaction digests doesn't exists (digests {})",
                             eevm::to_hex_string(target_digest)));
         }
+        if (report.result == "COMPLETE") {
+            auto acc = TeeManager::State::make_account(ctx.tx, ctx.cloakTables.tee_table);
+            auto data = cp_opt->get_states_call_data(true);
 
+            auto response = Ethereum::SyncStateResponse(
+                target_digest, acc->get_address(), cp_opt->verifierAddr, data);
+            Utils::cloak_agent_log("request_old_state", response);
+
+            // report_complete(target_digest, cp_opt.value(), acc);
+            // cp_handler->put(target_digest, cp_opt.value());
+            return;
+        }
         if (report.result == "SYNCED") {
             cp_opt->set_status(Status::SYNCED);
         } else {
@@ -141,6 +152,47 @@ class Generator {
         }
 
         cp_handler->put(target_digest, cp_opt.value());
+    }
+
+    void report_complete(evm4ccf::h256& target_digest,
+                         CloakPolicyTransaction& cpt,
+                         const TeeManager::AccountPtr acc) {
+        CLOAK_DEBUG_FMT("report_complete {}", fmt::join(cpt.completed, ", "));
+        auto encrypted_states = cpt.completed;
+        auto old_states_len = cpt.get_states_return_len(true);
+        auto encoder = abicoder::Encoder("set_states");
+        encoder.add_inputs("read", "bytes[]", cpt.get_states_read(), abicoder::make_bytes_array());
+        encoder.add_inputs("old_states_len",
+                           "uint256",
+                           eevm::to_hex_string(old_states_len),
+                           abicoder::number_type());
+        encoder.add_inputs("data", "bytes[]", encrypted_states, abicoder::make_bytes_array());
+        encoder.add_inputs(
+            "proof", "uint256[]", get_proof(cpt, target_digest), abicoder::make_number_array());
+        auto packed = encoder.encodeWithSignatrue();
+
+        CLOAK_DEBUG_FMT("complete_transaction {}", eevm::to_hex_string(packed));
+        auto encoderCom = abicoder::Encoder("complete");
+        encoderCom.add_inputs(
+            "txid", "uint256", eevm::to_hex_string(target_digest), abicoder::number_type());
+        encoderCom.add_inputs(
+            "data", "bytes", eevm::to_hex_string(packed), abicoder::common_type("bytes"));
+        auto service_addr =
+            TeeManager::get_service_addr(ctx.tx.get_view(ctx.cloakTables.tee_table.service));
+
+        CLOAK_DEBUG_FMT("encoderCom.encodeWithSignatrue() {}",
+                        eevm::to_hex_string(encoderCom.encodeWithSignatrue()));
+        Ethereum::MessageCall mc(
+            acc->get_address(), service_addr, encoderCom.encodeWithSignatrue());
+
+        // TODO(DUMMY): choose a better value based on concrete contract
+        CLOAK_DEBUG_FMT("data:{}", mc.data);
+        auto signed_data = evm4ccf::sign_eth_tx(acc->get_tee_kp(), mc, acc->get_nonce());
+        auto response = Ethereum::SyncStateResponse(target_digest, signed_data);
+
+        Utils::cloak_agent_log("sync_result", response);
+        cpt.set_status(evm4ccf::Status::SYNCING);
+        acc->increment_nonce();
     }
 
     void sync_propose(const SyncPropose& report) {
@@ -186,6 +238,7 @@ class Generator {
         auto decrypted = cp_opt->decrypt_states(acc->get_tee_kp());
         auto new_states = Ethereum::execute_mpt(ctx, cp_opt.value(), acc->get_address(), decrypted);
         sync_result(target_digest, cp_opt.value(), acc, new_states);
+        cp_opt->completed = encrypted_states(cp_opt.value(), acc, new_states);
         cp_handler->put(target_digest, cp_opt.value());
     }
 
@@ -202,7 +255,6 @@ class Generator {
         auto data = eevm::to_bytes(syncStates.data);
         auto old_states = abicoder::Decoder::decode_bytes_array(data);
         states_handler->put(target_digest, eevm::keccak_256(data));
-
         if (!cp_opt->function.complete()) {
             throw TransactionException(
                 fmt::format("function is not ready, get {}", eevm::to_hex_string(target_digest)));
@@ -211,8 +263,16 @@ class Generator {
         cp_opt->old_states = old_states;
 
         auto acc = TeeManager::State::make_account(ctx.tx, ctx.cloakTables.tee_table);
+
+        if (cp_opt->status == Status::COMPLETE) {
+            report_complete(target_digest, cp_opt.value(), acc);
+            cp_handler->put(target_digest, cp_opt.value());
+            return;
+        }
+
         auto service_addr =
             TeeManager::get_service_addr(ctx.tx.get_view(ctx.cloakTables.tee_table.service));
+
         if (!cp_opt->request_public_keys(target_digest, acc, service_addr)) {
             auto new_states =
                 Ethereum::execute_mpt(ctx, cp_opt.value(), acc->get_address(), old_states);
@@ -267,17 +327,20 @@ class Generator {
         acc->increment_nonce();
     }
 
+    std::vector<std::string> encrypted_states(CloakPolicyTransaction& cpt,
+                                              TeeManager::AccountPtr acc,
+                                              const std::vector<uint8_t>& new_states_) {
+        auto new_states = abicoder::Decoder::decode_bytes_array(new_states_);
+        return cpt.encrypt_states(acc->get_tee_kp(), new_states);
+    }
     // == Sync new states ==
     void sync_result(evm4ccf::h256& target_digest,
                      CloakPolicyTransaction& cpt,
                      TeeManager::AccountPtr acc,
-                     const std::vector<uint8_t>& new_states_) {
-        auto new_states = abicoder::Decoder::decode_bytes_array(new_states_);
-        CLOAK_DEBUG_FMT("splited new_states:{}\n", fmt::join(new_states, "\n"));
-
-        auto encrypted_states = cpt.encrypt_states(acc->get_tee_kp(), new_states);
-        CLOAK_DEBUG_FMT("encrypted:{}", fmt::join(encrypted_states, ", "));
-
+                     const std::vector<uint8_t>& new_states) {
+        cpt.set_status(evm4ccf::Status::COMMIT);
+        auto encrypted = encrypted_states(cpt, acc, new_states);
+        CLOAK_DEBUG_FMT("encrypted:{}", fmt::join(encrypted, ", "));
         auto old_states_len = cpt.get_states_return_len(true);
         auto encoder = abicoder::Encoder("set_states");
 
@@ -286,14 +349,14 @@ class Generator {
                            "uint256",
                            eevm::to_hex_string(old_states_len),
                            abicoder::number_type());
-        encoder.add_inputs("data", "bytes[]", encrypted_states, abicoder::make_bytes_array());
+        encoder.add_inputs("data", "bytes[]", encrypted, abicoder::make_bytes_array());
         encoder.add_inputs(
             "proof", "uint256[]", get_proof(cpt, target_digest), abicoder::make_number_array());
         auto packed = encoder.encodeWithSignatrue();
         CLOAK_DEBUG_FMT("encoded data:{}", abicoder::split_abi_data_to_str(packed));
 
         // packed complete tx;
-        auto encoderCom = abicoder::Encoder("complete");
+        auto encoderCom = abicoder::Encoder("commit");
         encoderCom.add_inputs(
             "txid", "uint256", eevm::to_hex_string(target_digest), abicoder::number_type());
         encoderCom.add_inputs(
@@ -314,8 +377,8 @@ class Generator {
         auto signed_data = evm4ccf::sign_eth_tx(acc->get_tee_kp(), mc, acc->get_nonce());
         auto response = Ethereum::SyncStateResponse(target_digest, signed_data);
 
-        Utils::cloak_agent_log("sync_result", response);
-        cpt.set_status(evm4ccf::Status::SYNCING);
+        Utils::cloak_agent_log("sync_commit", response);
+        cpt.set_status(evm4ccf::Status::COMPLETE);
         acc->increment_nonce();
     }
 
