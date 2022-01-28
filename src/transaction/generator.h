@@ -277,6 +277,7 @@ class Generator {
             auto new_states =
                 Ethereum::execute_mpt(ctx, cp_opt.value(), acc->get_address(), old_states);
             sync_result(target_digest, cp_opt.value(), acc, new_states);
+            cp_opt->completed = encrypted_states(cp_opt.value(), acc, new_states);
         }
 
         cp_handler->put(target_digest, cp_opt.value());
