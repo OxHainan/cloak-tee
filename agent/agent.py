@@ -39,7 +39,7 @@ class Handler(object):
     def handle_sync_commit(self, msg):
         try:
             utils.write2file({
-                "name": "complete_propose",
+                "name": "later_commit",
                 "id": msg["tx_hash"],
                 "timestamp": int(round(time.time() * 1000))
             })
@@ -48,11 +48,17 @@ class Handler(object):
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
 
             utils.write2file({
-                "name": "commit_comit",
+                "name": "commit_commit",
                 "id": msg["tx_hash"],
                 "gasUsed": receipt['gasUsed']
             })
             self.ccf_client.call("/app/cloak_sync_report", {"id": msg["tx_hash"], "result": "COMPLETE"})
+            utils.write2file({
+                "name": "pre_complete",
+                "id": msg["tx_hash"],
+                "timestamp": int(round(time.time() * 1000))
+            })
+
         except Exception as err:
             self.ccf_client.call("/app/cloak_sync_report", {"id": msg["tx_hash"], "result": "FAILED"})
             raise
@@ -60,7 +66,7 @@ class Handler(object):
     def handle_sync_result(self, msg):
         try:
             utils.write2file({
-                "name": "complete_propose",
+                "name": "later_complete",
                 "id": msg["tx_hash"],
                 "timestamp": int(round(time.time() * 1000))
             })
@@ -95,7 +101,7 @@ class Handler(object):
 
             self.ccf_client.call("/app/cloak_sync_propose", {"id": msg["tx_hash"], "success": True})
             utils.write2file({
-                "name": "comfire_propose",
+                "name": "pre_commit",
                 "id": msg["tx_hash"],
                 "timestamp": int(round(time.time() * 1000))
             })
