@@ -163,10 +163,6 @@ struct CloakPolicyTransaction {
         encoder.add_inputs("partys", "address[]", partys, abicoder::make_common_array("address"));
         encoder.add_inputs("inputHash", "bytes32[]", inputHash, abicoder::make_bytes_array(32));
         encoder.add_inputs("deposit", "uint256", uint256_t(1000000000), abicoder::number_type());
-        encoder.add_inputs(
-            "maxBlockNumber4Response", "uint256", uint256_t(20), abicoder::number_type());
-        encoder.add_inputs(
-            "maxBlockNumber4Compete", "uint256", uint256_t(30), abicoder::number_type());
         return encoder.encodeWithSignatrue();
     }
 

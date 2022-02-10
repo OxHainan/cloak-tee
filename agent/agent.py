@@ -38,19 +38,7 @@ class Handler(object):
 
     def handle_sync_result(self, msg):
         try:
-            utils.write2file({
-                "name": "complete_propose",
-                "id": msg["tx_hash"],
-                "timestamp": int(round(time.time() * 1000))
-            })
-
             tx_hash = self.w3.eth.send_raw_transaction(msg["data"])
-            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
-            utils.write2file({
-                "name": "commit_complete",
-                "id": msg["tx_hash"],
-                "gasUsed": receipt['gasUsed']
-            })
             self.ccf_client.call("/app/cloak_sync_report", {"id": msg["tx_hash"], "result": "SYNCED"})
         except Exception as err:
             self.ccf_client.call("/app/cloak_sync_report", {"id": msg["tx_hash"], "result": "FAILED"})
@@ -58,26 +46,8 @@ class Handler(object):
     
     def handle_sync_propose(self, msg):
         try:
-            utils.write2file({
-                "name": "later_propose",
-                "id": msg["tx_hash"],
-                "timestamp": int(round(time.time() * 1000))
-            })
-
             tx_hash = self.w3.eth.send_raw_transaction(msg["data"])
-            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
-            utils.write2file({
-                "name": "commit_propose",
-                "id": msg["tx_hash"],
-                "gasUsed": receipt['gasUsed']
-            })
-
             self.ccf_client.call("/app/cloak_sync_propose", {"id": msg["tx_hash"], "success": True})
-            utils.write2file({
-                "name": "comfire_propose",
-                "id": msg["tx_hash"],
-                "timestamp": int(round(time.time() * 1000))
-            })
 
         except Exception as err:
             self.ccf_client.call("/app/cloak_sync_propose", {"id": msg["tx_hash"], "success": False})
@@ -86,11 +56,6 @@ class Handler(object):
     def handle_register_tee_addr(self, msg):
         tx_hash = self.w3.eth.send_raw_transaction(msg)
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
-        utils.write2file({
-            "name": "deployCloakService",
-            "contractAddress" : receipt['contractAddress'],
-            "gasUsed": receipt['gasUsed']
-        })
 
     def handle_agent_log(self, info: str):
         info_json = json.loads(info)

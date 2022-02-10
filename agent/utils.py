@@ -44,8 +44,3 @@ def deploy_contract(file_path: str, name: str, w3: web3.Web3, acc: web3.eth.Acco
     signed = acc.signTransaction(tx)
     tx_hash = w3.eth.sendRawTransaction(signed.rawTransaction)
     return w3.eth.waitForTransactionReceipt(tx_hash).contractAddress
-
-def write2file(data: dict):
-    file = open('data.txt', 'a')
-    file.write(json.dumps(data) + "\n")
-    file.close()

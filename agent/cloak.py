@@ -93,6 +93,10 @@ class Cloak:
 
     def prepare_cloak_tee(self):
         ccf_client = utils.get_ccf_client(self.args)
+        w3 = web3.Web3(web3.HTTPProvider(args.blockchain_http_uri))
+        if self.args.manager_address is None:
+            self.args.manager_address = w3.eth.get_accounts()[0]
+            
         f = open(self.args.cloak_service_path + '/CloakService.json', 'r')
         contract = json.loads(f.read())
         f.close()
