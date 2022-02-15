@@ -18,6 +18,7 @@ import sys
 import pyinotify
 import traceback
 import utils
+import time
 import argparse
 from ccf.clients import CCFClient
 
@@ -37,7 +38,7 @@ class Handler(object):
 
     def handle_sync_result(self, msg):
         try:
-            self.w3.eth.send_raw_transaction(msg["data"])
+            tx_hash = self.w3.eth.send_raw_transaction(msg["data"])
             self.ccf_client.call("/app/cloak_sync_report", {"id": msg["tx_hash"], "result": "SYNCED"})
         except Exception as err:
             self.ccf_client.call("/app/cloak_sync_report", {"id": msg["tx_hash"], "result": "FAILED"})
@@ -45,14 +46,16 @@ class Handler(object):
     
     def handle_sync_propose(self, msg):
         try:
-            self.w3.eth.send_raw_transaction(msg["data"])
+            tx_hash = self.w3.eth.send_raw_transaction(msg["data"])
             self.ccf_client.call("/app/cloak_sync_propose", {"id": msg["tx_hash"], "success": True})
+
         except Exception as err:
             self.ccf_client.call("/app/cloak_sync_propose", {"id": msg["tx_hash"], "success": False})
             raise
 
     def handle_register_tee_addr(self, msg):
-        self.w3.eth.send_raw_transaction(msg)
+        tx_hash = self.w3.eth.send_raw_transaction(msg)
+        receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
 
     def handle_agent_log(self, info: str):
         info_json = json.loads(info)
