@@ -12,33 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "app/formatters.h"
 #include "app/rpc/user_frontend.h"
-#include "node/rpc/user_frontend.h"
+#include "ccf/app_interface.h"
+#include "ccf/crypto/verifier.h"
+#include "ccf/endpoint_registry.h"
+#include "service/network_tables.h"
 
-namespace cloak4ccf {
-class CloakRpcFrontend : public ccf::UserRpcFrontend {
- private:
-    CloakEndpointRegistry cloak_endpoint;
-
- public:
-    CloakRpcFrontend(ccf::NetworkTables& nwt, ccfapp::AbstractNodeContext& context) :
-        ccf::UserRpcFrontend(*nwt.tables, cloak_endpoint), cloak_endpoint(nwt, context) {}
-
-    void open() override {
-        ccf::UserRpcFrontend::open();
-        cloak_endpoint.openapi_info.title = "Cloak Homestead App";
-        cloak_endpoint.openapi_info.description =
-            "This Cloak Homestead App implements a simple EVM";
+namespace ccfapp
+{
+    std::unique_ptr<ccf::endpoints::EndpointRegistry> make_user_endpoints(
+      ccfapp::AbstractNodeContext& context)
+    {
+        return std::make_unique<cloak4ccf::CloakEndpointRegistry>(context);
     }
-};
-} // namespace cloak4ccf
-
-namespace ccfapp {
-
-std::shared_ptr<ccf::UserRpcFrontend> get_rpc_handler(ccf::NetworkTables& nwt,
-                                                      ccfapp::AbstractNodeContext& context) {
-    return std::make_shared<cloak4ccf::CloakRpcFrontend>(nwt, context);
-}
-
 } // namespace ccfapp

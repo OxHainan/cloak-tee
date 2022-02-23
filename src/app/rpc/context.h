@@ -13,32 +13,43 @@
 // limitations under the License.
 
 #pragma once
+#include "ccf/tx.h"
 #include "ethereum/tables.h"
 #include "ethereum/tee_account.h"
 #include "pop/tables.h"
 #include "transaction/tables.h"
-namespace cloak4ccf {
-using SeqNo = int64_t;
 
-struct CloakTables {
-    TransactionTables txTables;
-    Ethereum::tables::AccountsState acc_state;
-    Ethereum::tables::Results tx_results;
-    TeeManager::tables::Table tee_table;
-    Pop::Tables popTables;
+namespace cloak4ccf
+{
+    using SeqNo = int64_t;
+    struct CloakTables
+    {
+        TransactionTables txTables;
+        Ethereum::tables::AccountsState acc_state;
+        Ethereum::tables::Results tx_results;
+        TeeManager::tables::Table tee_table;
+        Pop::Tables popTables;
+        CloakTables() :
+          txTables(),
+          acc_state(),
+          tx_results("eth.txresults"),
+          tee_table(),
+          popTables()
+        {}
+    };
 
-    CloakTables() :
-        txTables(), acc_state(), tx_results("eth.txresults"), tee_table(), popTables() {}
-};
+    template <typename TX>
+    struct CloakContextT
+    {
+        TX& tx;
+        CloakTables& cloakTables;
+        SeqNo seqno;
+        CloakContextT(TX& tx_, CloakTables& cloakTables_) :
+          tx(tx_),
+          cloakTables(cloakTables_)
+        {}
+    };
 
-template <typename TX>
-struct CloakContextT {
-    TX& tx;
-    CloakTables& cloakTables;
-    SeqNo seqno;
-    CloakContextT(TX& tx_, CloakTables& cloakTables_) : tx(tx_), cloakTables(cloakTables_) {}
-};
-
-using CloakContext = CloakContextT<kv::Tx>;
-using ReadOnlyCloakContext = CloakContextT<kv::ReadOnlyTx>;
+    using CloakContext = CloakContextT<kv::Tx>;
+    using ReadOnlyCloakContext = CloakContextT<kv::ReadOnlyTx>;
 } // namespace cloak4ccf

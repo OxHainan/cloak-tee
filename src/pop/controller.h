@@ -18,93 +18,123 @@
 #include "tables.h"
 #include "types.h"
 
-namespace Pop {
-class Controller {
- public:
-    explicit Controller(cloak4ccf::CloakContext& ctx_) :
-        ctx(ctx_), m_tables(ctx_.cloakTables.popTables) {}
+namespace Pop
+{
+    class Controller
+    {
+      public:
+        explicit Controller(cloak4ccf::CloakContext& ctx_) :
+          ctx(ctx_),
+          m_tables(ctx_.cloakTables.popTables)
+        {}
 
-    static ProposalInfo setup(cloak4ccf::CloakContext& ctx_, const SendSetup& ss) {
-        auto con = Controller(ctx_);
-        return con.setup(ss);
-    }
+        static ProposalInfo setup(
+          cloak4ccf::CloakContext& ctx_, const SendSetup& ss)
+        {
+            auto con = Controller(ctx_);
+            return con.setup(ss);
+        }
 
-    ProposalInfo get_proposal(const GetProposal& obj) {
-        auto ps = ctx.tx.get_view(m_tables.proposals);
-        if (obj.proposalId.has_value()) {
-            return ps->get(obj.proposalId.value()).value_or(ProposalInfo{});
-        } else if (obj.blockHash.has_value()) {
-            auto be = ctx.tx.get_view(m_tables.blockExist);
-            auto proposalId = be->get(obj.blockHash.value());
-            if (proposalId.has_value()) {
-                return ps->get(proposalId.value()).value_or(ProposalInfo{});
+        ProposalInfo get_proposal(const GetProposal& obj)
+        {
+            auto ps = ctx.tx.rw(m_tables.proposals);
+            if (obj.proposalId.has_value())
+            {
+                return ps->get(obj.proposalId.value()).value_or(ProposalInfo{});
+            }
+            else if (obj.blockHash.has_value())
+            {
+                auto be = ctx.tx.rw(m_tables.blockExist);
+                auto proposalId = be->get(obj.blockHash.value());
+                if (proposalId.has_value())
+                {
+                    return ps->get(proposalId.value()).value_or(ProposalInfo{});
+                }
+
+                throw std::runtime_error(fmt::format(
+                  "Block hash doesn't setup, get {}", obj.blockHash.value()));
             }
 
-            throw std::runtime_error(
-                fmt::format("Block hash doesn't setup, get {}", obj.blockHash.value()));
+            throw std::invalid_argument(
+              "Invalid input proposalId or block hash");
         }
 
-        throw std::invalid_argument("Invalid input proposalId or block hash");
-    }
+        std::tuple<State, std::string> complete(const SendComplete& sc)
+        {
+            auto be = ctx.tx.rw(m_tables.blockExist);
+            auto proposalId = be->get(sc.blockHash);
+            if (!proposalId.has_value())
+            {
+                throw std::runtime_error("Block doesn't setup");
+            }
+            auto ps = ctx.tx.rw(m_tables.proposals);
 
-    std::tuple<State, std::string> complete(const SendComplete& sc) {
-        auto [ps, be, rs] =
-            ctx.tx.get_view(m_tables.proposals, m_tables.blockExist, m_tables.results);
-        auto proposalId = be->get(sc.blockHash);
-        if (!proposalId.has_value()) {
-            throw std::runtime_error("Block doesn't setup");
+            auto proposal = ps->get(proposalId.value());
+            if (!proposal.has_value())
+            {
+                throw std::runtime_error("Read proposal failed");
+            }
+
+            if (proposal->state != State::SETUP)
+            {
+                throw std::runtime_error("Proposal doesn't at setup state");
+            }
+
+            proposal->completeTime = sc.timestamp;
+            std::string resultMessage;
+
+            // if (!proposal->validate()) {
+            //     resultMessage = "Validate proposal timestamp failed";
+            // }
+
+            auto bv = Ethereum::BlocksValidator(sc.body);
+            if (
+              !bv.validateBody() &&
+              bv.validateTransaction(
+                proposal->blockHash, uint256_t(proposal->createTime)))
+            {
+                resultMessage = "Proposal validator failed";
+                proposal->state = State::FAILED;
+            }
+            else
+            {
+                proposal->state = State::COMPLETE;
+            }
+
+            LOG_DEBUG_FMT(
+              "proposal:{}, result: {}",
+              nlohmann::json(proposal).dump(),
+              resultMessage);
+            ps->put(proposalId.value(), proposal.value());
+
+            auto rs = ctx.tx.rw(m_tables.results);
+            rs->put(proposalId.value(), {resultMessage, bv.to_be_signed()});
+            return make_tuple(proposal->state, resultMessage);
         }
 
-        auto proposal = ps->get(proposalId.value());
-        if (!proposal.has_value()) {
-            throw std::runtime_error("Read proposal failed");
+      private:
+        ProposalInfo setup(const SendSetup& ss)
+        {
+            auto ps = ctx.tx.rw(m_tables.proposals);
+            auto be = ctx.tx.rw(m_tables.blockExist);
+            if (check_block(ss.blockHash))
+            {
+                throw std::runtime_error("Block has alread setup");
+            }
+
+            auto p = ProposalInfo{State::SETUP, ss.timestamp, 0, ss.blockHash};
+            ps->put(ss.proposalId, p);
+            be->put(ss.blockHash, ss.proposalId);
+            return p;
         }
 
-        if (proposal->state != State::SETUP) {
-            throw std::runtime_error("Proposal doesn't at setup state");
+        bool check_block(const BlockHash& hash) const
+        {
+            auto be = ctx.tx.rw(m_tables.blockExist);
+            return be->get(hash).has_value();
         }
 
-        proposal->completeTime = sc.timestamp;
-        std::string resultMessage;
-
-        if (!proposal->validate()) {
-            resultMessage = "Validate proposal timestamp failed";
-        }
-
-        auto bv = Ethereum::BlocksValidator(sc.body);
-        if (!bv.validateBody() &&
-            bv.validateTransaction(proposal->blockHash, uint256_t(proposal->createTime))) {
-            resultMessage = "Proposal validator failed";
-            proposal->state = State::FAILED;
-        } else {
-            proposal->state = State::COMPLETE;
-        }
-
-        CLOAK_DEBUG_FMT("proposal:{}, result: {}", nlohmann::json(proposal).dump(), resultMessage);
-        ps->put(proposalId.value(), proposal.value());
-        rs->put(proposalId.value(), {resultMessage, bv.to_be_signed()});
-        return make_tuple(proposal->state, resultMessage);
-    }
-
- private:
-    ProposalInfo setup(const SendSetup& ss) {
-        auto [ps, be] = ctx.tx.get_view(m_tables.proposals, m_tables.blockExist);
-        if (check_block(ss.blockHash)) {
-            throw std::runtime_error("Block has alread setup");
-        }
-
-        auto p = ProposalInfo{State::SETUP, ss.timestamp, 0, ss.blockHash};
-        ps->put(ss.proposalId, p);
-        be->put(ss.blockHash, ss.proposalId);
-        return p;
-    }
-
-    bool check_block(const BlockHash& hash) const {
-        auto be = ctx.tx.get_view(m_tables.blockExist);
-        return be->get(hash).has_value();
-    }
-
-    cloak4ccf::CloakContext& ctx;
-    Tables& m_tables;
-};
+        cloak4ccf::CloakContext& ctx;
+        Tables& m_tables;
+    };
 } // namespace Pop

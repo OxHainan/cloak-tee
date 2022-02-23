@@ -20,7 +20,6 @@ import traceback
 import utils
 import time
 import argparse
-from ccf.clients import CCFClient
 
 
 class Handler(object):
@@ -34,6 +33,7 @@ class Handler(object):
 
     def handle_request_public_keys(self, msg):
         res = self.w3.eth.call({"to": msg["to"], "from": msg["from"], "data": msg["data"]})
+        print(res)
         self.ccf_client.call("/app/eth_sync_public_keys", {"tx_hash": msg["tx_hash"], "data": res.hex()})
 
     def handle_sync_result(self, msg):

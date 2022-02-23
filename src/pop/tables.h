@@ -13,27 +13,32 @@
 // limitations under the License.
 
 #pragma once
-#include "kv/tx.h"
+#include "ccf/tx.h"
 #include "types.h"
-namespace Pop {
-namespace tables {
+namespace Pop
+{
+    namespace tables
+    {
+        inline constexpr auto PROPOSALS = "pop.proposals";
+        inline constexpr auto BLOCKEXIST = "pop.block_exist";
+        inline constexpr auto RESULT = "pop.result";
 
-inline constexpr auto PROPOSALS = "pop.proposals";
-inline constexpr auto BLOCKEXIST = "pop.block_exist";
-inline constexpr auto RESULT = "pop.result";
+        using Proposals = kv::Map<ProposalId, ProposalInfo>;
+        using Results = kv::Map<ProposalId, Result>;
+        using BlockExist = kv::Map<BlockHash, ProposalId>;
+    } // namespace tables
 
-using Proposals = kv::Map<ProposalId, ProposalInfo>;
-using Results = kv::Map<ProposalId, Result>;
-using BlockExist = kv::Map<BlockHash, ProposalId>;
-} // namespace tables
+    struct Tables
+    {
+        tables::Proposals proposals;
+        tables::BlockExist blockExist;
+        tables::Results results;
 
-struct Tables {
-    tables::Proposals proposals;
-    tables::BlockExist blockExist;
-    tables::Results results;
-
-    Tables() :
-        proposals(tables::PROPOSALS), blockExist(tables::BLOCKEXIST), results(tables::RESULT) {}
-};
+        Tables() :
+          proposals(tables::PROPOSALS),
+          blockExist(tables::BLOCKEXIST),
+          results(tables::RESULT)
+        {}
+    };
 
 } // namespace Pop
