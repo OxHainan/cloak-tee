@@ -135,9 +135,6 @@ namespace evm4ccf
             std::vector<Params> outputs;
             std::vector<uint8_t> raw_outputs;
 
-            // MSGPACK_DEFINE(name, entry, type, inputs, read, mutate, outputs,
-            // raw_outputs);
-
             std::vector<uint8_t> packed_to_data()
             {
                 auto encoder = abicoder::Encoder();

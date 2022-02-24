@@ -115,7 +115,7 @@ namespace cloak4ccf
                         // commit propose
                         auto acc = TeeManager::State::make_account(
                           ctx.tx, ctx.cloakTables.tee_table);
-                        // propose(target_digest, cpt_opt.value(), acc);
+                        propose(target_digest, cpt_opt.value(), acc);
                         // request_old_state(target_digest, cpt_opt.value(),
                         // acc);
                     }

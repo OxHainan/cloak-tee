@@ -23,10 +23,15 @@ namespace cloak4ccf
 
     template <typename T>
     static JsonAdapterResponse make_error(
-      const T& ctx, http_status status, const std::string& msg = "")
+      const T& ctx,
+      http_status status,
+      const std::string& code,
+      const std::string& msg = "")
     {
+        LOG_INFO_FMT("execture error {}", msg);
         auto error_reason = fmt::format("[CLOAK-{}]: {}", ctx.seqno, msg);
-        return ccf::ErrorDetails{status, error_reason};
+        // return ccf::ErrorDetails{status, code, error_reason};
+        return ccf::make_error(status, code, error_reason);
     }
 
     static void set_response(
@@ -70,11 +75,19 @@ namespace cloak4ccf
         }
         catch (std::logic_error& e)
         {
-            return make_error(ctx, HTTP_STATUS_NOT_FOUND, e.what());
+            return make_error(
+              ctx,
+              HTTP_STATUS_NOT_FOUND,
+              ccf::errors::ResourceNotFound,
+              e.what());
         }
         catch (const CloakException& e)
         {
-            return make_error(ctx, HTTP_STATUS_NOT_FOUND, e.what());
+            return make_error(
+              ctx,
+              HTTP_STATUS_NOT_FOUND,
+              ccf::errors::ResourceNotFound,
+              e.what());
         }
     }
 
