@@ -15,48 +15,56 @@
 #pragma once
 #include "json_utils.h"
 
-namespace evm4ccf {
+namespace evm4ccf
+{
+    namespace policy
+    {
+        inline void from_json(const nlohmann::json& j, Function& s)
+        {
+            require_object(j);
+            from_to_str(j, "name", s.name);
+            from_to_str(j, "type", s.type);
+            from_array_to_object(j, "inputs", s.inputs);
+            from_to_array(j, "entry", s.entry);
+            from_to_array(j, "raw_outputs", s.raw_outputs);
+            from_array_to_object(j, "read", s.read);
+            from_array_to_object(j, "mutate", s.mutate);
+            from_array_to_object(j, "outputs", s.outputs);
+        }
 
-namespace policy {
+        inline void to_json(nlohmann::json& j, const Function& s)
+        {
+            j = nlohmann::json::object();
+            j["name"] = s.name;
+            j["type"] = s.type;
+            j["inputs"] = s.inputs;
+            j["read"] = s.read;
+            j["entry"] = eevm::to_hex_string(s.entry);
+            j["raw_outputs"] = eevm::to_hex_string(s.raw_outputs);
+            j["mutate"] = s.mutate;
+            j["outputs"] = s.outputs;
+        }
 
-inline void from_json(const nlohmann::json& j, Function& s) {
-    require_object(j);
-    from_to_str(j, "name", s.name);
-    from_to_str(j, "type", s.type);
-    from_array_to_object(j, "inputs", s.inputs);
-    from_to_array(j, "entry", s.entry);
-    from_array_to_object(j, "read", s.read);
-    from_array_to_object(j, "mutate", s.mutate);
-    from_array_to_object(j, "outputs", s.outputs);
-}
+    } // namespace policy
 
-inline void to_json(nlohmann::json& j, const Function& s) {
-    j = nlohmann::json::object();
-    j["name"] = s.name;
-    j["type"] = s.type;
-    j["inputs"] = s.inputs;
-    j["read"] = s.read;
-    j["mutate"] = s.mutate;
-    j["outputs"] = s.outputs;
-}
+    namespace rpcparams
+    {
+        //
+        inline void from_json(const nlohmann::json& j, Policy& s)
+        {
+            require_object(j);
+            from_to_str(j, "contract", s.contract);
+            from_array_to_object(j, "states", s.states);
+            from_array_to_object(j, "functions", s.functions);
+        }
 
-} // namespace policy
+        inline void to_json(nlohmann::json& j, const Policy& s)
+        {
+            j = nlohmann::json::object();
+            j["contract"] = s.contract;
+            j["states"] = s.states;
+            j["functions"] = s.functions;
+        }
 
-namespace rpcparams {
-//
-inline void from_json(const nlohmann::json& j, Policy& s) {
-    require_object(j);
-    from_to_str(j, "contract", s.contract);
-    from_array_to_object(j, "states", s.states);
-    from_array_to_object(j, "functions", s.functions);
-}
-
-inline void to_json(nlohmann::json& j, const Policy& s) {
-    j = nlohmann::json::object();
-    j["contract"] = s.contract;
-    j["states"] = s.states;
-    j["functions"] = s.functions;
-}
-
-} // namespace rpcparams
+    } // namespace rpcparams
 } // namespace evm4ccf

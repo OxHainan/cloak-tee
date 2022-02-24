@@ -25,7 +25,9 @@ import traceback
 import utils
 import web3
 from multiprocessing import Process
-from ccf.clients import CCFClient, Identity
+import sys
+sys.path.append("../CCF/tests")
+from infra.clients import CCFClient, Identity
 
 def get_args():
     parser = argparse.ArgumentParser(description='cloak manager')
@@ -62,7 +64,6 @@ class Cloak:
             agent_proc.join()
         except Exception as e:
             traceback.print_exc()
-            print(f"err:{e}")
             if cloak_tee_proc:
                 os.killpg(os.getpgid(cloak_tee_proc.pid), signal.SIGTERM)
             if agent_proc:
@@ -71,7 +72,7 @@ class Cloak:
     def run_cloak_tee(self):
         print("start cloak-tee")
         process = subprocess.Popen(
-                "/opt/ccf-0.15.2/bin/sandbox.sh -p libevm4ccf.virtual.so".split(),
+                "./sandbox.sh -p libcloak.virtual.so".split(),
                 cwd=self.args.build_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         s = select.poll()
         s.register(process.stdout)

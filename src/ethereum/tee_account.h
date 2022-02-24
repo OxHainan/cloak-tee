@@ -13,69 +13,99 @@
 // limitations under the License.
 
 #pragma once
-#include "kv/tx.h"
-#include "tls/key_pair.h"
-#include "tls/pem.h"
+#include "ccf/crypto/pem.h"
+#include "ccf/tx.h"
+#include "service/blit.h"
 
 #include <eEVM/account.h>
 #include <eEVM/address.h>
 
-namespace cloak4ccf {
+namespace kv::serialisers
+{
+    template <>
+    struct BlitSerialiser<uint256_t>
+    {
+        static SerialisedEntry to_serialised(const uint256_t& v)
+        {
+            std::vector<uint8_t> big_end_val(0x20); // size of 256 bits in bytes
+            eevm::to_big_endian(v, big_end_val.data());
+            return SerialisedEntry(big_end_val.begin(), big_end_val.end());
+        };
 
-namespace TeeManager {
-namespace tables {
-inline constexpr auto PRIVATEKEY = "tee.account.privateKey";
-inline constexpr auto PUBLICADDR = "tee.account.publicAddr";
-inline constexpr auto BALANCES = "tee.account.balance";
-inline constexpr auto NONCES = "tee.account.nonce";
-inline constexpr auto SERVICE = "tee.account.service";
-
-struct KeyPair {
-    using PrivateKey = kv::Map<eevm::Address, tls::Pem>;
-    PrivateKey privateKey;
-
-    using PublicAddr = kv::Map<std::string, eevm::Address>;
-    PublicAddr publicAddr;
-
-    struct Views {
-        PrivateKey::TxView* privateKey;
-        PublicAddr::TxView* publicAddr;
+        static uint256_t from_serialised(const SerialisedEntry& v)
+        {
+            return eevm::from_big_endian(v.data(), v.size());
+        }
     };
 
-    Views get_views(kv::Tx& tx) {
-        return {tx.get_view(privateKey), tx.get_view(publicAddr)};
-    }
+} // namespace kv::serialisers
 
-    KeyPair() : privateKey(PRIVATEKEY), publicAddr(PUBLICADDR) {}
-};
+namespace cloak4ccf
+{
+    namespace TeeManager
+    {
+        namespace tables
+        {
+            inline constexpr auto PRIVATEKEY = "tee.account.privateKey";
+            inline constexpr auto PUBLICADDR = "tee.account.publicAddr";
+            inline constexpr auto BALANCES = "tee.account.balance";
+            inline constexpr auto NONCES = "tee.account.nonce";
+            inline constexpr auto SERVICE = "tee.account.service";
 
-struct Accounts {
-    using Balances = kv::Map<eevm::Address, uint256_t>;
-    Balances balances;
-    using Nonces = kv::Map<eevm::Address, eevm::Account::Nonce>;
-    Nonces nonces;
+            struct KeyPair
+            {
+                using PrivateKey =
+                  kv::RawCopySerialisedMap<eevm::Address, crypto::Pem>;
+                PrivateKey privateKey;
 
-    struct Views {
-        Balances::TxView* balances;
-        Nonces::TxView* nonces;
-    };
+                using PublicAddr = ccf::ServiceValue<eevm::Address>;
+                PublicAddr publicAddr;
 
-    Views get_views(kv::Tx& tx) {
-        return {tx.get_view(balances), tx.get_view(nonces)};
-    }
+                struct Views
+                {
+                    PrivateKey::Handle* privateKey;
+                    PublicAddr::Handle* publicAddr;
+                };
 
-    Accounts() : balances(BALANCES), nonces(NONCES) {}
-};
-using CloakService = kv::Map<std::string, eevm::Address>;
+                Views get_views(kv::Tx& tx)
+                {
+                    return {tx.rw(privateKey), tx.rw(publicAddr)};
+                }
 
-struct Table {
-    tables::Accounts acc;
-    tables::KeyPair key_pair;
-    tables::CloakService service;
+                KeyPair() : privateKey(PRIVATEKEY), publicAddr(PUBLICADDR) {}
+            };
 
-    Table() : acc(), key_pair(), service(tables::SERVICE) {}
-};
+            struct Accounts
+            {
+                using Balances = kv::Map<eevm::Address, uint256_t>;
+                Balances balances;
+                using Nonces = kv::Map<eevm::Address, eevm::Account::Nonce>;
+                Nonces nonces;
 
-} // namespace tables
-} // namespace TeeManager
+                struct Views
+                {
+                    Balances::Handle* balances;
+                    Nonces::Handle* nonces;
+                };
+
+                Views get_views(kv::Tx& tx)
+                {
+                    return {tx.rw(balances), tx.rw(nonces)};
+                }
+
+                Accounts() : balances(BALANCES), nonces(NONCES) {}
+            };
+            using CloakService = ccf::ServiceValue<eevm::Address>;
+
+            struct Table
+            {
+                tables::Accounts acc;
+                tables::KeyPair key_pair;
+                tables::CloakService service;
+
+                Table() : acc(), key_pair(), service(tables::SERVICE) {}
+            };
+
+        } // namespace tables
+    } // namespace TeeManager
 } // namespace cloak4ccf
