@@ -47,6 +47,14 @@ def run(args):
         LOG.disable("infra")
         LOG.disable("ccf")
 
+    args.w3 = Web3Client(args.blockchain_url)
+    if args.w3.isSyncing():
+        raise Exception(LOG.warning("Block chain is syncing"))
+
+    if args.manager_address is None:
+            args.manager_address = args.w3.account()
+    LOG.info(f"Manager address is {args.manager_address}")
+
     LOG.info(f"Starting {len(hosts)} CCF node{'s' if len(hosts) > 1 else ''}...")
     if args.enclave_type == "virtual":
         LOG.warning("Virtual mode enabled")
@@ -91,14 +99,13 @@ def run(args):
                     r = c.get("/app/commit", log_capture=[])
                 assert r.status_code == http.HTTPStatus.OK, r.status_code
 
+        primary, _ = network.find_primary()
+        args.cloak = primary
+        agent_proc = log_event(args)
+
         def pad_node_id(nid):
             return (f"{{:{max_len}d}}").format(nid)
-# if args.cloakservice_dir is not None:
-#         with open(args.cloakservice_dir + "/CloakService.json", encoding="utf-8") as f:
-#             print(json.load(f)["bytecode"])
-#     else:
-#         print("cloakservice path is none")
-#         sys.exit(1)
+
         LOG.info("Started CCF network with the following nodes:")
         
         for node in nodes:
@@ -109,35 +116,27 @@ def run(args):
                     node.get_public_rpc_port(),
                 )
             )
+              
+        with open(args.cloakservice_dir + '/CloakService.json', encoding='utf-8') as f:
+            with primary.client("user0") as c:
+                r = c.call("/app/cloak_prepare", {
+                    "manager": args.manager_address,
+                    "cloakServiceContract": json.load(f)["bytecode"]
+                })
+                
+                if r.status_code != http.HTTPStatus.OK.value:
+                    raise Exception(LOG.warning("Cloak prepare is failed"))
 
-    #     # register cloakservice
-        args.w3 = Web3Client(args.blockchain_url)
-        primary, _ = network.find_primary()
-        args.cloak = primary
-        agent_proc = log_event(args)
-        if args.manager_address is None:
-            args.manager_address = args.w3.account()
-        f = open(args.cloakservice_dir + '/CloakService.json', 'r')
-        contract = json.loads(f.read())
-        f.close()
-        with nodes[0].client("user0") as c:
-            c.call("/app/cloak_prepare", {
-                "manager" : args.manager_address,
-                "cloakServiceContract": contract['bytecode']
-            })
-        
-    #     LOG.info(
-    #         f"You can now issue business transactions to the {args.package} application"
-    #     )
-    #     if args.js_app_bundle is not None:
-    #         LOG.info(f"Loaded JS application: {args.js_app_bundle}")
-    #     LOG.info(
-    #         f"Keys and certificates have been copied to the common folder: {network.common_dir}"
-    #     )
-    #     LOG.info(
-    #         "See https://microsoft.github.io/CCF/main/use_apps/issue_commands.html for more information"
-    #     )
-    #     LOG.warning("Press Ctrl+C to shutdown the network")
+        LOG.info(
+            f"You can now issue business transactions to the {args.package} application"
+        )
+        if args.js_app_bundle is not None:
+            LOG.info(f"Loaded JS application: {args.js_app_bundle}")
+        LOG.info(
+            f"Keys and certificates have been copied to the common folder: {network.common_dir}"
+        )
+
+        LOG.warning("Press Ctrl+C to shutdown the network")
         
         try:
             while True:
@@ -195,7 +194,8 @@ if __name__ == "__main__":
 
         parser.add_argument(
             "--cloakservice-dir",
-            help="Cloak service contract directory"
+            help="Cloak service contract directory",
+            required=True
         )
 
         parser.add_argument(

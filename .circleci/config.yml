@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: ccfciteam/ccf-app-ci:latest
+      - image: plytools/cloak-tee:latest
     working_directory: ~/cloak-tee
     steps:
       - checkout

@@ -35,3 +35,6 @@ class Web3Client:
             return res[0]
         except Exception as e:
             LOG.warning(e.message)
+
+    def isSyncing(self):
+        return self.w3.eth.syncing == True

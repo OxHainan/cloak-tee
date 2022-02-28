@@ -277,8 +277,6 @@ namespace evm4ccf
             std::vector<policy::Params> states;
             std::vector<policy::Function> functions;
 
-            // MSGPACK_DEFINE(contract, states, functions);
-
             policy::Function get_funtions(const ByteData& name) const
             {
                 for (int i = 0; i < functions.size(); i++)
@@ -313,4 +311,42 @@ namespace evm4ccf
 } // namespace evm4ccf
 
 #include "nljsontypes.h"
-// MSGPACK_ADD_ENUM(evm4ccf::Status);
+
+FMT_BEGIN_NAMESPACE
+
+template <>
+struct formatter<evm4ccf::Status>
+{
+    template <typename ParseContext>
+    auto parse(ParseContext& ctx)
+    {
+        return ctx.begin();
+    }
+
+    template <typename FormatContext>
+    auto format(const evm4ccf::Status& status, FormatContext& ctx)
+      -> decltype(ctx.out())
+    {
+        switch (status)
+        {
+            case (evm4ccf::Status::PENDING):
+                return format_to(ctx.out(), "PENDING");
+
+            case (evm4ccf::Status::REQUESTING_OLD_STATES):
+                return format_to(ctx.out(), "REQUESTING_OLD_STATES");
+
+            case (evm4ccf::Status::SYNCING):
+                return format_to(ctx.out(), "SYNCING");
+            case (evm4ccf::Status::SYNCED):
+                return format_to(ctx.out(), "SYNCED");
+
+            case (evm4ccf::Status::SYNC_FAILED):
+                return format_to(ctx.out(), "SYNC_FAILED");
+
+            case (evm4ccf::Status::DROPPED):
+                return format_to(ctx.out(), "DROPPED");
+        }
+    }
+};
+
+FMT_END_NAMESPACE
