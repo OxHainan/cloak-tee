@@ -44,10 +44,11 @@ source "${VENV_DIR}"/bin/activate
 BINARY_DIR=.
 CCF_DIR="${PATH_HERE}"/../CCF
 SANDBOX_DIR=$CCF_DIR/tests/sandbox
-START_NETWORK_SCRIPT=$CCF_DIR/tests/start_network.py
+START_NETWORK_SCRIPT="${PATH_HERE}"/../agent/start_network.py
 
-if [ ! -f "${VENV_DIR}/bin/activate" ]; then
+if [ -f "${VENV_DIR}/bin/activate" ]; then
     pip install --disable-pip-version-check -q -U -e $CCF_DIR/python/
+    pip install --disable-pip-version-check -q -U -r $BINARY_DIR/../agent/requirements.txt
     pip install --disable-pip-version-check -q -U -r $CCF_DIR/python/requirements.txt
     pip install --disable-pip-version-check -q -U -r $CCF_DIR/tests/requirements.txt
 fi

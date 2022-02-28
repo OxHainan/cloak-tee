@@ -15,7 +15,7 @@
 #include "transaction/generator.h"
 
 #include "app/rpc/context.h"
-#include "crypto/pem.h"
+#include "ccf/crypto/pem.h"
 #include "crypto/secp256k1/key_pair.h"
 #include "ethereum/tee_manager.h"
 #include "kv/store.h"

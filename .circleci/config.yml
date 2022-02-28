@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: plytools/circleci-cloak-tee:v0.2.0
+      - image: plytools/cloak-tee:latest
     working_directory: ~/cloak-tee
     steps:
       - checkout
@@ -15,7 +15,7 @@ jobs:
           command: mkdir build
       - run:
           name: CMake build
-          command: cmake .. -DCMAKE_BUILD_TYPE=Debug  -DBUILD_TESTS=ON -L
+          command: cmake .. -DBUILD_TESTS=ON -L
           working_directory: build
       - run:
           name: Build resources

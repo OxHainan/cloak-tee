@@ -1,62 +1,51 @@
-# Copyright (c) 2020 Oxford-Hainan Blockchain Research Institute
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-import web3
-import json
-import sys
 import pyinotify
-import traceback
-import utils
-import time
 import argparse
-
+import json
+from loguru import logger as LOG
+import traceback
+import sys
+import http
 
 class Handler(object):
     def __init__(self, args):
-        self.ccf_client = utils.get_ccf_client(args)
-        self.w3 = web3.Web3(web3.HTTPProvider(args.blockchain_http_uri))
+        self.args = args
+
+    def send(self, method, data):
+        with self.args.cloak.client("user0") as c:
+            r = c.post("/app/" + method, data)
+            assert r.status_code == http.HTTPStatus.OK.value
+
+    def call(self, method, data):
+        with self.args.cloak.client() as c:
+            r = c.get(method, data)
+            assert r.status_code == http.HTTPStatus.OK.value
 
     def handle_request_old_state(self, msg):
-        res = self.w3.eth.call({"to": msg["to"], "from": msg["from"], "data": msg["data"]})
-        print(res.hex())
-        self.ccf_client.call("/app/eth_sync_old_states", {"tx_hash": msg["tx_hash"], "data": res.hex()})
-
-    def handle_request_public_keys(self, msg):
-        res = self.w3.eth.call({"to": msg["to"], "from": msg["from"], "data": msg["data"]})
-        print(res.hex())
-        self.ccf_client.call("/app/eth_sync_public_keys", {"tx_hash": msg["tx_hash"], "data": res.hex()})
-
-    def handle_sync_result(self, msg):
-        try:
-            tx_hash = self.w3.eth.send_raw_transaction(msg["data"])
-            self.ccf_client.call("/app/cloak_sync_report", {"id": msg["tx_hash"], "result": "SYNCED"})
-        except Exception as err:
-            self.ccf_client.call("/app/cloak_sync_report", {"id": msg["tx_hash"], "result": "FAILED"})
-            raise
+        res = self.args.w3.call(msg)
+        self.send("eth_sync_old_states", {"tx_hash": msg["tx_hash"], "data": res})
     
-    def handle_sync_propose(self, msg):
-        try:
-            tx_hash = self.w3.eth.send_raw_transaction(msg["data"])
-            self.ccf_client.call("/app/cloak_sync_propose", {"id": msg["tx_hash"], "success": True})
-
-        except Exception as err:
-            self.ccf_client.call("/app/cloak_sync_propose", {"id": msg["tx_hash"], "success": False})
-            raise
+    def handle_request_public_keys(self, msg):
+        res = self.args.w3.call(msg)
+        self.send("eth_sync_public_keys", {"tx_hash": msg["tx_hash"], "data": res})
+    
+    def handle_sync_result(self, msg):
+        if self.args.w3.send(msg["data"]):
+            self.send("cloak_sync_report", {"id": msg["tx_hash"], "result": "SYNCED"})
+        else:
+            self.send("cloak_sync_report", {"id": msg["tx_hash"], "result": "FAILED"})
 
     def handle_register_tee_addr(self, msg):
-        tx_hash = self.w3.eth.send_raw_transaction(msg)
-        receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
+        if self.args.w3.send(msg["message"]):
+            LOG.info("Cloak Service Deploy Success")
+        else:
+            sys.exit(1)
+
+    def handle_sync_propose(self, msg):
+        if self.args.w3.send(msg["data"]):
+            self.send("cloak_sync_propose", {"id": msg["tx_hash"], "success": True})
+        else:
+            self.send("cloak_sync_propose", {"id": msg["tx_hash"], "success": False})
+
 
     def handle_agent_log(self, info: str):
         info_json = json.loads(info)
@@ -67,45 +56,42 @@ class Handler(object):
         elif info_json["tag"] == "sync_result":
             self.handle_sync_result(info_json["message"])
         elif info_json["tag"] == "register_tee_addr":
-            self.handle_register_tee_addr(info_json["message"])
+            self.handle_register_tee_addr(info_json)
         elif info_json["tag"] == "propose": 
             self.handle_sync_propose(info_json["message"])
         else:
-            raise Exception(f"invalid tag: {info_json['tag']}");
-        print(f"{info_json['tag']} succeeded")
+            raise Exception(f"invalid tag: {info_json['tag']}")
 
 class EventHandler(pyinotify.ProcessEvent):
     def __init__(self, cmd_args, *args, **kwargs):
         super(EventHandler, self).__init__(*args, **kwargs)
         self.args = cmd_args
-        self.file = open(cmd_args.build_path + "/workspace/sandbox_0/out", "r")
+        self.file = open(cmd_args.workspace + "/sandbox_0/out", "r")
         self.file.seek(0, 2)
         self.decode_lines()
-
+    
     def process_IN_MODIFY(self, event):
-        print('event received')
         self.decode_lines()
-
+    
     def decode_lines(self):
         while line:= self.file.readline():
             pos = line.find("ShouokOn")
             if pos == -1:
                 continue
-            new_line = line[pos+8:]
+                
+            new_line = line[pos +8:]
             pos = new_line.find("ShouokOn")
             if pos == -1:
                 continue
             try:
                 Handler(self.args).handle_agent_log(new_line[:pos])
-            except Exception as err:
+            except Exception as e:
                 traceback.print_exc()
-                print(f"ERROR: {err}")
-        print("read end")
+        
 
-def loop_for_log(args: argparse.Namespace):
+def event_handler(args: argparse.Namespace):
     wm = pyinotify.WatchManager()
     handler = EventHandler(args)
     notifier = pyinotify.Notifier(wm, handler)
-    wm.add_watch(args.build_path + "/workspace/sandbox_0/out", pyinotify.IN_MODIFY, rec=True)
+    wm.add_watch(args.workspace + "/sandbox_0/out", pyinotify.IN_MODIFY, rec=True)
     notifier.loop()
-

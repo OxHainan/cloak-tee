@@ -1,9 +1,10 @@
 
 include(${CCF_DIR}/cmake/cpack_settings.cmake)
 message(STATUS "CMAKE_INSTALL_PREFIX is '${CMAKE_INSTALL_PREFIX}'")
-install(FILES ${CCF_DIR}/cmake/preproject.cmake
-        DESTINATION cmake
-)
+install(FILES ${CCF_DIR}/cmake/preproject.cmake DESTINATION cmake)
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.cmake)
+
 include(GNUInstallDirs)
 
 set(CMAKE_GENERATED_COMMENT
@@ -12,7 +13,9 @@ set(CMAKE_GENERATED_COMMENT
 configure_file(
   ${CCF_DIR}/src/common/version.h.in ${CCF_DIR}/include/ccf/version.h @ONLY
 )
-
+configure_file(
+  ${CCF_DIR}/python/version.py.in ${CCF_DIR}/python/version.py @ONLY
+)
 file(READ ${CCF_DIR}/doc/host_config_schema/cchost_config.json
      HOST_CONFIG_SCHEMA
 )

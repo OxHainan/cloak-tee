@@ -134,10 +134,6 @@ namespace Utils
         return res;
     }
 
-    // inline std::vector<uint8_t> get_random_id() {
-    //     return tls::create_entropy()->random(256);
-    // }
-
     inline void cloak_agent_log(
       const std::string& tag, const nlohmann::json& msg)
     {
@@ -155,11 +151,6 @@ namespace Utils
         return {sha3.begin(), sha3.begin() + 4};
     }
 
-    // inline std::vector<uint8_t> generate_symmetric_key(crypto::KeyPairPtr kp,
-    // const std::vector<uint8_t>& pk_der) {
-    //     auto pk = crypto::make_public_key(pk_der);
-    //     auto ctx = crypto::KeyExchangeContext();
-    // }
     inline std::string repeat_hex_string(const std::string& str, size_t n)
     {
         std::vector<uint8_t> res;

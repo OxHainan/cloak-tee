@@ -17,11 +17,6 @@ if("sgx" IN_LIST COMPILE_TARGETS)
   )
   target_link_libraries(secp256k1.enclave PRIVATE ${OE_TARGET_LIBC})
   set_property(TARGET secp256k1.enclave PROPERTY POSITION_INDEPENDENT_CODE ON)
-  install(
-    TARGETS secp256k1.enclave
-    EXPORT ccf
-    DESTINATION lib
-  )
 endif()
 
 add_library(secp256k1.host STATIC ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/secp256k1/src/secp256k1.c)
