@@ -8,17 +8,15 @@ endif()
 add_ccf_app(cloak 
     SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/app/cloak_for_ccf.cpp
-    ${EEVM_SRC} 
     INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${OpenEnclave_DIR}/../../include/3rdparty
     ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${EVM_DIR}/include
-    ${EVM_DIR}/3rdparty
 
-    LINK_LIBS_ENCLAVE keccak.enclave secp256k1.enclave intx::intx
-    LINK_LIBS_VIRTUAL keccak.host secp256k1.host intx::intx INSTALL_LIBS ON
+    LINK_LIBS_ENCLAVE eevm.enclave secp256k1.enclave 
+    LINK_LIBS_VIRTUAL eevm.host secp256k1.host INSTALL_LIBS ON
 )
 
 add_custom_command(

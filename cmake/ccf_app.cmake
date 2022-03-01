@@ -242,4 +242,3 @@ function(add_host_library name)
   target_link_libraries(${name} PUBLIC ${LINK_LIBCXX} -lgcc openenclave::oehost)
   set_property(TARGET ${name} PROPERTY POSITION_INDEPENDENT_CODE ON)
 endfunction()
-
