@@ -207,7 +207,7 @@ function(add_unit_test name)
   target_link_libraries(
     ${name} PRIVATE ${LINK_LIBCXX} ccfcrypto.host 
                                 openenclave::oehost 
-                                intx::intx eevm.host
+                                eevm.host
                                 secp256k1.host
   )
   add_san(${name})
