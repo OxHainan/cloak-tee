@@ -114,17 +114,6 @@ namespace evm4ccf
         Status status = Status::PENDING;
         std::map<ByteString, std::string> partys;
 
-        // MSGPACK_DEFINE(from,
-        //                to,
-        //                verifierAddr,
-        //                codeHash,
-        //                function,
-        //                states,
-        //                old_states,
-        //                requested_addresses,
-        //                status,
-        //                partys);
-
         CloakPolicyTransaction() {}
 
         CloakPolicyTransaction(
@@ -459,7 +448,7 @@ namespace evm4ccf
 
                       auto&& [tag, iv] = Utils::split_tag_and_iv(
                         eevm::to_bytes(old_states[idx + 2]));
-                      LOG_DEBUG_FMT("tag:{}, iv:{}", tag, iv);
+                      //   LOG_INFO_FMT("tag:{}, iv:{}", tag, iv);
                       auto data = eevm::to_bytes(old_states[idx + 1]);
                       data.insert(data.end(), tag.begin(), tag.end());
                       auto decrypted =
@@ -545,8 +534,7 @@ namespace evm4ccf
                             der,
                             iv,
                             to_bytes(new_states[idx + 3 + j * 2]));
-                          LOG_DEBUG_FMT(
-                            "iv:{}, tag:{}, data:{}", iv, tag, encrypted);
+
                           tag.insert(tag.end(), iv.begin(), iv.end());
                           res.insert(
                             res.end(),
