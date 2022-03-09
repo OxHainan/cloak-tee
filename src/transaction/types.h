@@ -14,7 +14,7 @@
 
 #pragma once
 #include "ccf/ds/logger.h"
-
+#include "eEVM/keccak256.h"
 namespace cloak4ccf
 {
     struct TeePrepare
@@ -29,7 +29,7 @@ namespace cloak4ccf
     struct SyncStates
     {
         std::string data;
-        std::string tx_hash;
+        eevm::Keccak256 tx_hash;
     };
 
     DECLARE_JSON_TYPE(SyncStates)
@@ -37,7 +37,7 @@ namespace cloak4ccf
 
     struct SyncReport
     {
-        std::string id;
+        eevm::Keccak256 id;
         std::string result;
     };
 
@@ -46,7 +46,7 @@ namespace cloak4ccf
 
     struct SyncPropose
     {
-        std::string id;
+        eevm::Keccak256 id;
         bool success;
     };
 
@@ -55,7 +55,7 @@ namespace cloak4ccf
 
     struct SyncKeys
     {
-        std::string tx_hash;
+        eevm::Keccak256 tx_hash;
         std::string data;
     };
 

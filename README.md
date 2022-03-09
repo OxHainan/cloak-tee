@@ -57,7 +57,7 @@ This sample requires an developing environment of CCF's application. Installatio
 In order to quickly enter the CLoak-TEE compilation environment, we provide a docker images:
 
 ```
-docker pull plytools/circleci-cloak-tee:v0.2.0
+docker pull plytools/cloak-tee:latest
 ```
 
 ## 🎉 Building your first Cloak TEE app
@@ -69,8 +69,8 @@ git clone --recurse-submodules https://github.com/OxHainan/cloak-tee.git
 cd cloak-tee
 mkdir build
 cd build
-# if you want to use CLOAK_DEBUG_FMT macro, you need add -DCLOAK_DEBUG_LOGGING=ON option
-cmake .. -GNinja -DTARGET=virtual -DCMAKE_BUILD_TYPE=Debug -L
+# if you want to test case, you need add -DBUILD_TESTS=ON option
+cmake .. -GNinja
 ninja
 ```
 

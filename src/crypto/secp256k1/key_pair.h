@@ -217,7 +217,8 @@ namespace crypto::secp256k1
             return {first, buf + raw_size};
         }
 
-        std::vector<uint8_t> get_address_from_public_key() const
+        // public key
+        std::vector<uint8_t> get_public_key() const
         {
             auto asn1 = public_key_raw();
             if (asn1[0] != MBEDTLS_ASN1_OCTET_STRING)
@@ -230,6 +231,7 @@ namespace crypto::secp256k1
 
             return {asn1.begin() + 1, asn1.end()};
         }
+
         mbedtls_pk_context* get_raw_context() const
         {
             return ctx.get();

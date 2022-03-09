@@ -105,7 +105,7 @@ namespace Ethereum
 
         BlockHash hash() const
         {
-            return eevm::from_big_endian(eevm::keccak_256(encodeRLP()).data());
+            return eevm::to_uint256(encodeRLP().data(), 32u);
         }
 
         bool verifyHeader(const BlockHash& parentHash_) const

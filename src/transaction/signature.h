@@ -23,7 +23,7 @@
 #include "queue/workertransaction.h"
 #include "transaction/signature_abstract.h"
 
-#include <eEVM/util.h>
+#include <eEVM/keccak256.h>
 namespace evm4ccf
 {
     struct PrivacyTransaction
@@ -63,9 +63,9 @@ namespace evm4ccf
             return eevm::rlp::encode(to, verifierAddr, codeHash, data);
         }
 
-        virtual eevm::KeccakHash to_be_signed() const
+        virtual eevm::Keccak256 to_be_signed() const
         {
-            return eevm::keccak_256(encode());
+            return eevm::Keccak256(encode());
         }
 
         void to_transaction(PrivacyPolicyTransaction& tc) const
@@ -113,21 +113,21 @@ namespace evm4ccf
             return eevm::rlp::encode(to, verifierAddr, codeHash, data, v, r, s);
         }
 
-        eevm::KeccakHash to_be_signed() const override
+        eevm::Keccak256 to_be_signed() const override
         {
             if (is_pre_eip_155(v))
                 return PrivacyTransaction::to_be_signed();
 
-            return eevm::keccak_256(eevm::rlp::encode(
+            return eevm::Keccak256(eevm::rlp::encode(
               to, verifierAddr, codeHash, data, current_chain_id, 0, 0));
         }
 
-        eevm::KeccakHash calc_policy_hash() const
+        eevm::Keccak256 calc_policy_hash() const
         {
-            return eevm::keccak_256(data);
+            return eevm::Keccak256(data);
         }
 
-        eevm::KeccakHash to_transaction_call(PrivacyPolicyTransaction& tc) const
+        eevm::Keccak256 to_transaction_call(PrivacyPolicyTransaction& tc) const
         {
             PrivacyTransaction::to_transaction(tc);
             const auto tbs = to_be_signed();
@@ -169,9 +169,9 @@ namespace evm4ccf
             return eevm::rlp::encode(nonce, to, data);
         }
 
-        virtual eevm::KeccakHash to_be_signed() const
+        virtual eevm::Keccak256 to_be_signed() const
         {
-            return eevm::keccak_256(encode());
+            return eevm::Keccak256(encode());
         }
 
         virtual void to_transaction_call(MultiPartyTransaction& mpt) const
@@ -217,19 +217,19 @@ namespace evm4ccf
             return eevm::rlp::encode(nonce, to, data, v, r, s);
         }
 
-        eevm::KeccakHash digest() const
+        eevm::Keccak256 digest() const
         {
-            return eevm::keccak_256(encode());
+            return eevm::Keccak256(encode());
         }
 
-        eevm::KeccakHash to_be_signed() const override
+        eevm::Keccak256 to_be_signed() const override
         {
             if (is_pre_eip_155(v))
             {
                 return CloakTransaction::to_be_signed();
             }
 
-            return eevm::keccak_256(
+            return eevm::Keccak256(
               eevm::rlp::encode(nonce, to, data, current_chain_id, 0, 0));
         }
 

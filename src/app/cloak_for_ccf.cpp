@@ -13,11 +13,10 @@
 // limitations under the License.
 
 #include "app/rpc/user_frontend.h"
+#include "blit.h"
 #include "ccf/app_interface.h"
 #include "ccf/crypto/verifier.h"
 #include "ccf/endpoint_registry.h"
-#include "service/network_tables.h"
-
 namespace ccfapp
 {
     std::unique_ptr<ccf::endpoints::EndpointRegistry> make_user_endpoints(

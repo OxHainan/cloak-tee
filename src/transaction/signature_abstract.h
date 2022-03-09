@@ -47,12 +47,12 @@ namespace evm4ccf
             s = eevm::from_big_endian(s_data, r_fixed_length);
         }
 
-        eevm::Address signatureAndVerify(const eevm::KeccakHash& tbs) const
+        eevm::Address signatureAndVerify(const eevm::Keccak256& tbs) const
         {
             return get_address_from_public_key_asn1(getPublicKey(tbs));
         }
 
-        std::vector<uint8_t> getPublicKey(const eevm::KeccakHash& tbs) const
+        std::vector<uint8_t> getPublicKey(const eevm::Keccak256& tbs) const
         {
             crypto::secp256k1::RecoverableSignature rs;
             to_recoverable_signature(rs);

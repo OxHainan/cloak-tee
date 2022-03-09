@@ -22,40 +22,43 @@
 #include "queue/workertransaction.h"
 #include "signature_abstract.h"
 
-namespace cloak4ccf {
+namespace cloak4ccf
+{
+    namespace transaction
+    {
+        struct Tables
+        {
+            static constexpr auto PRIVACYS = "eth.transaction.privacys";
+            static constexpr auto PRIVACY_DIGESTS =
+              "eth.transaction.privacy_digests";
+            static constexpr auto CLOAKPOLICYS =
+              "eth.transaction.cloak_policys";
+            static constexpr auto CLOAK_DIGESTS =
+              "eth.transaction.cloak_digests";
+            static constexpr auto MULTI_PARTYS = "eth.transaction.multi_partys";
+            static constexpr auto STATES_DIGEST =
+              "eth.transaction.states_digest";
+        };
 
-namespace transaction {
-struct Tables {
-    static constexpr auto PRIVACYS = "eth.transaction.privacys";
-    static constexpr auto PRIVACY_DIGESTS = "eth.transaction.privacy_digests";
-    static constexpr auto CLOAKPOLICYS = "eth.transaction.cloak_policys";
-    static constexpr auto CLOAK_DIGESTS = "eth.transaction.cloak_digests";
-    static constexpr auto MULTI_PARTYS = "eth.transaction.multi_partys";
-    static constexpr auto STATES_DIGEST = "eth.transaction.states_digest";
-};
+    } // namespace transaction
 
-} // namespace transaction
+    struct TransactionTables
+    {
+        evm4ccf::Privacys privacys;
+        evm4ccf::PrivacyDigests privacy_digests;
 
-namespace accounts {
-struct Tables {};
-
-} // namespace accounts
-
-struct TransactionTables {
-    evm4ccf::Privacys privacys;
-    evm4ccf::PrivacyDigests privacy_digests;
-
-    evm4ccf::CloakPolicys cloak_policys;
-    evm4ccf::CloakDigests cloak_digests;
-    evm4ccf::MultiPartys multi_partys;
-    evm4ccf::StatesDigests states_digests;
-    TransactionTables() :
-        privacys(transaction::Tables::PRIVACYS),
-        privacy_digests(transaction::Tables::PRIVACY_DIGESTS),
-        cloak_policys(transaction::Tables::CLOAKPOLICYS),
-        cloak_digests(transaction::Tables::CLOAK_DIGESTS),
-        multi_partys(transaction::Tables::MULTI_PARTYS),
-        states_digests(transaction::Tables::STATES_DIGEST) {}
-};
+        evm4ccf::CloakPolicys cloak_policys;
+        evm4ccf::CloakDigests cloak_digests;
+        evm4ccf::MultiPartys multi_partys;
+        evm4ccf::StatesDigests states_digests;
+        TransactionTables() :
+          privacys(transaction::Tables::PRIVACYS),
+          privacy_digests(transaction::Tables::PRIVACY_DIGESTS),
+          cloak_policys(transaction::Tables::CLOAKPOLICYS),
+          cloak_digests(transaction::Tables::CLOAK_DIGESTS),
+          multi_partys(transaction::Tables::MULTI_PARTYS),
+          states_digests(transaction::Tables::STATES_DIGEST)
+        {}
+    };
 
 } // namespace cloak4ccf

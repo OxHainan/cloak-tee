@@ -3,4 +3,4 @@
 	url = https://github.com/OxHainan/CCF.git
 [submodule "eEVM"]
 	path = eEVM
-	url = https://github.com/PlyTools/eEVM.git
+	url = https://github.com/OxHainan/eEVM.git

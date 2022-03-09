@@ -5,6 +5,7 @@
 #include "fmt/core.h"
 #include "fmt/format.h"
 
+#include <eEVM/keccak256.h>
 #include <eEVM/rlp.h>
 #include <eEVM/util.h>
 
@@ -135,36 +136,20 @@ namespace evm4ccf
         return {first, buf + buf_size};
     }
 
-    // inline eevm::Address get_address_from_public_key_asn1(const
-    // std::vector<uint8_t>& asn1) {
-    //     // Check the bytes are prefixed with the ASN.1 type tag we expect,
-    //     // then return raw bytes without type tag prefix.
-    //     if (asn1[0] != MBEDTLS_ASN1_OCTET_STRING) {
-    //         throw std::logic_error(fmt::format(
-    //             "Expected ASN.1 key to begin with {}, not {}",
-    //             MBEDTLS_ASN1_OCTET_STRING, asn1[0]));
-    //     }
-
-    //     const std::vector<uint8_t> bytes(asn1.begin() + 1, asn1.end());
-    //     const auto hashed = eevm::keccak_256(bytes);
-
-    //     // Address is the last 20 bytes of 32-byte hash, so skip first 12
-    //     return eevm::from_big_endian(hashed.data() + 12, 20u);
-    // }
+    inline eevm::Address get_address_from_public_key(
+      const std::vector<uint8_t>& pubKey)
+    {
+        const auto hashed = eevm::Keccak256(pubKey);
+        return eevm::from_big_endian(hashed.data() + 12, 20u);
+    }
 
     inline eevm::Address get_address_from_public_key(
       crypto::secp256k1::KeyPairPtr kp)
     {
-        auto bytes = kp->get_address_from_public_key();
-        const auto hashed = eevm::keccak_256(bytes);
-        return eevm::from_big_endian(hashed.data() + 12, 20u);
+        auto bytes = kp->get_public_key();
+        return get_address_from_public_key(bytes);
     }
 
-    eevm::Address get_address_from_public_key(std::vector<uint8_t>& pubKey)
-    {
-        const auto hashed = eevm::keccak_256(pubKey);
-        return eevm::from_big_endian(hashed.data() + 12, 20u);
-    }
     inline eevm::Address get_address_from_public_key_asn1(
       const std::vector<uint8_t>& asn1)
     {
@@ -179,11 +164,12 @@ namespace evm4ccf
         }
 
         const std::vector<uint8_t> bytes(asn1.begin() + 1, asn1.end());
-        const auto hashed = eevm::keccak_256(bytes);
+        const auto hashed = eevm::Keccak256(bytes);
 
         // Address is the last 20 bytes of 32-byte hash, so skip first 12
         return eevm::from_big_endian(hashed.data() + 12, 20u);
     }
+
     inline std::vector<uint8_t> get_der_from_raw_public_key(
       const std::vector<uint8_t>& asn1)
     {
@@ -205,12 +191,6 @@ namespace evm4ccf
           result.end(), ASN1_PREFIX_PUBKEY.begin(), ASN1_PREFIX_PUBKEY.end());
         result.insert(result.end(), asn1.begin(), asn1.end());
         return result;
-    }
-
-    inline eevm::Address get_addr_from_kp(crypto::secp256k1::KeyPairPtr kp)
-    {
-        return get_address_from_public_key_asn1(
-          public_key_asn1(kp->get_raw_context()));
     }
 
     struct EthereumTransaction
@@ -254,20 +234,20 @@ namespace evm4ccf
             data = std::get<5>(tup);
         }
 
-        eevm::rlp::ByteString encode() const
+        virtual eevm::rlp::ByteString encode() const
         {
             return eevm::rlp::encode(nonce, gas_price, gas, to, value, data);
         }
 
-        virtual eevm::KeccakHash to_be_signed(
+        virtual eevm::Keccak256 to_be_signed(
           bool includeSignature = false) const
         {
-            return eevm::keccak_256(encode());
+            return eevm::Keccak256(encode());
         }
 
-        eevm::KeccakHash to_be_signed_with_chain_id() const
+        eevm::Keccak256 to_be_signed_with_chain_id() const
         {
-            return eevm::keccak_256(eevm::rlp::encode(
+            return eevm::Keccak256(eevm::rlp::encode(
               nonce, gas_price, gas, to, value, data, current_chain_id, 0, 0));
         }
 
@@ -345,7 +325,7 @@ namespace evm4ccf
             s = std::get<8>(tup);
         }
 
-        eevm::rlp::ByteString encode() const
+        eevm::rlp::ByteString encode() const override
         {
             return eevm::rlp::encode(
               nonce, gas_price, gas, to, value, data, v, r, s);
@@ -361,7 +341,7 @@ namespace evm4ccf
             eevm::to_big_endian(s, s_begin);
         }
 
-        eevm::KeccakHash to_be_signed(
+        eevm::Keccak256 to_be_signed(
           bool includeSignature = false) const override
         {
             if (is_pre_eip_155(v))
@@ -374,10 +354,10 @@ namespace evm4ccf
             // (produced by encode(), used as transaction ID) is unaffected
             if (includeSignature)
             {
-                return eevm::keccak_256(encode());
+                return eevm::Keccak256(encode());
             }
 
-            return eevm::keccak_256(eevm::rlp::encode(
+            return eevm::Keccak256(eevm::rlp::encode(
               nonce, gas_price, gas, to, value, data, current_chain_id, 0, 0));
         }
 
@@ -394,8 +374,7 @@ namespace evm4ccf
             const auto tbs = to_be_signed();
             auto pubk = crypto::secp256k1::PublicKey_k1Bitcoin::recover_key(
               rs, {tbs.data(), tbs.size()});
-            const auto hashed =
-              eevm::keccak_256(pubk.get_address_from_public_key());
+            const auto hashed = eevm::Keccak256(pubk.get_public_key());
             return eevm::from_big_endian(hashed.data() + 12, 20u);
         }
     };
@@ -405,7 +384,7 @@ namespace evm4ccf
       const EthereumTransaction& tx,
       bool with_chain_id = false)
     {
-        eevm::KeccakHash tbs;
+        eevm::Keccak256 tbs;
         if (with_chain_id)
         {
             tbs = tx.to_be_signed_with_chain_id();
