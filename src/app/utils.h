@@ -102,38 +102,6 @@ namespace Utils
         return j.get<T>();
     }
 
-    inline eevm::KeccakHash to_KeccakHash(const std::string& _s)
-    {
-        auto s = eevm::strip(_s);
-        eevm::KeccakHash h;
-        if (s.empty())
-            return h;
-        for (size_t i = 0, x = 0; i < 32; i++, x += 2)
-        {
-            h.at(i) = strtol(s.substr(x, 2).c_str(), 0, 16);
-        }
-        return h;
-    }
-
-    inline eevm::KeccakHash vec_to_KeccakHash(const std::vector<uint8_t>& data)
-    {
-        eevm::KeccakHash res;
-        std::copy(data.begin(), data.end(), res.begin());
-        return res;
-    }
-
-    inline uint256_t vec32_to_uint256(const std::vector<uint8_t>& v)
-    {
-        return eevm::from_big_endian(v.data(), v.size());
-    }
-
-    inline std::string to_lower(const std::string& str)
-    {
-        std::string res(str.size(), ' ');
-        std::transform(str.begin(), str.end(), res.begin(), ::towlower);
-        return res;
-    }
-
     inline void cloak_agent_log(
       const std::string& tag, const nlohmann::json& msg)
     {
@@ -143,12 +111,6 @@ namespace Utils
         j["tag"] = tag;
         j["message"] = msg;
         LOG_INFO_FMT("{}{}{}", magic_str, j.dump(), magic_str);
-    }
-
-    inline std::vector<uint8_t> make_function_selector(const std::string& sign)
-    {
-        auto sha3 = eevm::keccak_256(sign);
-        return {sha3.begin(), sha3.begin() + 4};
     }
 
     inline std::string repeat_hex_string(const std::string& str, size_t n)

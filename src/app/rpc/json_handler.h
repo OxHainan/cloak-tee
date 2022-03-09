@@ -28,7 +28,6 @@ namespace cloak4ccf
       const std::string& code,
       const std::string& msg = "")
     {
-        LOG_INFO_FMT("execture error {}", msg);
         auto error_reason = fmt::format("[CLOAK-{}]: {}", ctx.seqno, msg);
         // return ccf::ErrorDetails{status, code, error_reason};
         return ccf::make_error(status, code, error_reason);

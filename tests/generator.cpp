@@ -14,6 +14,7 @@
 
 #include "transaction/generator.h"
 
+#include "app/blit.h"
 #include "app/rpc/context.h"
 #include "ccf/crypto/pem.h"
 #include "crypto/secp256k1/key_pair.h"
@@ -170,7 +171,7 @@ namespace cloak4ccf::Transaction
       "a083e60f9e256417a91d958cf81e0c6e0dece58f361140e3960cb8c500682c37d9a06a2a"
       "52"
       "7fa691013ae6dce2ba8677d888e756cdeb3daed7cabfa7f7a4081347c6";
-    using PublicAddr = ccf::ServiceValue<eevm::Address>;
+
     TEST_CASE("register tee and generate cloak service contract address")
     {
         store.set_encryptor(std::make_shared<kv::NullTxEncryptor>());

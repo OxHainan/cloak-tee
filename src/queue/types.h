@@ -14,8 +14,8 @@
 
 #pragma once
 #include "ccf/ds/logger.h"
+#include "eEVM/keccak256.h"
 #include "transaction/exception.h"
-
 namespace evm4ccf
 {
     using ByteData = std::string;
@@ -45,13 +45,13 @@ namespace evm4ccf
     {
         struct In
         {
-            std::string id = {};
+            eevm::Keccak256 id;
         };
 
         struct Out
         {
-            Status status = {};
-            std::string output = {};
+            Status status;
+            std::string output;
         };
     };
 

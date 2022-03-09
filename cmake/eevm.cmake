@@ -19,6 +19,7 @@ set(EEVM_SRC
     ${EVM_DIR}/src/transaction.cpp
     ${EVM_DIR}/src/util.cpp
     ${EVM_DIR}/src/processor.cpp
+    ${EVM_DIR}/src/keccak256.cpp
 )
 
 if("sgx" IN_LIST COMPILE_TARGETS)

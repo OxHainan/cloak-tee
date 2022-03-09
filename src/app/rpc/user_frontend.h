@@ -45,7 +45,7 @@ namespace cloak4ccf
                     eevm::to_bytes(srt.raw_transaction);
                   Transaction::Generator gen(ctx);
                   auto digest = gen.add_privacy(in);
-                  return eevm::to_hex_string(digest);
+                  return digest;
               };
 
             auto send_raw_multiParty_transaction =
@@ -54,8 +54,8 @@ namespace cloak4ccf
                   eevm::rlp::ByteString in =
                     eevm::to_bytes(srmp.raw_transaction);
                   Transaction::Generator gen(ctx);
-                  auto ct_digest = gen.add_cloakTransaction(in);
-                  return eevm::to_hex_string(ct_digest);
+                  auto digest = gen.add_cloakTransaction(in);
+                  return digest;
               };
 
             auto call_prepare =
@@ -99,13 +99,12 @@ namespace cloak4ccf
             auto get_mpt =
               [this](ReadOnlyCloakContext& ctx, const nlohmann::json& params) {
                   auto mpc = params.get<evm4ccf::MPT_CALL::In>();
-                  auto tx_hash = Utils::to_KeccakHash(mpc.id);
                   auto cp_handler = ctx.tx.ro(tables.txTables.cloak_policys);
-                  auto cpt_opt = cp_handler->get(tx_hash);
+                  auto cpt_opt = cp_handler->get(mpc.id);
                   if (!cpt_opt.has_value())
                   {
-                      throw std::logic_error(fmt::format(
-                        "tx_hash:{} not found", eevm::to_hex_string(tx_hash)));
+                      throw std::logic_error(
+                        fmt::format("tx_hash:{} not found", mpc.id));
                   }
 
                   return evm4ccf::MPT_CALL::Out{
@@ -164,7 +163,6 @@ namespace cloak4ccf
               HTTP_POST,
               json_read_only_adapter(get_mpt, tables),
               auth_policies)
-              .set_auto_schema<evm4ccf::MPT_CALL>()
               .install();
 
             make_endpoint(

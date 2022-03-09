@@ -29,9 +29,9 @@
 #include "vector"
 
 #include <eEVM/bigint.h>
+#include <eEVM/keccak256.h>
 #include <eEVM/rlp.h>
 #include <eEVM/util.h>
-
 namespace evm4ccf
 {
     using namespace eevm;
@@ -39,17 +39,19 @@ namespace evm4ccf
     using ByteData = std::string;
     using Address = eevm::Address;
     using Policy = rpcparams::Policy;
-    using h256 = eevm::KeccakHash;
+    // using h256 = eevm::KeccakHash;
     using ByteString = std::vector<uint8_t>;
 
     // tables
     struct PrivacyPolicyTransaction;
     struct CloakPolicyTransaction;
-    using Privacys = ccf::ServiceMap<h256, PrivacyPolicyTransaction>;
-    using PrivacyDigests = ccf::ServiceMap<Address, h256>;
-    using CloakPolicys = ccf::ServiceMap<h256, CloakPolicyTransaction>;
-    using CloakDigests = ccf::ServiceMap<Address, h256>;
-    using StatesDigests = ccf::ServiceMap<h256, h256>;
+    using Privacys = ccf::ServiceMap<eevm::Keccak256, PrivacyPolicyTransaction>;
+    using PrivacyDigests = kv::RawCopySerialisedMap<Address, eevm::Keccak256>;
+    using CloakPolicys =
+      ccf::ServiceMap<eevm::Keccak256, CloakPolicyTransaction>;
+    using CloakDigests = kv::RawCopySerialisedMap<Address, eevm::Keccak256>;
+    using StatesDigests =
+      kv::RawCopySerialisedMap<eevm::Keccak256, eevm::Keccak256>;
     constexpr size_t GCM_SIZE_IV = 12;
 
     struct MultiPartyTransaction
@@ -81,7 +83,7 @@ namespace evm4ccf
         }
     };
 
-    using MultiPartys = kv::Map<h256, MultiPartyTransaction>;
+    using MultiPartys = kv::Map<eevm::Keccak256, MultiPartyTransaction>;
 
     struct PrivacyPolicyTransaction
     {
@@ -154,24 +156,20 @@ namespace evm4ccf
             auto inputsHash = std::vector<std::string>();
             for (auto&& [key, value] : partys)
             {
-                auto hash = eevm::keccak_256(value);
                 party.push_back(get_address_from_public_key_asn1(key));
-                inputsHash.push_back(eevm::to_hex_string(hash));
+                inputsHash.push_back(eevm::Keccak256(value).hex_str());
             }
 
             return std::make_tuple(party, inputsHash);
         }
 
-        std::vector<uint8_t> packedPropose(eevm::KeccakHash& txId) const
+        std::vector<uint8_t> packedPropose(const eevm::Keccak256& txId) const
         {
             auto [partys, inputHash] = calcInputsHash();
 
             auto encoder = abicoder::Encoder("propose");
             encoder.add_inputs(
-              "txId",
-              "uint256",
-              eevm::to_hex_string(txId),
-              abicoder::number_type());
+              "txId", "uint256", txId.hex_str(), abicoder::number_type());
             encoder.add_inputs(
               "verifierAddr",
               "address",
@@ -264,7 +262,7 @@ namespace evm4ccf
         }
 
         bool request_public_keys(
-          h256& target_digest,
+          const eevm::Keccak256& target_digest,
           cloak4ccf::TeeManager::AccountPtr acc,
           Address& service_addr)
         {
@@ -442,7 +440,7 @@ namespace evm4ccf
                       }
                       // tag and iv
                       auto pk_der = p.owner["owner"] == "tee" ?
-                        tee_kp->get_address_from_public_key() :
+                        tee_kp->get_public_key() :
                         get_der_from_raw_public_key(
                           eevm::to_bytes(public_keys.at(sender_addr)));
 
@@ -552,7 +550,7 @@ namespace evm4ccf
                         addresses.at(ps.owner["owner"]);
 
                       auto pk_der = ps.owner["owner"] == "tee" ?
-                        tee_kp->get_address_from_public_key() :
+                        tee_kp->get_public_key() :
                         get_der_from_raw_public_key(
                           eevm::to_bytes(public_keys.at(sender_addr)));
 

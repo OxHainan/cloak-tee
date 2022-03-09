@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "app/blit.h"
 #include "ccf/crypto/pem.h"
 #include "crypto/secp256k1/key_pair.h"
 #include "eEVM/address.h"
+#include "eEVM/keccak256.h"
 #include "eEVM/util.h"
 #include "ethereum/tee_account.h"
 #include "kv/store.h"
@@ -101,7 +103,7 @@ namespace crypto::secp256k1
         INFO("generate secp256k1 keypair");
         {
             auto kp = make_key_pair();
-            auto addr = evm4ccf::get_addr_from_kp(kp);
+            auto addr = evm4ccf::get_address_from_public_key(kp);
             privateTx->put(addr, kp->private_key_pem());
             REQUIRE(tx.commit() == kv::CommitResult::SUCCESS);
         }
