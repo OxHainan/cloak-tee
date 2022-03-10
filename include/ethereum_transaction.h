@@ -372,8 +372,8 @@ namespace evm4ccf
             crypto::secp256k1::RecoverableSignature rs;
             to_recoverable_signature(rs);
             const auto tbs = to_be_signed();
-            auto pubk = crypto::secp256k1::PublicKey_k1Bitcoin::recover_key(
-              rs, {tbs.data(), tbs.size()});
+            auto pubk =
+              crypto::secp256k1::PublicKey_k1Bitcoin::recover_key(rs, tbs.hash);
             const auto hashed = eevm::Keccak256(pubk.get_public_key());
             return eevm::from_big_endian(hashed.data() + 12, 20u);
         }

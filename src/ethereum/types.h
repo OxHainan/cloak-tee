@@ -22,6 +22,7 @@
 #include <eEVM/rlp.h>
 #include <eEVM/transaction.h>
 #include <eEVM/util.h>
+#include <set>
 namespace Ethereum
 {
     using Balance = uint256_t;

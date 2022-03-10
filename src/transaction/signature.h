@@ -15,9 +15,9 @@
 #pragma once
 
 #include "app/utils.h"
+#include "ccf/kv/map.h"
 #include "ethereum/tables.h"
 #include "ethereum_transaction.h"
-#include "kv/map.h"
 #include "kv/store.h"
 #include "queue/types.h"
 #include "queue/workertransaction.h"

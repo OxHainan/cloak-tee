@@ -38,6 +38,7 @@ set(CCF_IMPL_SOURCE
     ${CCF_DIR}/src/enclave/enclave_time.cpp
     ${CCF_DIR}/src/enclave/thread_local.cpp 
     ${CCF_DIR}/src/js/wrap.cpp
+    ${CCF_DIR}/src/node/quote.cpp
 )
 
 if("sgx" IN_LIST COMPILE_TARGETS)
@@ -61,7 +62,7 @@ if("sgx" IN_LIST COMPILE_TARGETS)
 
   target_link_libraries(
     ccf.enclave PUBLIC quickjs.enclave ccfcrypto.enclave http_parser.enclave
-                       sss.enclave ccf_endpoints.enclave
+                       sss.enclave ccf_endpoints.enclave ccf_kv.enclave
   )
 
   if(ENABLE_HTTP2)
@@ -114,6 +115,7 @@ if("virtual" IN_LIST COMPILE_TARGETS)
            sss.host
            ccf_endpoints.host
            openenclave::oehost
+           ccf_kv.host
            ${CMAKE_THREAD_LIBS_INIT}
   )
 
