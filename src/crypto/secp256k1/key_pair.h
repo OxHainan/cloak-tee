@@ -2,14 +2,13 @@
 // Licensed under the Apache 2.0 License.
 #pragma once
 
-#include "ccf/crypto/hash_provider.h"
-#include "ccf/crypto/pem.h"
-#include "ccf/ds/buffer.h"
 #include "curve.h"
 #include "entropy.h"
 #include "error_string.h"
 #include "hash.h"
 
+#include <ccf/crypto/hash_provider.h>
+#include <ccf/crypto/pem.h>
 #include <cstring>
 #include <iomanip>
 #include <limits>
@@ -263,17 +262,17 @@ namespace crypto::secp256k1
         }
 
         static PublicKey_k1Bitcoin recover_key(
-          const RecoverableSignature& rs, CBuffer hashed)
+          const RecoverableSignature& rs, std::span<const uint8_t> hashed)
         {
             int rc;
 
             size_t buf_len = 65;
             std::array<uint8_t, 65> buf;
 
-            if (hashed.n != 32)
+            if (hashed.size() != 32)
             {
                 throw std::logic_error(fmt::format(
-                  "Expected {} bytes in hash, got {}", 32, hashed.n));
+                  "Expected {} bytes in hash, got {}", 32, hashed.size()));
             }
 
             // Recover with libsecp256k1
@@ -291,7 +290,8 @@ namespace crypto::secp256k1
                 }
 
                 secp256k1_pubkey pubk;
-                rc = secp256k1_ecdsa_recover(ctx->p, &pubk, &sig, hashed.p);
+                rc =
+                  secp256k1_ecdsa_recover(ctx->p, &pubk, &sig, hashed.data());
                 if (rc != 1)
                 {
                     throw std::logic_error("secp256k1_ecdsa_recover failed");
@@ -507,10 +507,10 @@ namespace crypto::secp256k1
          * @return Signature as a vector
          */
         std::vector<uint8_t> sign(
-          CBuffer d, mbedtls_md_type_t md_type = {}) const
+          std::span<const uint8_t> d, mbedtls_md_type_t md_type = {}) const
         {
             HashBytes hash;
-            do_hash(*ctx, d.p, d.rawSize(), hash, md_type);
+            do_hash(*ctx, d.data(), d.size(), hash, md_type);
 
             return sign_hash(hash.data(), hash.size());
         }
@@ -531,13 +531,13 @@ namespace crypto::secp256k1
          *         or 0xf if the signature_size exceeds that of a uint8_t.
          */
         int sign(
-          CBuffer d,
+          std::span<const uint8_t> d,
           size_t* sig_size,
           uint8_t* sig,
           mbedtls_md_type_t md_type = {}) const
         {
             HashBytes hash;
-            do_hash(*ctx, d.p, d.rawSize(), hash, md_type);
+            do_hash(*ctx, d.data(), d.size(), hash, md_type);
 
             return sign_hash(hash.data(), hash.size(), sig_size, sig);
         }
@@ -665,19 +665,20 @@ namespace crypto::secp256k1
             return 0;
         }
 
-        RecoverableSignature sign_recoverable_hashed(CBuffer hashed)
+        RecoverableSignature sign_recoverable_hashed(
+          const std::span<const uint8_t> hashed)
         {
             int rc;
 
-            if (hashed.n != 32)
+            if (hashed.size() != 32)
             {
                 throw std::logic_error(fmt::format(
-                  "Expected {} bytes in hash, got {}", 32, hashed.n));
+                  "Expected {} bytes in hash, got {}", 32, hashed.size()));
             }
 
             secp256k1_ecdsa_recoverable_signature sig;
             rc = secp256k1_ecdsa_sign_recoverable(
-              bc_ctx->p, &sig, hashed.p, c4_priv, nullptr, nullptr);
+              bc_ctx->p, &sig, hashed.data(), c4_priv, nullptr, nullptr);
             if (rc != 1)
             {
                 throw std::logic_error(
@@ -701,15 +702,15 @@ namespace crypto::secp256k1
     using KeyPairPtr = std::shared_ptr<KeyPair>;
 
     inline std::unique_ptr<mbedtls_pk_context> parse_private_key(
-      const Pem& pkey, CBuffer pw = nullb)
+      const Pem& pkey, std::span<const uint8_t>& pw)
     {
         std::unique_ptr<mbedtls_pk_context> key =
           std::make_unique<mbedtls_pk_context>();
         mbedtls_pk_init(key.get());
 
         // keylen is +1 to include terminating null byte
-        int rc =
-          mbedtls_pk_parse_key(key.get(), pkey.data(), pkey.size(), pw.p, pw.n);
+        int rc = mbedtls_pk_parse_key(
+          key.get(), pkey.data(), pkey.size(), pw.data(), pw.size());
         if (rc != 0)
         {
             throw std::logic_error("Could not parse key: " + error_string(rc));
@@ -740,10 +741,9 @@ namespace crypto::secp256k1
      * Create a public / private ECDSA key pair from existing private key data
      */
     inline KeyPairPtr make_key_pair(
-      const Pem& pkey,
-      CBuffer pw = nullb,
-      bool use_bitcoin_impl = prefer_bitcoin_secp256k1)
+      const Pem& pkey, bool use_bitcoin_impl = prefer_bitcoin_secp256k1)
     {
+        std::span<const uint8_t> pw;
         auto key = parse_private_key(pkey, pw);
 
         const auto curve = get_ec_from_context(*key);

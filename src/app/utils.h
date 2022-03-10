@@ -195,10 +195,9 @@ namespace Utils
     {
         auto key = generate_symmetric_key(kp, pk_der);
         auto key_aes_gcm = crypto::make_key_aes_gcm(key);
-        // crypto::KeyAesGcm key_aes_gcm(key);
         std::vector<uint8_t> res(data.size());
         std::vector<uint8_t> tag(crypto::GCM_SIZE_TAG);
-        key_aes_gcm->encrypt(iv, data, {}, res.data(), tag.data());
+        key_aes_gcm->encrypt(iv, data, {}, res, tag.data());
         return {res, tag};
     }
 
@@ -213,7 +212,7 @@ namespace Utils
         size_t c_size = data.size() - crypto::GCM_SIZE_TAG;
         std::vector<uint8_t> res(c_size);
         if (!key_aes_gcm->decrypt(
-              iv, data.data() + c_size, {data.data(), c_size}, {}, res.data()))
+              iv, data.data() + c_size, {data.data(), c_size}, {}, res))
         {
             LOG_DEBUG_FMT("decryption failed, please check your data");
             throw std::logic_error("decryption failed, please check your data");

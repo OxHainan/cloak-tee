@@ -21,7 +21,6 @@
 #include "ethereum/tee_account.h"
 #include "kv/store.h"
 #include "kv/test/null_encryptor.h"
-#include "service/blit.h"
 
 #include <chrono>
 #include <doctest/doctest.h>

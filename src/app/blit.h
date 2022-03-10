@@ -1,7 +1,7 @@
 #pragma once
 #include "eEVM/keccak256.h"
-#include "service/blit.h"
 
+#include <ccf/service/blit_serialiser_pem.h>
 #include <eEVM/bigint.h>
 #include <eEVM/util.h>
 namespace kv::serialisers

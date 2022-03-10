@@ -9,9 +9,9 @@
 #include "ccf/ds/logger.h"
 #include "ds/hash.h"
 
+#include <ccf/kv/map.h>
 #include <ccf/serdes.h>
 #include <ccf/tx.h>
-#include <kv/map.h>
 #include <kv/store.h>
 // eEVM
 #include "nljsontypes.h"

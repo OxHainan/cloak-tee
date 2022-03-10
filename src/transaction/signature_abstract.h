@@ -56,8 +56,8 @@ namespace evm4ccf
         {
             crypto::secp256k1::RecoverableSignature rs;
             to_recoverable_signature(rs);
-            auto pubk = crypto::secp256k1::PublicKey_k1Bitcoin::recover_key(
-              rs, {tbs.data(), tbs.size()});
+            auto pubk =
+              crypto::secp256k1::PublicKey_k1Bitcoin::recover_key(rs, tbs.hash);
             return pubk.public_key_raw();
         }
 
