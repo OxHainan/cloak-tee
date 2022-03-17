@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "abi/abicoder.h"
 #include "ccf/ds/logger.h"
 #include "eEVM/keccak256.h"
 #include "transaction/exception.h"

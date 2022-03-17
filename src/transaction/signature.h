@@ -73,7 +73,7 @@ namespace evm4ccf
             tc.to = eevm::from_big_endian(to.data(), 20u);
             tc.verifierAddr = eevm::from_big_endian(verifierAddr.data(), 20u);
             tc.codeHash = eevm::to_hex_string(codeHash);
-            tc.policy = Utils::parse<Policy>(eevm::to_hex_string(data));
+            tc.policy = Utils::parse<Policy>(data);
         }
     };
 
@@ -178,8 +178,7 @@ namespace evm4ccf
         {
             mpt.to = to;
             mpt.nonce = nonce;
-            mpt.params =
-              Utils::parse<policy::MultiPartyParams>(eevm::to_hex_string(data));
+            mpt.params = Utils::parse<policy::MultiPartyParams>(data);
         }
     };
 

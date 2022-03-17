@@ -50,55 +50,10 @@ namespace Utils
         return strHex;
     }
 
-    inline std::string HexToBin(const std::string& _strHex)
-    {
-        if (_strHex.size() % 2 != 0)
-        {
-            return "";
-        }
-        auto strHex = eevm::strip(_strHex);
-
-        std::string strBin;
-        strBin.resize(strHex.size() / 2);
-        for (size_t i = 0; i < strBin.size(); i++)
-        {
-            uint8_t cTemp = 0;
-            for (size_t j = 0; j < 2; j++)
-            {
-                char cCur = strHex[2 * i + j];
-                if (cCur >= '0' && cCur <= '9')
-                {
-                    cTemp = (cTemp << 4) + (cCur - '0');
-                }
-                else if (cCur >= 'a' && cCur <= 'f')
-                {
-                    cTemp = (cTemp << 4) + (cCur - 'a' + 10);
-                }
-                else if (cCur >= 'A' && cCur <= 'F')
-                {
-                    cTemp = (cTemp << 4) + (cCur - 'A' + 10);
-                }
-                else
-                {
-                    return "";
-                }
-            }
-            strBin[i] = cTemp;
-        }
-
-        return strBin;
-    }
-
     template <typename T>
-    inline void parse(const std::string& s, T& v)
+    inline T parse(const std::vector<uint8_t>& s)
     {
-        auto j = nlohmann::json::parse(HexToBin(s));
-        v = j.get<T>();
-    }
-    template <typename T>
-    inline T parse(const std::string& s)
-    {
-        auto j = nlohmann::json::parse(HexToBin(s));
+        auto j = nlohmann::json::parse(s);
         return j.get<T>();
     }
 

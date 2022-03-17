@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://en.wikipedia.org/wiki/C%2B%2B#Standardization">
-    <img src="https://img.shields.io/badge/c%2B%2B-17-blue.svg" alt="Standard" />
+    <img src="https://img.shields.io/badge/c%2B%2B-20-blue.svg" alt="Standard" />
   </a>
   <a href="https://github.com/OxHainan/cloak-tee/blob/cloak/LICENSE">
     <img src="https://img.shields.io/badge/license-Apache%202-blue" alt="Cloak TEE is released under the Apache license." />
