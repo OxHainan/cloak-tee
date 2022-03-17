@@ -61,7 +61,6 @@ namespace evm4ccf
         Address from;
         ByteString publicKeys;
         policy::MultiPartyParams params;
-        // MSGPACK_DEFINE(nonce, from, to, publicKeys, params);
 
         bool check_transaction_type()
         {
@@ -93,7 +92,6 @@ namespace evm4ccf
         Address verifierAddr;
         ByteData codeHash;
         rpcparams::Policy policy;
-        // MSGPACK_DEFINE(from, to, verifierAddr, codeHash, policy);
         PrivacyPolicyTransaction() {}
     };
 
@@ -121,7 +119,6 @@ namespace evm4ccf
         CloakPolicyTransaction(
           const PrivacyPolicyTransaction& ppt, const ByteData& name)
         {
-            // from = ppt.from;
             to = ppt.to;
             verifierAddr = ppt.verifierAddr;
             codeHash = ppt.codeHash;

@@ -228,7 +228,6 @@ namespace cloak4ccf::TeeManager
           "cloak public key {}",
           eevm::to_hex_string(tee_acc->get_public_Key()));
 
-        LOG_INFO_FMT("tee nonce {}", tee_acc->get_nonce());
         auto contractCode = eevm::to_bytes(tee_prepare.cloakServiceContract);
         append_argument(contractCode, encoder.encode());
         const auto contractAddress =
