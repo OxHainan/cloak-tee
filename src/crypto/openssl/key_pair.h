@@ -41,14 +41,17 @@ class KeyPair_OpenSSL : public PublicKey_OpenSSL, public KeyPair
     virtual int sign_hash(const uint8_t* hash, size_t hash_size, size_t* sig_size, uint8_t* sig) const override;
 
     virtual Pem create_csr(
-        const std::string& subject_name, const std::vector<SubjectAltName>& subject_alt_names) const override;
+        const std::string& subject_name,
+        const std::vector<SubjectAltName>& subject_alt_names,
+        const std::optional<Pem>& public_key = std::nullopt) const override;
 
     virtual Pem sign_csr(
         const Pem& issuer_cert,
         const Pem& signing_request,
         const std::string& valid_from,
         const std::string& valid_to,
-        bool ca = false) const override;
+        bool ca = false,
+        Signer signer = Signer::SUBJECT) const override;
 
     virtual std::vector<uint8_t> derive_shared_secret(const PublicKey& peer_key) override;
 

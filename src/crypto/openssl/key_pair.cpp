@@ -141,11 +141,18 @@ int KeyPair_OpenSSL::sign_hash(const uint8_t* hash, size_t hash_size, size_t* si
 }
 
 Pem KeyPair_OpenSSL::create_csr(
-    const std::string& subject_name, const std::vector<SubjectAltName>& subject_alt_names) const
+    const std::string& subject_name,
+    const std::vector<SubjectAltName>& subject_alt_names,
+    const std::optional<Pem>& public_key) const
 {
     Unique_X509_REQ req;
-
-    OpenSSL::CHECK1(X509_REQ_set_pubkey(req, key));
+    if (public_key) {
+        Unique_BIO mem(*public_key);
+        Unique_PKEY pubkey(mem);
+        OpenSSL::CHECK1(X509_REQ_set_pubkey(req, pubkey));
+    } else {
+        OpenSSL::CHECK1(X509_REQ_set_pubkey(req, key));
+    }
 
     X509_NAME* subj_name = NULL;
     OpenSSL::CHECKNULL(subj_name = X509_NAME_new());
@@ -187,16 +194,20 @@ Pem KeyPair_OpenSSL::sign_csr(
     const Pem& signing_request,
     const std::string& valid_from,
     const std::string& valid_to,
-    bool ca) const
+    bool ca,
+    Signer signer) const
 {
     X509* icrt = NULL;
     Unique_BIO mem(signing_request);
     Unique_X509_REQ csr(mem);
     Unique_X509 crt;
+    EVP_PKEY* req_pubkey = NULL;
 
     // First, verify self-signed CSR
-    EVP_PKEY* req_pubkey = X509_REQ_get0_pubkey(csr);
-    OpenSSL::CHECK1(X509_REQ_verify(csr, req_pubkey));
+    if (signer == Signer::SUBJECT) {
+        req_pubkey = X509_REQ_get0_pubkey(csr);
+        OpenSSL::CHECK1(X509_REQ_verify(csr, req_pubkey));
+    }
 
     // Add version
     OpenSSL::CHECK1(X509_set_version(crt, 2));
@@ -218,6 +229,13 @@ Pem KeyPair_OpenSSL::sign_csr(
         Unique_BIO imem(issuer_cert);
         OpenSSL::CHECKNULL(icrt = PEM_read_bio_X509(imem, NULL, NULL, NULL));
         OpenSSL::CHECK1(X509_set_issuer_name(crt, X509_get_subject_name(icrt)));
+
+        if (signer == Signer::ISSUER) {
+            // Verify issuer-signed CSR
+            req_pubkey = X509_REQ_get0_pubkey(csr);
+            auto issuer_pubkey = X509_get0_pubkey(icrt);
+            OpenSSL::CHECK1(X509_REQ_verify(csr, issuer_pubkey));
+        }
     } else {
         OpenSSL::CHECK1(X509_set_issuer_name(crt, X509_REQ_get_subject_name(csr)));
     }
