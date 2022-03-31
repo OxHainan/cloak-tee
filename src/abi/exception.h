@@ -16,12 +16,14 @@
 #include "cloak_exception.h"
 #include "string"
 
-namespace abicoder {
-
-class ABIException : public cloak4ccf::CloakException {
+namespace abicoder
+{
+class ABIException : public cloak4ccf::CloakException
+{
  public:
     explicit ABIException(const std::string& msg_) : msg(msg_) {}
-    const char* what() const noexcept {
+    const char* what() const noexcept
+    {
         return msg.c_str();
     }
 

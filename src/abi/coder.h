@@ -16,11 +16,13 @@
 #include "abi/types/array.h"
 #include "abi/types/type.h"
 
-namespace abicoder {
-
-class Coder {
+namespace abicoder
+{
+class Coder
+{
  public:
-    static std::vector<uint8_t> pack(const std::vector<TypePrt>& coders) {
+    static std::vector<uint8_t> pack(const std::vector<TypePrt>& coders)
+    {
         if (coders.size() < 1)
             return {};
 
@@ -34,7 +36,8 @@ class Coder {
     }
 
  private:
-    static std::vector<uint8_t> basic_pack(std::vector<PackParams>& parts) {
+    static std::vector<uint8_t> basic_pack(std::vector<PackParams>& parts)
+    {
         size_t staticSize = 0, dynamicSize = 0;
         for (auto part : parts) {
             if (part.Dynamic) {

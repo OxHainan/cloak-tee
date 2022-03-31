@@ -21,11 +21,9 @@ set(EEVM_SRC
     ${EVM_DIR}/src/processor.cpp
     ${EVM_DIR}/src/keccak256.cpp
 )
-
+include_directories(${EVM_DIR}/include)
 if("sgx" IN_LIST COMPILE_TARGETS)
     add_enclave_library_c(eevm.enclave ${EEVM_SRC} ${KECCAK_SRC} ${INTX_SRC})
-    target_include_directories(eevm.enclave PRIVATE ${EVM_DIR}/include)
 endif()
 
 add_host_library(eevm.host STATIC ${EEVM_SRC} ${KECCAK_SRC} ${INTX_SRC})
-target_include_directories(eevm.host PRIVATE ${EVM_DIR}/include )

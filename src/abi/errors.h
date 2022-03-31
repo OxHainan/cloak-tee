@@ -16,8 +16,10 @@
 #include "iostream"
 
 #include <fmt/format.h>
-namespace errors {
-inline auto make_length_error(const std::string &name, const size_t &want, const size_t &get) {
+namespace errors
+{
+inline auto make_length_error(const std::string& name, const size_t& want, const size_t& get)
+{
     return std::logic_error(fmt::format("{} length isn`t match want {} but get {}", name, want, get));
 }
-}  // namespace errors
+} // namespace errors

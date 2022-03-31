@@ -186,7 +186,7 @@ else()
   list(APPEND LINK_LIBCXX -lc++ -lc++abi -lc++fs -stdlib=libc++)
 endif()
 
-include(${CCF_DIR}/cmake/crypto.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/crypto.cmake)
 include(${CCF_DIR}/cmake/quickjs.cmake)
 include(${CCF_DIR}/cmake/sss.cmake)
 if(ENABLE_HTTP2)
@@ -208,8 +208,7 @@ function(add_unit_test name)
   target_link_libraries(
     ${name} PRIVATE ${LINK_LIBCXX} ccfcrypto.host 
                                 openenclave::oehost 
-                                eevm.host
-                                secp256k1.host
+                                eevm.host                           
                                 ccf_kv.host
   )
   add_san(${name})
