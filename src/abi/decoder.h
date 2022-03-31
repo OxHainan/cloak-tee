@@ -19,21 +19,22 @@
 
 #include <eEVM/util.h>
 
-namespace abicoder {
-
-class Decoder {
+namespace abicoder
+{
+class Decoder
+{
  public:
     Decoder() {}
 
-    void add_params(const std::string& _name,
-                    const std::string& _type,
-                    const nlohmann::json& _type_value = "") {
+    void add_params(const std::string& _name, const std::string& _type, const nlohmann::json& _type_value = "")
+    {
         abi.push_back({_name, _type});
         auto coder = entry_identity(_type_value);
         coders.push_back(coder);
     }
 
-    std::vector<TypePrt> decode(const std::vector<uint8_t>& inputs, size_t offset = 0u) {
+    std::vector<TypePrt> decode(const std::vector<uint8_t>& inputs, size_t offset = 0u)
+    {
         for (size_t i = 0; i < coders.size(); i++) {
             if (coders[i]->dynamicType()) {
                 // calc offset
@@ -48,9 +49,11 @@ class Decoder {
         return coders;
     }
 
-    static std::vector<TypePrt> decode(const std::vector<uint8_t>& inputs,
-                                       const std::vector<std::string>& _type,
-                                       const std::vector<nlohmann::json>& _type_value) {
+    static std::vector<TypePrt> decode(
+        const std::vector<uint8_t>& inputs,
+        const std::vector<std::string>& _type,
+        const std::vector<nlohmann::json>& _type_value)
+    {
         Decoder decoder;
         for (size_t i = 0; i < _type.size(); i++) {
             decoder.add_params("", _type[i], _type_value[i]);
@@ -59,7 +62,8 @@ class Decoder {
         return decoder.decode(inputs);
     }
 
-    static std::vector<std::string> decode_bytes_array(const std::vector<uint8_t>& inputs) {
+    static std::vector<std::string> decode_bytes_array(const std::vector<uint8_t>& inputs)
+    {
         std::vector<std::string> res;
         Decoder decoder;
         decoder.add_params("", "bytes[]", make_bytes_array());

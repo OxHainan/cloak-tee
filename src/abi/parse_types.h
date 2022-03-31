@@ -15,20 +15,24 @@
 #pragma once
 #include "common.h"
 
-namespace abicoder {
-BTypePtr parse_types(const nlohmann::json& j) {
+namespace abicoder
+{
+BTypePtr parse_types(const nlohmann::json& j)
+{
     if (j.is_null() || j.is_string()) {
         return nullptr;
     }
 
     type_value type = j["type"];
     switch (type) {
-        case type_value::NUMBER: {
+        case type_value::NUMBER:
+        {
             auto v = j.get<number_type>();
             return v.get_value();
             break;
         }
-        case type_value::ARRAY: {
+        case type_value::ARRAY:
+        {
             auto v = j.get<array_type>();
             return v.get_value();
             break;
@@ -36,7 +40,8 @@ BTypePtr parse_types(const nlohmann::json& j) {
         case type_value::ADDRESS:
         case type_value::BOOL:
         case type_value::STRING:
-        case type_value::BYTES: {
+        case type_value::BYTES:
+        {
             auto v = j.get<common_type>();
             return v.get_value();
             break;
@@ -51,7 +56,8 @@ BTypePtr parse_types(const nlohmann::json& j) {
     throw std::logic_error(fmt::format("{} can`t parsing", type));
 }
 
-bool check_dynamic(const nlohmann::json& j) {
+bool check_dynamic(const nlohmann::json& j)
+{
     auto v = parse_types(j);
     if (v->dynamic) {
         return v->dynamic;

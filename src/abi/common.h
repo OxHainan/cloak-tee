@@ -20,7 +20,8 @@
 #include <eEVM/bigint.h>
 #include <eEVM/util.h>
 
-namespace abicoder {
+namespace abicoder
+{
 using uint256 = intx::uint256;
 
 inline constexpr auto ADDRESS = "address";
@@ -32,74 +33,97 @@ inline constexpr auto BYTES = "bytes";
 inline constexpr auto FIXED = "fixed";
 inline constexpr auto UFIXED = "ufixed";
 
-inline constexpr auto ZERO_HEX_STR =
-    "0x0000000000000000000000000000000000000000000000000000000000000000";
+inline constexpr auto ZERO_HEX_STR = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
-struct PackParams {
+struct PackParams
+{
     bool Dynamic;
     std::vector<uint8_t> data;
 };
 
-struct abiParams {
+struct abiParams
+{
     std::string name;
     std::string type;
 };
 
-enum class type_value { FOUNDNOT, ADDRESS, BOOL, BYTES, STRING, NUMBER, ARRAY };
+enum class type_value
+{
+    FOUNDNOT,
+    ADDRESS,
+    BOOL,
+    BYTES,
+    STRING,
+    NUMBER,
+    ARRAY
+};
 
-NLOHMANN_JSON_SERIALIZE_ENUM(type_value,
-                             {
-                                 {type_value::FOUNDNOT, "null"},
-                                 {type_value::ADDRESS, "address"},
-                                 {type_value::BOOL, "bool"},
-                                 {type_value::BYTES, "bytes"},
-                                 {type_value::STRING, "string"},
-                                 {type_value::NUMBER, "number"},
-                                 {type_value::ARRAY, "array"},
-                             })
+NLOHMANN_JSON_SERIALIZE_ENUM(
+    type_value,
+    {
+        {type_value::FOUNDNOT, "null"},
+        {type_value::ADDRESS, "address"},
+        {type_value::BOOL, "bool"},
+        {type_value::BYTES, "bytes"},
+        {type_value::STRING, "string"},
+        {type_value::NUMBER, "number"},
+        {type_value::ARRAY, "array"},
+    })
 
-struct base_type {
+struct base_type
+{
     nlohmann::json name;
     size_t length;
     bool dynamic;
     type_value type;
 
     base_type(const type_value& t, const nlohmann::json& j, const size_t& len, bool dynamic_) :
-        type(t), name(j), length(len), dynamic(dynamic_) {}
+      name(j),
+      length(len),
+      dynamic(dynamic_),
+      type(t)
+
+    {}
 };
 
 using BTypePtr = std::shared_ptr<base_type>;
 
-struct number_type {
-    size_t bit_size;
+struct number_type
+{
     type_value type;
+    size_t bit_size;
     bool Signed;
     number_type(const size_t& bit = 256, const bool Signed_ = false) :
-        type(type_value::NUMBER), Signed(Signed_), bit_size(bit) {}
+      type(type_value::NUMBER),
+      bit_size(bit),
+      Signed(Signed_)
 
-    BTypePtr get_value() const {
+    {}
+
+    BTypePtr get_value() const
+    {
         return std::make_shared<base_type>(type, Signed ? "int" : "uint", bit_size, false);
     }
 };
 
-struct array_type {
-    std::optional<size_t> len = std::nullopt;
+struct array_type
+{
     type_value type;
+    std::optional<size_t> len = std::nullopt;
     nlohmann::json next;
     array_type() {}
-    array_type(const nlohmann::json& j, const size_t& col) :
-        type(type_value::ARRAY), next(j), len(col) {}
+    array_type(const nlohmann::json& j, const size_t& col) : type(type_value::ARRAY), len(col), next(j) {}
 
-    BTypePtr get_value() const {
+    BTypePtr get_value() const
+    {
         return std::make_shared<base_type>(type, next, len.value_or(0), !len.has_value());
     }
 
     friend void from_json(const nlohmann::json& j, array_type& s);
     friend void to_json(nlohmann::json& j, const array_type& s);
 
-    static nlohmann::json make_array_type(const nlohmann::json& j,
-                                          const std::vector<size_t>& num,
-                                          const size_t& i = 0) {
+    static nlohmann::json make_array_type(const nlohmann::json& j, const std::vector<size_t>& num, const size_t& i = 0)
+    {
         if (i == num.size())
             return j;
         auto v = array_type(j, num[i]);
@@ -107,14 +131,16 @@ struct array_type {
     }
 };
 
-struct common_type {
+struct common_type
+{
     type_value type;
     bool dynamic;
     std::optional<size_t> len = std::nullopt;
     common_type() = default;
     common_type(const nlohmann::json& type_, const size_t& len_ = 0) : type(type_), len(len_) {}
 
-    BTypePtr get_value() const {
+    BTypePtr get_value() const
+    {
         switch (type) {
             case type_value::ADDRESS:
             case type_value::BOOL:

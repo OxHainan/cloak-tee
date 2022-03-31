@@ -14,8 +14,10 @@
 
 #pragma once
 #include "json_utils.h"
-namespace abicoder {
-inline void from_json(const nlohmann::json& j, array_type& s) {
+namespace abicoder
+{
+inline void from_json(const nlohmann::json& j, array_type& s)
+{
     evm4ccf::require_object(j);
     s.type = j["type"];
     s.next = j["value_type"];
@@ -25,7 +27,8 @@ inline void from_json(const nlohmann::json& j, array_type& s) {
     }
 }
 
-inline void to_json(nlohmann::json& j, const array_type& s) {
+inline void to_json(nlohmann::json& j, const array_type& s)
+{
     j = nlohmann::json::object();
     j["type"] = s.type;
     j["value_type"] = s.next;
@@ -34,21 +37,24 @@ inline void to_json(nlohmann::json& j, const array_type& s) {
     }
 }
 
-inline void from_json(const nlohmann::json& j, number_type& s) {
+inline void from_json(const nlohmann::json& j, number_type& s)
+{
     evm4ccf::require_object(j);
     s.bit_size = j["bit_size"].get<size_t>();
     s.Signed = j["signed"].get<bool>();
     s.type = j["type"];
 }
 
-inline void to_json(nlohmann::json& j, const number_type& s) {
+inline void to_json(nlohmann::json& j, const number_type& s)
+{
     j = nlohmann::json::object();
     j["type"] = s.type;
     j["bit_size"] = s.bit_size;
     j["signed"] = s.Signed;
 }
 
-inline void from_json(const nlohmann::json& j, common_type& s) {
+inline void from_json(const nlohmann::json& j, common_type& s)
+{
     evm4ccf::require_object(j);
     s.type = j["type"];
     const auto it = j.find("len");
@@ -58,7 +64,8 @@ inline void from_json(const nlohmann::json& j, common_type& s) {
     }
 }
 
-inline void to_json(nlohmann::json& j, const common_type& s) {
+inline void to_json(nlohmann::json& j, const common_type& s)
+{
     j = nlohmann::json::object();
     j["type"] = s.type;
     if (s.len.has_value() && s.len.value() != 0) {

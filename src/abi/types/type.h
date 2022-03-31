@@ -22,9 +22,10 @@
 #include <string>
 #include <vector>
 
-namespace abicoder {
-
-class Type {
+namespace abicoder
+{
+class Type
+{
  public:
     static constexpr size_t MAX_BIT_LENGTH = 256;
     static constexpr size_t MAX_BYTE_LENGTH = MAX_BIT_LENGTH / 8;
@@ -33,7 +34,8 @@ class Type {
     virtual std::string getTypeAsString() = 0;
     virtual void set_value(const std::string&) {}
     virtual std::vector<uint8_t> get_value() = 0;
-    virtual bool dynamicType() {
+    virtual bool dynamicType()
+    {
         return false;
     }
     virtual size_t offset() = 0;
@@ -43,19 +45,23 @@ class Type {
 using TypePrt = std::shared_ptr<Type>;
 using TypePtrLst = std::vector<TypePrt>;
 
-class Address : public Type {
+class Address : public Type
+{
  public:
     explicit Address(const std::string& _value = "") : value(to_bytes(_value, LENGTH)) {}
 
-    std::vector<uint8_t> encode() override {
+    std::vector<uint8_t> encode() override
+    {
         return value;
     }
 
-    void set_value(const std::string& src) override {
+    void set_value(const std::string& src) override
+    {
         value = to_bytes(src, LENGTH);
     }
 
-    void decode(const std::vector<uint8_t>& inputs) override {
+    void decode(const std::vector<uint8_t>& inputs) override
+    {
         if (inputs.size() < MAX_BYTE_LENGTH) {
             throw ABIException("Input value length has no enough space");
         }
@@ -64,19 +70,23 @@ class Address : public Type {
         std::copy(inputs.begin(), inputs.begin() + MAX_BYTE_LENGTH, value.begin());
     }
 
-    std::vector<uint8_t> get_value() override {
+    std::vector<uint8_t> get_value() override
+    {
         return value;
     }
 
-    bool dynamicType() override {
+    bool dynamicType() override
+    {
         return false;
     }
 
-    size_t offset() override {
+    size_t offset() override
+    {
         return MAX_BYTE_LENGTH;
     }
 
-    std::string getTypeAsString() override {
+    std::string getTypeAsString() override
+    {
         return ADDRESS;
     }
 
@@ -85,30 +95,31 @@ class Address : public Type {
     std::vector<uint8_t> value;
 };
 
-class NumericType : public Type {
+class NumericType : public Type
+{
  public:
-    explicit NumericType(const std::vector<uint8_t>& val) {
+    explicit NumericType(const std::vector<uint8_t>& val)
+    {
         value = eevm::from_big_endian(val.data(), val.size());
     }
 
-    NumericType(const std::string& _type, const intx::uint256& _value) :
-        value(_value), type(_type) {}
+    NumericType(const std::string& _type, const intx::uint256& _value) : type(_type), value(_value) {}
 
-    NumericType(const std::string& _type, const std::string& _value) :
-        value(eevm::to_uint256(_value)), type(_type) {}
+    NumericType(const std::string& _type, const std::string& _value) : type(_type), value(eevm::to_uint256(_value)) {}
 
     explicit NumericType(const size_t& length) : value(length) {}
 
-    uint64_t to_uint64() {
+    uint64_t to_uint64()
+    {
         const auto val = value;
         if (val > std::numeric_limits<uint64_t>::max()) {
-            throw ABIException(fmt::format("Value on NumbericType {} is larger than 2^64",
-                                           eevm::to_hex_string(val)));
+            throw ABIException(fmt::format("Value on NumbericType {} is larger than 2^64", eevm::to_hex_string(val)));
         }
         return static_cast<uint64_t>(val);
     }
 
-    std::vector<uint8_t> encode() override {
+    std::vector<uint8_t> encode() override
+    {
         std::vector<uint8_t> result(MAX_BYTE_LENGTH);
         std::vector<uint8_t> desh_hash(MAX_BYTE_LENGTH);
         std::memcpy(&desh_hash[0], &value, MAX_BYTE_LENGTH);
@@ -116,7 +127,8 @@ class NumericType : public Type {
         return result;
     }
 
-    void decode(const std::vector<uint8_t>& inputs) override {
+    void decode(const std::vector<uint8_t>& inputs) override
+    {
         if (inputs.size() < MAX_BYTE_LENGTH) {
             throw ABIException("Input value length has no enough space");
         }
@@ -124,17 +136,20 @@ class NumericType : public Type {
         value = eevm::from_big_endian(val.data(), val.size());
     }
 
-    std::vector<uint8_t> get_value() override {
+    std::vector<uint8_t> get_value() override
+    {
         auto val = std::vector<uint8_t>(MAX_BYTE_LENGTH);
         eevm::to_big_endian(value, val.data());
         return val;
     }
 
-    std::string getTypeAsString() override {
+    std::string getTypeAsString() override
+    {
         return type;
     }
 
-    size_t offset() override {
+    size_t offset() override
+    {
         return MAX_BYTE_LENGTH;
     }
 
@@ -145,25 +160,28 @@ class NumericType : public Type {
     intx::uint256 value;
 };
 
-class IntType : public NumericType {
+class IntType : public NumericType
+{
  public:
-    explicit IntType(const size_t& bitSize,
-                     const uint256& value = 0u,
-                     const std::string& typePrefix = "") :
-        NumericType(parse(typePrefix, bitSize), value) {}
+    explicit IntType(const size_t& bitSize, const uint256& value = 0u, const std::string& typePrefix = "") :
+      NumericType(parse(typePrefix, bitSize), value)
+    {}
 
  private:
     IntType() = delete;
 
-    bool isValidBitSize(const size_t& bitSize) {
+    bool isValidBitSize(const size_t& bitSize)
+    {
         return bitSize % 8 == 0 && bitSize > 0 && bitSize <= MAX_BIT_LENGTH;
     }
 
-    std::string parse(const std::string& typePrefix, const size_t& _bitSize) {
+    std::string parse(const std::string& typePrefix, const size_t& _bitSize)
+    {
         auto bitSize = calc_bitSize(_bitSize);
         if (!isValidBitSize(bitSize)) {
             throw ABIException(
-                "Bitsize must be 8 bit aligned, and in range 0 < bitSize <= 256, and in valid "
+                "Bitsize must be 8 bit aligned, and in range 0 < bitSize <= "
+                "256, and in valid "
                 "range.");
         }
 
@@ -172,26 +190,30 @@ class IntType : public NumericType {
         return typePrefix + std::to_string(bitSize);
     }
 
-    size_t calc_bitSize(const size_t& size) {
+    size_t calc_bitSize(const size_t& size)
+    {
         return size == 0 ? MAX_BIT_LENGTH : size;
     }
 };
 
-class Int : public IntType {
+class Int : public IntType
+{
  public:
     explicit Int(const size_t& bitSize = MAX_BIT_LENGTH) : Int(uint256(0u), bitSize) {}
 
     explicit Int(const std::string& value, const size_t& bitSize = MAX_BIT_LENGTH) :
-        Int(eevm::to_uint256(value), bitSize) {}
+      Int(eevm::to_uint256(value), bitSize)
+    {}
 
-    explicit Int(const uint256& _value, const size_t& bitSize = MAX_BIT_LENGTH) :
-        IntType(bitSize, _value, INT) {}
+    explicit Int(const uint256& _value, const size_t& bitSize = MAX_BIT_LENGTH) : IntType(bitSize, _value, INT) {}
 
-    bool dynamicType() override {
+    bool dynamicType() override
+    {
         return false;
     }
 
-    size_t offset() override {
+    size_t offset() override
+    {
         return MAX_BYTE_LENGTH;
     }
 
@@ -199,23 +221,27 @@ class Int : public IntType {
     Int() = delete;
 };
 
-class Uint : public IntType {
+class Uint : public IntType
+{
  public:
     explicit Uint(const size_t& bitSize = MAX_BIT_LENGTH) : Uint(uint256(0u), bitSize) {}
     explicit Uint(const std::string& value, const size_t& bitSize = MAX_BIT_LENGTH) :
-        Uint(eevm::to_uint256(value), bitSize) {}
+      Uint(eevm::to_uint256(value), bitSize)
+    {}
 
-    explicit Uint(const uint256& _value, const size_t& bitSize = MAX_BIT_LENGTH) :
-        IntType(bitSize, _value, UINT) {}
+    explicit Uint(const uint256& _value, const size_t& bitSize = MAX_BIT_LENGTH) : IntType(bitSize, _value, UINT) {}
 
     explicit Uint(const std::vector<uint8_t>& inputs, const size_t& bitSize = MAX_BIT_LENGTH) :
-        Uint(eevm::from_big_endian(inputs.data(), inputs.size()), bitSize) {}
+      Uint(eevm::from_big_endian(inputs.data(), inputs.size()), bitSize)
+    {}
 
-    bool dynamicType() override {
+    bool dynamicType() override
+    {
         return false;
     }
 
-    size_t offset() override {
+    size_t offset() override
+    {
         return MAX_BYTE_LENGTH;
     }
 
@@ -223,13 +249,16 @@ class Uint : public IntType {
     Uint() = delete;
 };
 
-class Boolean : public Type {
+class Boolean : public Type
+{
  public:
-    explicit Boolean(const bool& _value = false) {
+    explicit Boolean(const bool& _value = false)
+    {
         value = _value;
     }
 
-    explicit Boolean(const std::string& _value) {
+    explicit Boolean(const std::string& _value)
+    {
         auto v = eevm::to_bytes(_value);
         if (v.size() > 1) {
             throw ABIException("Input value length is greater than 1");
@@ -243,13 +272,15 @@ class Boolean : public Type {
         value = c == 1;
     }
 
-    std::vector<uint8_t> encode() override {
+    std::vector<uint8_t> encode() override
+    {
         std::vector<uint8_t> result(MAX_BYTE_LENGTH);
         to_array(result, (uint8_t)value, MAX_BYTE_LENGTH - 1u);
         return result;
     }
 
-    void decode(const std::vector<uint8_t>& inputs) override {
+    void decode(const std::vector<uint8_t>& inputs) override
+    {
         if (inputs.size() < MAX_BYTE_LENGTH) {
             throw ABIException("Input value length has no enough space");
         }
@@ -267,23 +298,28 @@ class Boolean : public Type {
         }
     }
 
-    bool get_value() const {
+    bool get_value() const
+    {
         return value;
     }
 
-    std::vector<uint8_t> get_value() override {
+    std::vector<uint8_t> get_value() override
+    {
         return encode();
     }
 
-    bool dynamicType() override {
+    bool dynamicType() override
+    {
         return false;
     }
 
-    size_t offset() override {
+    size_t offset() override
+    {
         return MAX_BYTE_LENGTH;
     }
 
-    std::string getTypeAsString() override {
+    std::string getTypeAsString() override
+    {
         return BOOL;
     }
 
@@ -291,33 +327,34 @@ class Boolean : public Type {
     bool value;
 };
 
-inline uint64_t decode_to_uint64(const std::vector<uint8_t>& inputs) {
+inline uint64_t decode_to_uint64(const std::vector<uint8_t>& inputs)
+{
     if (inputs.size() != 32u) {
-        throw ABIException(
-            fmt::format("Cant't convert to uint64, want {} but get {}", 32u, inputs.size()));
+        throw ABIException(fmt::format("Cant't convert to uint64, want {} but get {}", 32u, inputs.size()));
     }
     return NumericType(inputs).to_uint64();
 }
 
-inline uint64_t decode_to_uint64(const std::vector<uint8_t>& inputs,
-                                 const size_t& begin,
-                                 const size_t& offset = 32u) {
+inline uint64_t decode_to_uint64(const std::vector<uint8_t>& inputs, const size_t& begin, const size_t& offset = 32u)
+{
     auto val = sub_vector(inputs, begin, offset);
     return decode_to_uint64(val);
 }
 
-inline std::vector<uint8_t> encode_to_vector(const size_t& value) {
+inline std::vector<uint8_t> encode_to_vector(const size_t& value)
+{
     return NumericType(value).encode();
 }
 
-class BytesType : public Type {
+class BytesType : public Type
+{
  public:
     explicit BytesType(const std::string& _type) : type(_type) {}
 
-    BytesType(const std::string& _type, const std::vector<uint8_t>& src) :
-        type(_type), value(src) {}
+    BytesType(const std::string& _type, const std::vector<uint8_t>& src) : value(src), type(_type) {}
 
-    std::vector<uint8_t> encode() override {
+    std::vector<uint8_t> encode() override
+    {
         std::vector<uint8_t> result(MAX_BYTE_LENGTH + alignSize(value.size()));
         auto header = NumericType(value.size()).encode();
         to_array(result, header);
@@ -325,7 +362,8 @@ class BytesType : public Type {
         return result;
     }
 
-    void decode(const std::vector<uint8_t>& inputs) override {
+    void decode(const std::vector<uint8_t>& inputs) override
+    {
         if (inputs.size() < MAX_BYTE_LENGTH) {
             throw ABIException("Input value length has no enough space");
         }
@@ -334,19 +372,23 @@ class BytesType : public Type {
         value = sub_vector(inputs, MAX_BYTE_LENGTH, MAX_BYTE_LENGTH + header);
     }
 
-    std::vector<uint8_t> get_value() const {
+    std::vector<uint8_t> get_value() const
+    {
         return value;
     }
 
-    size_t offset() override {
+    size_t offset() override
+    {
         return alignSize(value.size());
     }
 
-    std::string getTypeAsString() override {
+    std::string getTypeAsString() override
+    {
         return type;
     }
 
-    std::vector<uint8_t> get_value() override {
+    std::vector<uint8_t> get_value() override
+    {
         return value;
     }
 
@@ -359,24 +401,29 @@ class BytesType : public Type {
 };
 
 // static bytes, likes bytes8, bytes32
-class Bytes : public BytesType {
+class Bytes : public BytesType
+{
  public:
     explicit Bytes(const size_t& byteSize = 32) : Bytes(byteSize, std::vector<uint8_t>(byteSize)) {}
 
     Bytes(const size_t& byteSize, const std::vector<uint8_t>& _value) :
-        BytesType(BYTES + std::to_string(_value.size()), _value), length(byteSize) {
+      BytesType(BYTES + std::to_string(_value.size()), _value),
+      length(byteSize)
+    {
         if (!isValid(byteSize, value)) {
-            throw ABIException(
-                fmt::format("Input bytes must be in range 0 < M <= 32 and length must match type, "
-                            "get bytes size {}, but value size {}",
-                            byteSize,
-                            value.size()));
+            throw ABIException(fmt::format(
+                "Input bytes must be in range 0 < M <= 32 and length must "
+                "match type, "
+                "get bytes size {}, but value size {}",
+                byteSize,
+                value.size()));
         }
     }
 
     Bytes(const size_t& byteSize, const std::string& src) : Bytes(byteSize, bytes_strip(src)) {}
 
-    std::vector<uint8_t> encode() override {
+    std::vector<uint8_t> encode() override
+    {
         size_t mod = value.size() % MAX_BYTE_LENGTH;
         if (mod != 0) {
             auto pad = std::vector<uint8_t>(MAX_BYTE_LENGTH - mod);
@@ -385,7 +432,8 @@ class Bytes : public BytesType {
         return value;
     }
 
-    void decode(const std::vector<uint8_t>& inputs) override {
+    void decode(const std::vector<uint8_t>& inputs) override
+    {
         if (inputs.size() < MAX_BYTE_LENGTH && inputs.size() > length) {
             throw ABIException("Input value length has no enough space");
         }
@@ -393,16 +441,19 @@ class Bytes : public BytesType {
         std::copy(inputs.begin(), inputs.begin() + length, value.begin());
     }
 
-    size_t offset() override {
+    size_t offset() override
+    {
         return MAX_BYTE_LENGTH;
     }
 
-    bool dynamicType() override {
+    bool dynamicType() override
+    {
         return false;
     }
 
  private:
-    bool isValid(const size_t& byteSize, const std::vector<uint8_t>& _value) {
+    bool isValid(const size_t& byteSize, const std::vector<uint8_t>& _value)
+    {
         size_t len = _value.size();
         return len > 0 && len <= MAX_BYTE_LENGTH && len == byteSize;
     }
@@ -410,7 +461,8 @@ class Bytes : public BytesType {
     size_t length;
 };
 
-class DynamicBytes : public BytesType {
+class DynamicBytes : public BytesType
+{
  public:
     DynamicBytes() : BytesType(BYTES) {}
 
@@ -418,31 +470,37 @@ class DynamicBytes : public BytesType {
 
     explicit DynamicBytes(const std::vector<uint8_t>& _value) : BytesType(BYTES, _value) {}
 
-    bool dynamicType() override {
+    bool dynamicType() override
+    {
         return true;
     }
 
  private:
-    void isValid(const std::string& src) {
+    void isValid(const std::string& src)
+    {
         if (src.size() == 0) {
             throw ABIException("Invalid inputs argument, bytes default value is 0x");
         }
     }
 };
 
-class Utf8String : public BytesType {
+class Utf8String : public BytesType
+{
  public:
     explicit Utf8String(const std::string& src = "") : BytesType(STRING, string_to_bytes(src)) {}
 
-    std::string getTypeAsString() override {
+    std::string getTypeAsString() override
+    {
         return STRING;
     }
 
-    bool dynamicType() override {
+    bool dynamicType() override
+    {
         return true;
     }
 
-    void set_value(const std::string& src) override {
+    void set_value(const std::string& src) override
+    {
         value = string_to_bytes(src);
     }
 };

@@ -16,21 +16,20 @@
 #include "cloak_exception.h"
 #include "string"
 
-namespace cloak4ccf {
-
-namespace Transaction {
-
-class TransactionException : public cloak4ccf::CloakException {
+namespace cloak4ccf::Transaction
+{
+class TransactionException: public cloak4ccf::CloakException
+{
  public:
-    explicit TransactionException(const std::string& msg_) : msg(msg_) {}
+	explicit TransactionException(const std::string& msg_): msg(msg_) {}
 
-    const char* what() const noexcept {
-        return msg.c_str();
-    }
+	const char* what() const noexcept
+	{
+		return msg.c_str();
+	}
 
  private:
-    const std::string msg;
+	const std::string msg;
 };
 
-} // namespace Transaction
-} // namespace cloak4ccf
+} // namespace cloak4ccf::Transaction

@@ -1,22 +1,18 @@
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/secp256k1.cmake)
 
 if (NOT TARGET ccf)
     find_package(ccf REQUIRED)
 endif()
-
-
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty)
+include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 add_ccf_app(cloak 
     SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/app/cloak_for_ccf.cpp
     INCLUDE_DIRS
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${OpenEnclave_DIR}/../../include/3rdparty
-    ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${EVM_DIR}/include
+    ${OpenEnclave_DIR}/../../include/3rdparty  
 
-    LINK_LIBS_ENCLAVE eevm.enclave secp256k1.enclave 
-    LINK_LIBS_VIRTUAL eevm.host secp256k1.host INSTALL_LIBS ON
+    LINK_LIBS_ENCLAVE eevm.enclave  
+    LINK_LIBS_VIRTUAL eevm.host INSTALL_LIBS ON
 )
 
 add_custom_command(
