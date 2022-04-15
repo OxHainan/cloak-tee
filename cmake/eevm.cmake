@@ -7,10 +7,7 @@ set(EVM_3RD_PARTY_INTERNAL_DIR "${EVM_DIR}/3rdparty/internal")
 
 file(GLOB KECCAK_SRC ${EVM_3RD_PARTY_INTERNAL_DIR}/keccak/*.c)
 include_directories(SYSTEM ${EVM_3RD_PARTY_INTERNAL_DIR} ${EVM_3RD_PARTY_INTERNAL_DIR}/intx/include)
-set(INTX_SRC
-    ${EVM_3RD_PARTY_INTERNAL_DIR}/intx/lib/intx/div.cpp
-    ${EVM_3RD_PARTY_INTERNAL_DIR}/intx/lib/intx/div.hpp
-)
+
 enable_language(ASM)
 
 set(EEVM_SRC
@@ -23,7 +20,7 @@ set(EEVM_SRC
 )
 include_directories(${EVM_DIR}/include)
 if("sgx" IN_LIST COMPILE_TARGETS)
-    add_enclave_library_c(eevm.enclave ${EEVM_SRC} ${KECCAK_SRC} ${INTX_SRC})
+    add_enclave_library_c(eevm.enclave ${EEVM_SRC} ${KECCAK_SRC})
 endif()
 
-add_host_library(eevm.host STATIC ${EEVM_SRC} ${KECCAK_SRC} ${INTX_SRC})
+add_host_library(eevm.host STATIC ${EEVM_SRC} ${KECCAK_SRC})

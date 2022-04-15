@@ -13,18 +13,18 @@
 #include <eEVM/address.h>
 
 // Implement std::hash for uint256, so it can be used as key in kv
-namespace std
-{
-template <unsigned N>
-struct hash<intx::uint<N>>
-{
-    size_t operator()(const intx::uint<N>& n) const
-    {
-        const auto words = intx::to_words<size_t>(n);
-        return hash_container(words);
-    }
-};
-} // namespace std
+// namespace std
+// {
+// template <unsigned N>
+// struct hash<intx::uint<N>>
+// {
+//     size_t operator()(const intx::uint<N>& n) const
+//     {
+//         const auto words = intx::to_words<size_t>(n);
+//         return hash_container(words);
+//     }
+// };
+// } // namespace std
 
 namespace Ethereum
 {
