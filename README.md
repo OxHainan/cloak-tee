@@ -14,7 +14,7 @@
     <img src="https://img.shields.io/badge/license-Apache%202-blue" alt="Cloak TEE is released under the Apache license." />
   </a>
   <a href="https://circleci.com/gh/OxHainan/cloak-tee">
-    <img src="https://circleci.com/gh/OxHainan/cloak-tee/tree/cloak.svg?style=shield" alt="Current CircleCI build status." />
+    <img src="https://circleci.com/gh/OxHainan/cloak-tee/tree/master.svg?style=shield" alt="Current CircleCI build status." />
   </a>
   <a href="https://www.codefactor.io/repository/github/oxhainan/cloak-tee">
     <img src="https://www.codefactor.io/repository/github/oxhainan/cloak-tee/badge" alt="CodeFactor." />
