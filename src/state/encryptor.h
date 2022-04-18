@@ -50,6 +50,7 @@ class EncryptorManager : public AbstractStateEncryptor
     {
         S st;
         st.deserialise(serial_cipher);
+        valid_data_owner(st);
         auto ret = shared_ctx->compute_shared_secret()->decrypt(st.hdr.get_iv(), st.hdr.tag, st.cipher, {}, plain);
         if (!ret)
             plain.resize(0);
@@ -63,6 +64,16 @@ class EncryptorManager : public AbstractStateEncryptor
         auto owner = shared_ctx->compute_data_owner();
         st.set_owner(owner);
         st.hdr.set_random_iv();
+    }
+
+    void valid_data_owner(S& st) const
+    {
+        if (st.owner != shared_ctx->compute_data_owner()) {
+            throw std::runtime_error(fmt::format(
+                "Invalid data owner, want {} but get {}",
+                eevm::to_hex_string(st.owner),
+                eevm::to_hex_string(shared_ctx->compute_data_owner())));
+        }
     }
 
     std::shared_ptr<T> shared_ctx;

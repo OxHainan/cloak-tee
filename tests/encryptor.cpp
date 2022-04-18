@@ -20,7 +20,7 @@ TEST_CASE("serialised state encryption")
         encryptor->encrypt(plain, cipher);
     }
     std::vector<uint8_t> plain_;
-    auto encryptor = make_encryptor(owner2_kp, owner1_kp->public_key_raw());
+    auto encryptor = make_encryptor(owner1_kp, owner2_kp->public_key_raw());
     CHECK(encryptor->decrypt(cipher, plain_));
     CHECK(plain_ == plain);
 }
