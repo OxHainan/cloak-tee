@@ -7,8 +7,8 @@
 #include "ds/non_blocking.h"
 #include "ds/oversized.h"
 #include "ds/x509_time_fmt.h"
+#include "host/cconfiguration.h"
 #include "host/config_schema.h"
-#include "host/configuration.h"
 #include "host/enclave.h"
 #include "host/handle_ring_buffer.h"
 #include "host/json_schema.h"
@@ -31,6 +31,7 @@
 #include <sys/types.h>
 #include <thread>
 #include <unistd.h>
+#include <web3client/client.h>
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
@@ -86,7 +87,7 @@ int main(int argc, char** argv)
             "Error validating JSON schema for configuration file {}: {}", config_file_path, schema_error_msg.value()));
     }
 
-    host::CCHostConfig config = config_json;
+    host::CloakHostConfig config = config_json;
 
     if (config.logging.format == host::LogFormat::JSON) {
         logger::config::add_json_console_logger();
@@ -101,7 +102,22 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    LOG_INFO_FMT("Configuration file {}:\n{}", config_file_path, config_str);
+    // LOG_INFO_FMT("Configuration file {}:\n{}", config_file_path, config_str);
+
+    LOG_INFO_FMT("Check Ethereum Gateway");
+
+    try {
+        auto ws_config = std::make_shared<jsonrpc::ws::WsConfig>();
+        ws_config->set_endpoint(config.gateway.host, config.gateway.port);
+        LOG_INFO_FMT("Gateway endpoint: {}", ws_config->remote_endpoint()->endpoint());
+        auto client = jsonrpc::ws::Client::get_instance(ws_config);
+        client->init_jsonrpc();
+        client->start();
+    }
+    catch (const std::exception& e) {
+        LOG_FATAL_FMT("{}. Exiting.", e.what());
+        return static_cast<int>(CLI::ExitCodes::ValidationError);
+    }
 
     size_t recovery_threshold = 0;
     try {
