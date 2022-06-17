@@ -158,4 +158,8 @@ std::vector<uint8_t> KeyPair_k1Bitcoin::derive_shared_secret(const PublicKey& pe
     EVP_PKEY_free(pk);
     return shared_secret;
 }
+PublicKey::Coordinates KeyPair_k1Bitcoin::coordinates() const
+{
+    return KeyPair_k1Bitcoin::coordinates();
+}
 }

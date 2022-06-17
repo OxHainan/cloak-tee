@@ -52,6 +52,8 @@ class PublicKey_OpenSSL : public PublicKey
     {
         return key;
     }
+
+    virtual Coordinates coordinates() const override;
 };
 
 OpenSSL::Unique_PKEY key_from_raw_ec_point(const std::vector<uint8_t>& raw, int nid);

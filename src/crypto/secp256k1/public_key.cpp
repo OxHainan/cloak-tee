@@ -166,5 +166,9 @@ std::vector<uint8_t> PublicKey_k1Bitcoin::public_key_raw() const
     free(p);
     return r;
 }
-
+PublicKey::Coordinates PublicKey_k1Bitcoin::coordinates() const
+{
+    Coordinates r;
+    return r;
+}
 }

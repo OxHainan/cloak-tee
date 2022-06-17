@@ -7,6 +7,7 @@
 #include "crypto/openssl/openssl_wrappers.h"
 #include "crypto/openssl/public_key.h"
 
+#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -45,8 +46,13 @@ class KeyPair_OpenSSL : public PublicKey_OpenSSL, public KeyPair
         const std::vector<SubjectAltName>& subject_alt_names,
         const std::optional<Pem>& public_key = std::nullopt) const override;
 
-    virtual Pem sign_csr(
-        const Pem& issuer_cert,
+    virtual std::vector<uint8_t> create_csr_der(
+        const std::string& subject_name,
+        const std::vector<SubjectAltName>& subject_alt_names,
+        const std::optional<Pem>& public_key = std::nullopt) const override;
+
+    virtual Pem sign_csr_impl(
+        const std::optional<Pem>& issuer_cert,
         const Pem& signing_request,
         const std::string& valid_from,
         const std::string& valid_to,
@@ -58,5 +64,13 @@ class KeyPair_OpenSSL : public PublicKey_OpenSSL, public KeyPair
     virtual CurveID get_curve_id() const override;
 
     virtual std::vector<uint8_t> public_key_raw() const override;
+
+    virtual PublicKey::Coordinates coordinates() const override;
+
+ protected:
+    OpenSSL::Unique_X509_REQ create_req(
+        const std::string& subject_name,
+        const std::vector<SubjectAltName>& subject_alt_names,
+        const std::optional<Pem>& public_key) const;
 };
 }

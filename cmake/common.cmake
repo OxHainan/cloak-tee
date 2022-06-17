@@ -173,6 +173,7 @@ set(CCF_ENDPOINTS_SOURCES
     ${CCF_DIR}/src/indexing/strategies/seqnos_by_key_in_memory.cpp
     ${CCF_DIR}/src/indexing/strategies/visit_each_entry_in_map.cpp
     ${CCF_DIR}/src/node/historical_queries_adapter.cpp
+    ${CCF_DIR}/src/node/receipt.cpp
 )
 
 find_library(CRYPTO_LIBRARY crypto)
@@ -277,6 +278,7 @@ target_link_libraries(
           ${CMAKE_THREAD_LIBS_INIT}
           ${LINK_LIBCXX}
           ccfcrypto.host
+          http_parser.host
 )
 if("sgx" IN_LIST COMPILE_TARGETS)
   target_link_libraries(cchost PRIVATE openenclave::oehost)

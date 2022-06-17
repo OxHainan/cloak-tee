@@ -36,5 +36,6 @@ class KeyPair_k1Bitcoin : public PublicKey_k1Bitcoin, public KeyPair
     RecoverableSignature sign_recoverable_hashed(const std::span<const uint8_t> hashed);
 
     virtual std::vector<uint8_t> derive_shared_secret(const PublicKey& peer_key) override;
+    virtual PublicKey::Coordinates coordinates() const override;
 };
 }

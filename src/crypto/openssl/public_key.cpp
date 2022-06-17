@@ -28,8 +28,9 @@ PublicKey_OpenSSL::PublicKey_OpenSSL(const Pem& pem)
 {
     Unique_BIO mem(pem);
     key = PEM_read_bio_PUBKEY(mem, NULL, NULL, NULL);
-    if (!key)
+    if (!key) {
         throw std::runtime_error("could not parse PEM");
+    }
 }
 
 PublicKey_OpenSSL::PublicKey_OpenSSL(const std::vector<uint8_t>& der)
@@ -45,8 +46,9 @@ PublicKey_OpenSSL::PublicKey_OpenSSL(EVP_PKEY* key) : key(key) {}
 
 PublicKey_OpenSSL::~PublicKey_OpenSSL()
 {
-    if (key)
+    if (key) {
         EVP_PKEY_free(key);
+    }
 }
 
 CurveID PublicKey_OpenSSL::get_curve_id() const
@@ -57,8 +59,6 @@ CurveID PublicKey_OpenSSL::get_curve_id() const
             return CurveID::SECP384R1;
         case NID_X9_62_prime256v1:
             return CurveID::SECP256R1;
-        case NID_secp256k1:
-            return CurveID::SECP256K1;
         default:
             throw std::runtime_error(fmt::format("Unknown OpenSSL curve {}", nid));
     }
@@ -79,8 +79,6 @@ int PublicKey_OpenSSL::get_openssl_group_id(CurveID gid)
             return NID_secp384r1;
         case CurveID::SECP256R1:
             return NID_X9_62_prime256v1;
-        case CurveID::SECP256K1:
-            return NID_secp256k1;
         default:
             throw std::logic_error(fmt::format("unsupported OpenSSL CurveID {}", gid));
     }
@@ -180,5 +178,22 @@ Unique_PKEY key_from_raw_ec_point(const std::vector<uint8_t>& raw, int nid)
     CHECK1(EVP_PKEY_set1_EC_KEY(pk, ec_key));
     EVP_PKEY_up_ref(pk);
     return pk;
+}
+
+PublicKey::Coordinates PublicKey_OpenSSL::coordinates() const
+{
+    Unique_EC_KEY eckey(EVP_PKEY_get1_EC_KEY(key));
+    const EC_POINT* p = EC_KEY_get0_public_key(eckey);
+    Unique_EC_GROUP group(get_openssl_group_id());
+    Unique_BN_CTX bn_ctx;
+    Unique_BIGNUM x, y;
+    CHECK1(EC_POINT_get_affine_coordinates(group, p, x, y, bn_ctx));
+    Coordinates r;
+    int sz = EC_GROUP_get_degree(group) / 8;
+    r.x.resize(sz);
+    r.y.resize(sz);
+    BN_bn2binpad(x, r.x.data(), sz);
+    BN_bn2binpad(y, r.y.data(), sz);
+    return r;
 }
 }
