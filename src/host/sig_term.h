@@ -2,28 +2,28 @@
 // Licensed under the Apache 2.0 License.
 #pragma once
 
-#include "signal.h"
+#include "host/signal.h"
 
 #include <chrono>
 
 namespace asynchost
 {
-  class SigtermImpl
-  {
-  private:
+class SigtermImpl
+{
+ private:
     ringbuffer::WriterPtr to_enclave;
 
-  public:
+ public:
     SigtermImpl(ringbuffer::AbstractWriterFactory& writer_factory) :
       to_enclave(writer_factory.create_writer_to_inside())
     {}
 
     void on_signal()
     {
-      LOG_INFO_FMT("SIGTERM: Shutting down enclave gracefully...");
-      RINGBUFFER_WRITE_MESSAGE(AdminMessage::stop, to_enclave);
+        LOG_INFO_FMT("SIGTERM: Shutting down enclave gracefully...");
+        RINGBUFFER_WRITE_MESSAGE(AdminMessage::stop, to_enclave);
     }
-  };
+};
 
-  using Sigterm = proxy_ptr<Signal<SIGTERM, SigtermImpl>>;
+using Sigterm = proxy_ptr<Signal<SIGTERM, SigtermImpl>>;
 }

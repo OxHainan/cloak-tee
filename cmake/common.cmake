@@ -280,8 +280,7 @@ target_link_libraries(
           ${LINK_LIBCXX}
           ccfcrypto.host
           web3client.host
-          http_parser.host
-          
+          http_parser.host        
 )
 if("sgx" IN_LIST COMPILE_TARGETS)
   target_link_libraries(cchost PRIVATE openenclave::oehost)

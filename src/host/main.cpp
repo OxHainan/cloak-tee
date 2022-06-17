@@ -7,6 +7,7 @@
 #include "ds/non_blocking.h"
 #include "ds/oversized.h"
 #include "ds/x509_time_fmt.h"
+#include "host/acme_challenge_server.h"
 #include "host/cconfiguration.h"
 #include "host/config_schema.h"
 #include "host/enclave.h"
@@ -110,9 +111,9 @@ int main(int argc, char** argv)
         auto ws_config = std::make_shared<jsonrpc::ws::WsConfig>();
         ws_config->set_endpoint(config.gateway.host, config.gateway.port);
         LOG_INFO_FMT("Gateway endpoint: {}", ws_config->remote_endpoint()->endpoint());
-        auto client = jsonrpc::ws::Client::get_instance(ws_config);
-        client->init_jsonrpc();
-        client->start();
+        // auto client = jsonrpc::ws::Client::get_instance(ws_config);
+        // client->init_jsonrpc();
+        // client->start();
     }
     catch (const std::exception& e) {
         LOG_FATAL_FMT("{}. Exiting.", e.what());
@@ -348,9 +349,9 @@ int main(int argc, char** argv)
 
         if (config.command.type == StartType::Start) {
             for (auto const& m : config.command.start.members) {
-                std::optional<std::vector<uint8_t>> public_encryption_key = std::nullopt;
+                std::optional<crypto::Pem> public_encryption_key = std::nullopt;
                 if (m.encryption_public_key_file.has_value() && !m.encryption_public_key_file.value().empty()) {
-                    public_encryption_key = files::slurp(m.encryption_public_key_file.value());
+                    public_encryption_key = crypto::Pem(files::slurp(m.encryption_public_key_file.value()));
                 }
 
                 nlohmann::json md = nullptr;
@@ -358,7 +359,8 @@ int main(int argc, char** argv)
                     md = nlohmann::json::parse(files::slurp(m.data_json_file.value()));
                 }
 
-                startup_config.start.members.emplace_back(files::slurp(m.certificate_file), public_encryption_key, md);
+                startup_config.start.members
+                    .emplace_back(crypto::Pem(files::slurp(m.certificate_file)), public_encryption_key, md);
             }
             startup_config.start.constitution = "";
             for (const auto& constitution_path : config.command.start.constitution_files) {
@@ -428,6 +430,10 @@ int main(int argc, char** argv)
 #endif
         }
 
+        if (config.network.acme) {
+            startup_config.network.acme = config.network.acme;
+        }
+
         LOG_INFO_FMT("Initialising enclave: enclave_create_node");
         std::atomic<bool> ecall_completed = false;
         auto flush_outbound = [&]() {
@@ -492,6 +498,12 @@ int main(int argc, char** argv)
         std::vector<std::thread> threads;
         for (uint32_t i = 0; i < (config.worker_threads + 1); ++i) {
             threads.emplace_back(std::thread(enclave_thread_start));
+        }
+
+        std::unique_ptr<ACMEChallengeServer> acs;
+        if (config.network.acme && !config.network.acme->challenge_server_interface.empty()) {
+            acs = std::make_unique<ACMEChallengeServer>(
+                config.network.acme->challenge_server_interface, bp.get_dispatcher(), writer_factory);
         }
 
         LOG_INFO_FMT("Entering event loop");
