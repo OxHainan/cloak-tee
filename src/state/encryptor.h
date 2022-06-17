@@ -18,21 +18,11 @@
 #include "state_cipher.h"
 
 #include <eEVM/address.h>
-
+#include <eEVM/state.h>
 namespace State
 {
-class AbstractStateEncryptor
-{
- public:
-    virtual ~AbstractStateEncryptor() {}
-    virtual bool encrypt(const std::vector<uint8_t>& plain, std::vector<uint8_t>& serialised_cipher) = 0;
-    virtual bool decrypt(const std::vector<uint8_t>& serial_cipher, std::vector<uint8_t>& plain) = 0;
-};
-
-using EncryptorPtr = std::shared_ptr<AbstractStateEncryptor>;
-
 template <typename T, typename S>
-class EncryptorManager : public AbstractStateEncryptor
+class EncryptorManager : public eevm::AbstractStateEncryptor
 {
  public:
     EncryptorManager(const std::shared_ptr<T>& shared_ctx_) : shared_ctx(shared_ctx_) {}
@@ -86,7 +76,7 @@ SecretKeyPtr make_secret_key(const crypto::KeyPairPtr& owner, const std::vector<
     return std::make_shared<SecretKey>(owner, raw_key);
 }
 
-EncryptorPtr make_encryptor(const crypto::KeyPairPtr& owner, const std::vector<uint8_t>& raw_key)
+eevm::EncryptorPtr make_encryptor(const crypto::KeyPairPtr& owner, const std::vector<uint8_t>& raw_key)
 {
     auto shared_ctx = make_secret_key(owner, raw_key);
     return std::make_shared<StateEncryptor>(shared_ctx);

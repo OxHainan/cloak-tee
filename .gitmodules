@@ -4,3 +4,6 @@
 [submodule "eEVM"]
 	path = eEVM
 	url = https://github.com/OxHainan/eEVM.git
+[submodule "3rdparty/libweb3client"]
+	path = 3rdparty/libweb3client
+	url = https://github.com/OxHainan/libweb3client.git

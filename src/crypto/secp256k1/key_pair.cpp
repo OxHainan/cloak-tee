@@ -109,7 +109,6 @@ std::vector<uint8_t> KeyPair_k1Bitcoin::sign_hash(const uint8_t* hash, size_t ha
 {
     if (hash_size != 32)
         throw std::runtime_error(fmt::format("Expected {} bytes in hash, got {}", 32, hash_size));
-    std::cout << "sign_hash " << hash_size << std::endl;
 
     auto bc_ctx = secp256k1::make_bc_context(SECP256K1_CONTEXT_VERIFY | SECP256K1_CONTEXT_SIGN);
     secp256k1_ecdsa_recoverable_signature ret;
