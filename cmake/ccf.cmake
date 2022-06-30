@@ -34,7 +34,7 @@ endif()
 # Build common library for CCF enclaves
 add_custom_target(ccf ALL)
 set(CCF_IMPL_SOURCE
-    ${CCF_DIR}/src/enclave/main.cpp 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/enclave/main.cpp 
     ${CCF_DIR}/src/enclave/enclave_time.cpp
     ${CCF_DIR}/src/enclave/thread_local.cpp 
     ${CCF_DIR}/src/js/wrap.cpp
