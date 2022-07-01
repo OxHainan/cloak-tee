@@ -8,7 +8,7 @@
 
 namespace enclave
 {
-uint256_t get_export_state(uint256_t address, uint256_t key)
+inline uint256_t get_export_state(uint256_t address, uint256_t key)
 {
     uint256_t val;
 #ifdef CCHOST_SUPPORTS_VIRTUAL

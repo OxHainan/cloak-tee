@@ -1,5 +1,4 @@
 #pragma once
-#include "app/utils.h"
 #include "ccf/crypto/key_pair.h"
 #include "ccf/crypto/recover.h"
 #include "crypto/secp256k1/public_key.h"
@@ -37,7 +36,9 @@ inline bool is_pre_eip_155(size_t v)
 inline size_t to_ethereum_recovery_id(size_t rec_id)
 {
     if (rec_id > 3) {
-        throw std::logic_error(fmt::format("ECDSA recovery values should be between 0 and 3, {} is invalid", rec_id));
+        throw std::logic_error(fmt::format(
+            "ECDSA recovery values should be between 0 and 3, {} is invalid",
+            rec_id));
     }
 
     if (rec_id > 1) {
@@ -88,7 +89,8 @@ inline size_t from_ethereum_recovery_id(size_t v)
     return rec_id;
 }
 
-inline eevm::rlp::ByteString encode_optional_address(const std::optional<eevm::Address>& address)
+inline eevm::rlp::ByteString encode_optional_address(
+    const std::optional<eevm::Address>& address)
 {
     // The encoding of addresses must be either a fixed-length 20-bytes, or
     // the empty list for the null in contract-creation. If treated as a
@@ -98,15 +100,18 @@ inline eevm::rlp::ByteString encode_optional_address(const std::optional<eevm::A
         constexpr size_t address_length = 20;
         uint8_t address_bytes[address_length] = {};
         intx::be::trunc(address_bytes, *address);
-        encoded.insert(encoded.end(), std::begin(address_bytes), std::end(address_bytes));
+        encoded.insert(
+            encoded.end(), std::begin(address_bytes), std::end(address_bytes));
     }
     return encoded;
 }
 
-inline eevm::Address get_address_from_public_key(const std::vector<uint8_t>& pubKey)
+inline eevm::Address get_address_from_public_key(
+    const std::vector<uint8_t>& pubKey)
 {
     if (pubKey[0] != 0x04) {
-        throw std::logic_error(fmt::format("Expected ASN.1 key to begin with {}, not {}", 0x04, pubKey[0]));
+        throw std::logic_error(fmt::format(
+            "Expected ASN.1 key to begin with {}, not {}", 0x04, pubKey[0]));
     }
 
     const std::vector<uint8_t> bytes(pubKey.begin() + 1, pubKey.end());
@@ -144,9 +149,13 @@ struct EthereumTransaction
 
     explicit EthereumTransaction(const eevm::rlp::ByteString& encoded)
     {
-        auto tup =
-            eevm::rlp::decode<size_t, uint256_t, uint256_t, eevm::rlp::ByteString, uint256_t, eevm::rlp::ByteString>(
-                encoded);
+        auto tup = eevm::rlp::decode<
+            size_t,
+            uint256_t,
+            uint256_t,
+            eevm::rlp::ByteString,
+            uint256_t,
+            eevm::rlp::ByteString>(encoded);
 
         nonce = std::get<0>(tup);
         gas_price = std::get<1>(tup);
@@ -168,7 +177,8 @@ struct EthereumTransaction
 
     eevm::Keccak256 to_be_signed_with_chain_id() const
     {
-        return eevm::Keccak256(eevm::rlp::encode(nonce, gas_price, gas, to, value, data, current_chain_id, 0, 0));
+        return eevm::Keccak256(eevm::rlp::encode(
+            nonce, gas_price, gas, to, value, data, current_chain_id, 0, 0));
     }
 
     virtual void to_transaction_call(Ethereum::MessageCall& tc) const
@@ -194,7 +204,10 @@ struct EthereumTransactionWithSignature : public EthereumTransaction
     PointCoord s;
     EthereumTransactionWithSignature() = default;
     EthereumTransactionWithSignature(
-        const EthereumTransaction& tx, size_t v_, const PointCoord& r_, const PointCoord& s_) :
+        const EthereumTransaction& tx,
+        size_t v_,
+        const PointCoord& r_,
+        const PointCoord& s_) :
       EthereumTransaction(tx)
     {
         v = v_;
@@ -202,7 +215,9 @@ struct EthereumTransactionWithSignature : public EthereumTransaction
         s = s_;
     }
 
-    EthereumTransactionWithSignature(const EthereumTransaction& tx, const crypto::RecoverableSignature& sig) :
+    EthereumTransactionWithSignature(
+        const EthereumTransaction& tx,
+        const crypto::RecoverableSignature& sig) :
       EthereumTransaction(tx)
     {
         v = to_ethereum_recovery_id(sig.recovery_id);
@@ -212,7 +227,8 @@ struct EthereumTransactionWithSignature : public EthereumTransaction
         s = eevm::from_big_endian(s_data, r_fixed_length);
     }
 
-    explicit EthereumTransactionWithSignature(const eevm::rlp::ByteString& encoded)
+    explicit EthereumTransactionWithSignature(
+        const eevm::rlp::ByteString& encoded)
     {
         auto tup = eevm::rlp::decode<
             size_t,
@@ -238,7 +254,8 @@ struct EthereumTransactionWithSignature : public EthereumTransaction
 
     eevm::rlp::ByteString encode() const override
     {
-        return eevm::rlp::encode(nonce, gas_price, gas, to, value, data, v, r, s);
+        return eevm::rlp::
+            encode(nonce, gas_price, gas, to, value, data, v, r, s);
     }
 
     void to_recoverable_signature(crypto::RecoverableSignature& sig) const
@@ -263,7 +280,8 @@ struct EthereumTransactionWithSignature : public EthereumTransaction
             return eevm::Keccak256(encode());
         }
 
-        return eevm::Keccak256(eevm::rlp::encode(nonce, gas_price, gas, to, value, data, current_chain_id, 0, 0));
+        return eevm::Keccak256(eevm::rlp::encode(
+            nonce, gas_price, gas, to, value, data, current_chain_id, 0, 0));
     }
 
     void to_transaction_call(Ethereum::MessageCall& tc) const override
@@ -283,7 +301,9 @@ struct EthereumTransactionWithSignature : public EthereumTransaction
 };
 
 inline EthereumTransactionWithSignature sign_transaction(
-    crypto::KeyPairPtr kp, const EthereumTransaction& tx, bool with_chain_id = false)
+    crypto::KeyPairPtr kp,
+    const EthereumTransaction& tx,
+    bool with_chain_id = false)
 {
     eevm::Keccak256 tbs;
     if (with_chain_id) {
@@ -297,7 +317,8 @@ inline EthereumTransactionWithSignature sign_transaction(
     return EthereumTransactionWithSignature(tx, re_sig);
 }
 
-inline std::vector<uint8_t> sign_eth_tx(crypto::KeyPairPtr kp, const Ethereum::MessageCall& mc, size_t nonce)
+inline std::vector<uint8_t> sign_eth_tx(
+    crypto::KeyPairPtr kp, const Ethereum::MessageCall& mc, size_t nonce)
 {
     auto ethTx = sign_transaction(kp, EthereumTransaction(nonce, mc), true);
     return ethTx.encode();

@@ -26,6 +26,7 @@
 #include "node/rpc/node_operation.h"
 #include "node/rpc/user_frontend.h"
 #include "oe_init.h"
+#include "web3client/web3_operation.h"
 
 #include <openssl/engine.h>
 
@@ -68,6 +69,7 @@ class Enclave
     std::shared_ptr<ccf::indexing::Indexer> indexer = nullptr;
     std::shared_ptr<ccf::indexing::EnclaveLFSAccess> lfs_access = nullptr;
     std::shared_ptr<ccf::HostProcesses> host_processes = nullptr;
+    std::shared_ptr<cloak4ccf::Web3Operation> web3 = nullptr;
 
  public:
     Enclave(
@@ -128,6 +130,12 @@ class Enclave
 
         lfs_access = std::make_shared<ccf::indexing::EnclaveLFSAccess>(
             writer_factory->create_writer_to_outside());
+        web3 = std::make_shared<cloak4ccf::Web3Operation>(
+            writer_factory->create_writer_to_outside(),
+            network.tables,
+            network.acc_state,
+            network.tee_table);
+
         context->install_subsystem(lfs_access);
 
         context->install_subsystem(std::make_shared<ccf::HostProcesses>(*node));
@@ -139,6 +147,8 @@ class Enclave
             std::make_shared<
                 ccf::NetworkIdentitySubsystem>(*node, network.identity));
 
+        context->install_subsystem(web3);
+
         context->install_subsystem(
             std::make_shared<ccf::NodeConfigurationSubsystem>(*node));
 
@@ -149,7 +159,9 @@ class Enclave
 
         rpc_map->register_frontend<ccf::ActorsType::users>(
             std::make_unique<ccf::UserRpcFrontend>(
-                network, ccfapp::make_user_endpoints(*context), *context));
+                network,
+                ccfapp::make_user_endpoints(*context, network),
+                *context));
 
         rpc_map->register_frontend<ccf::ActorsType::nodes>(
             std::make_unique<ccf::NodeRpcFrontend>(network, *context));
@@ -258,6 +270,7 @@ class Enclave
             oversized::FragmentReconstructor fr(bp.get_dispatcher());
 
             lfs_access->register_message_handlers(bp.get_dispatcher());
+            web3->register_message_handlers(bp.get_dispatcher());
 
             DISPATCHER_SET_MESSAGE_HANDLER(
                 bp, AdminMessage::stop, [&bp](const uint8_t*, size_t) {

@@ -53,21 +53,26 @@ PublicKey_OpenSSL::~PublicKey_OpenSSL()
 
 CurveID PublicKey_OpenSSL::get_curve_id() const
 {
-    int nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(EVP_PKEY_get0_EC_KEY(key)));
+    int nid =
+        EC_GROUP_get_curve_name(EC_KEY_get0_group(EVP_PKEY_get0_EC_KEY(key)));
     switch (nid) {
         case NID_secp384r1:
             return CurveID::SECP384R1;
         case NID_X9_62_prime256v1:
             return CurveID::SECP256R1;
+        case NID_secp256k1:
+            return CurveID::SECP256K1;
         default:
-            throw std::runtime_error(fmt::format("Unknown OpenSSL curve {}", nid));
+            throw std::runtime_error(
+                fmt::format("Unknown OpenSSL curve {}", nid));
     }
     return CurveID::NONE;
 }
 
 int PublicKey_OpenSSL::get_openssl_group_id() const
 {
-    return EC_GROUP_get_curve_name(EC_KEY_get0_group(EVP_PKEY_get0_EC_KEY(key)));
+    return EC_GROUP_get_curve_name(
+        EC_KEY_get0_group(EVP_PKEY_get0_EC_KEY(key)));
 }
 
 int PublicKey_OpenSSL::get_openssl_group_id(CurveID gid)
@@ -79,8 +84,11 @@ int PublicKey_OpenSSL::get_openssl_group_id(CurveID gid)
             return NID_secp384r1;
         case CurveID::SECP256R1:
             return NID_X9_62_prime256v1;
+        case CurveID::SECP256K1:
+            return NID_secp256k1;
         default:
-            throw std::logic_error(fmt::format("unsupported OpenSSL CurveID {}", gid));
+            throw std::logic_error(
+                fmt::format("unsupported OpenSSL CurveID {}", gid));
     }
     return NID_undef;
 }
@@ -102,7 +110,11 @@ bool PublicKey_OpenSSL::verify(
 }
 
 bool PublicKey_OpenSSL::verify_hash(
-    const uint8_t* hash, size_t hash_size, const uint8_t* sig, size_t sig_size, MDType md_type)
+    const uint8_t* hash,
+    size_t hash_size,
+    const uint8_t* sig,
+    size_t sig_size,
+    MDType md_type)
 {
     if (md_type == MDType::NONE) {
         md_type = get_md_for_ec(get_curve_id());
@@ -111,14 +123,17 @@ bool PublicKey_OpenSSL::verify_hash(
     Unique_EVP_PKEY_CTX pctx(key);
     OpenSSL::CHECK1(EVP_PKEY_verify_init(pctx));
     if (md_type != MDType::NONE) {
-        OpenSSL::CHECK1(EVP_PKEY_CTX_set_signature_md(pctx, get_md_type(md_type)));
+        OpenSSL::CHECK1(
+            EVP_PKEY_CTX_set_signature_md(pctx, get_md_type(md_type)));
     }
     int rc = EVP_PKEY_verify(pctx, sig, sig_size, hash, hash_size);
 
     bool ok = rc == 1;
     if (!ok) {
         int ec = ERR_get_error();
-        LOG_DEBUG_FMT("OpenSSL signature verification failure: {}", OpenSSL::error_string(ec));
+        LOG_DEBUG_FMT(
+            "OpenSSL signature verification failure: {}",
+            OpenSSL::error_string(ec));
     }
 
     return ok;

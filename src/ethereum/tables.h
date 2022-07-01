@@ -6,25 +6,11 @@
 #include "types.h"
 
 #include <ccf/kv/map.h>
+#include <ccf/kv/set.h>
 // eEVM
 #include "nljsontypes.h"
 
 #include <eEVM/account.h>
-#include <eEVM/address.h>
-
-// Implement std::hash for uint256, so it can be used as key in kv
-// namespace std
-// {
-// template <unsigned N>
-// struct hash<intx::uint<N>>
-// {
-//     size_t operator()(const intx::uint<N>& n) const
-//     {
-//         const auto words = intx::to_words<size_t>(n);
-//         return hash_container(words);
-//     }
-// };
-// } // namespace std
 
 namespace Ethereum
 {
@@ -40,6 +26,8 @@ namespace tables
     inline constexpr auto NONCES = "eth.account.nonce";
     inline constexpr auto STORAGE = "eth.storage";
     inline constexpr auto TXRESULT = "eth.txresults";
+    inline constexpr auto TXSYNC = "eth.txsync";
+    inline constexpr auto PENDING_STATES = "eth.pending_states";
 
     struct Accounts
     {
@@ -69,15 +57,23 @@ namespace tables
     using Storage = kv::Map<StorageKey, uint256_t>;
 
     using Results = kv::Map<TxHash, TxResult>;
+    using TxSyncs = kv::Set<StorageKey>;
+    using PendingStates = kv::Set<StorageKey>;
 
     struct AccountsState
     {
         Accounts accounts;
         Storage storage;
-
+        TxSyncs syncs;
+        PendingStates pending_states;
         AccountsState() :
-          accounts{Accounts::Balances(BALANCES), Accounts::Codes(CODES), Accounts::Nonces(NONCES)},
-          storage(STORAGE)
+          accounts{
+              Accounts::Balances(BALANCES),
+              Accounts::Codes(CODES),
+              Accounts::Nonces(NONCES)},
+          storage(STORAGE),
+          syncs(TXSYNC),
+          pending_states(PENDING_STATES)
         {}
     };
 

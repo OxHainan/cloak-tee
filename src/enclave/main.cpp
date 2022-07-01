@@ -9,6 +9,7 @@
 #include "enclave/enclave_time.h"
 #include "enclave/oe_shim.h"
 #include "enclave/ringbuffer_logger.h"
+#include "export_state.h"
 
 #include <chrono>
 #include <thread>
@@ -28,6 +29,13 @@ std::chrono::microseconds ccf::Channel::min_gap_between_initiation_attempts(
 
 extern "C"
 {
+#ifdef CCHOST_SUPPORTS_VIRTUAL
+    bool register_export_state(export_state_func_t pf)
+    {
+        export_state = pf;
+        return true;
+    }
+#endif
     void open_enclave_logging_callback(
         void* context,
         oe_log_level_t level,

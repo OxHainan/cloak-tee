@@ -13,14 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "ccf/crypto/hkdf.h"
-#include "ccf/crypto/key_pair.h"
-#include "ccf/crypto/symmetric_key.h"
-#include "crypto/key_exchange.h"
-#include "eEVM/util.h"
 #include "vector"
-
-#include <ccf/ds/logger.h>
 
 namespace Utils
 {
@@ -42,108 +35,6 @@ inline std::string BinaryToHex(const std::string& strBin, bool bIsUpper = false)
         }
     }
     return strHex;
-}
-
-template <typename T>
-inline T parse(const std::vector<uint8_t>& s)
-{
-    auto j = nlohmann::json::parse(s);
-    return j.get<T>();
-}
-
-inline void cloak_agent_log(const std::string& tag, const nlohmann::json& msg)
-{
-    std::string magic_str = "ShouokOn";
-    nlohmann::json j;
-    j["seq"] = 0;
-    j["tag"] = tag;
-    j["message"] = msg;
-    LOG_INFO_FMT("{}{}{}", magic_str, j.dump(), magic_str);
-}
-
-inline std::string repeat_hex_string(const std::string& str, size_t n)
-{
-    std::vector<uint8_t> res;
-    auto tmp = eevm::to_bytes(str);
-    for (size_t i = 0; i < n; i++) {
-        res.insert(res.end(), tmp.begin(), tmp.end());
-    }
-    return eevm::to_hex_string(res);
-}
-
-template <typename T>
-inline std::vector<T> vector_filter(const std::vector<T>& vec, std::function<T(T&&)> f)
-{
-    std::vector<T> res(vec.size());
-    for (size_t i = 0; i < vec.size(); i++) {
-        res[i] = f(vec[i]);
-    }
-    return res;
-}
-
-inline std::vector<std::string> split_string(const std::string& str, char delim)
-{
-    std::vector<std::string> res;
-    std::string tmp;
-    for (auto ch : str) {
-        if (ch == delim) {
-            res.push_back(tmp);
-            tmp.clear();
-        } else {
-            tmp.push_back(ch);
-        }
-    }
-
-    res.push_back(tmp);
-    return res;
-}
-using Bytes = std::vector<uint8_t>;
-
-inline std::pair<Bytes, Bytes> split_tag_and_iv(const Bytes& ti)
-{
-    Bytes tag{ti.begin(), ti.begin() + crypto::GCM_SIZE_TAG};
-    Bytes iv{ti.begin() + crypto::GCM_SIZE_TAG, ti.end()};
-    return {tag, iv};
-}
-
-// generate symmetric key using ECDH and HKDF
-inline std::vector<uint8_t> generate_symmetric_key(crypto::KeyPairPtr kp, const std::vector<uint8_t>& pk_der)
-{
-    auto pk = crypto::make_public_key_from_raw(pk_der);
-    auto ctx = tls::KeyExchangeContext(kp, pk);
-    auto ikm = ctx.compute_shared_secret();
-    return crypto::hkdf(crypto::MDType::SHA256, 32, ikm);
-}
-inline std::pair<Bytes, Bytes> encrypt_data_s(
-    crypto::KeyPairPtr kp,
-    const std::vector<uint8_t>& pk_der,
-    const std::vector<uint8_t>& iv,
-    const std::vector<uint8_t>& data)
-{
-    auto key = generate_symmetric_key(kp, pk_der);
-    auto key_aes_gcm = crypto::make_key_aes_gcm(key);
-    std::vector<uint8_t> res(data.size());
-    std::vector<uint8_t> tag(crypto::GCM_SIZE_TAG);
-    key_aes_gcm->encrypt(iv, data, {}, res, tag.data());
-    return {res, tag};
-}
-
-inline std::vector<uint8_t> decrypt_data(
-    crypto::KeyPairPtr kp,
-    const std::vector<uint8_t>& pk_der,
-    const std::vector<uint8_t>& iv,
-    const std::vector<uint8_t>& data)
-{
-    auto key = generate_symmetric_key(kp, pk_der);
-    auto key_aes_gcm = crypto::make_key_aes_gcm(key);
-    size_t c_size = data.size() - crypto::GCM_SIZE_TAG;
-    std::vector<uint8_t> res(c_size);
-    std::span<const uint8_t> cipher(data.data(), c_size);
-    if (!key_aes_gcm->decrypt(iv, data.data() + c_size, cipher, {}, res)) {
-        LOG_DEBUG_FMT("decryption failed, please check your data");
-        throw std::logic_error("decryption failed, please check your data");
-    }
-    return res;
 }
 
 } // namespace Utils

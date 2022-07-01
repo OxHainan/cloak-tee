@@ -37,7 +37,11 @@ class PublicKey_OpenSSL : public PublicKey
         HashBytes& bytes) override;
 
     virtual bool verify_hash(
-        const uint8_t* hash, size_t hash_size, const uint8_t* sig, size_t sig_size, MDType md_type) override;
+        const uint8_t* hash,
+        size_t hash_size,
+        const uint8_t* sig,
+        size_t sig_size,
+        MDType md_type) override;
 
     virtual Pem public_key_pem() const override;
     virtual std::vector<uint8_t> public_key_der() const override;
@@ -56,5 +60,6 @@ class PublicKey_OpenSSL : public PublicKey
     virtual Coordinates coordinates() const override;
 };
 
-OpenSSL::Unique_PKEY key_from_raw_ec_point(const std::vector<uint8_t>& raw, int nid);
+OpenSSL::Unique_PKEY key_from_raw_ec_point(
+    const std::vector<uint8_t>& raw, int nid);
 }

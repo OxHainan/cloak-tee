@@ -28,18 +28,33 @@ class KeyPair_OpenSSL : public PublicKey_OpenSSL, public KeyPair
 
     using PublicKey_OpenSSL::verify;
 
-    virtual bool verify(const std::vector<uint8_t>& contents, const std::vector<uint8_t>& signature) override;
+    virtual bool verify(
+        const std::vector<uint8_t>& contents,
+        const std::vector<uint8_t>& signature) override;
 
     virtual bool verify(
-        const uint8_t* contents, size_t contents_size, const uint8_t* signature, size_t signature_size) override;
+        const uint8_t* contents,
+        size_t contents_size,
+        const uint8_t* signature,
+        size_t signature_size) override;
 
-    virtual std::vector<uint8_t> sign(std::span<const uint8_t> d, MDType md_type = {}) const override;
+    virtual std::vector<uint8_t> sign(
+        std::span<const uint8_t> d, MDType md_type = {}) const override;
 
-    int sign(std::span<const uint8_t> d, size_t* sig_size, uint8_t* sig, MDType md_type = {}) const;
+    int sign(
+        std::span<const uint8_t> d,
+        size_t* sig_size,
+        uint8_t* sig,
+        MDType md_type = {}) const;
 
-    std::vector<uint8_t> sign_hash(const uint8_t* hash, size_t hash_size) const override;
+    std::vector<uint8_t> sign_hash(
+        const uint8_t* hash, size_t hash_size) const override;
 
-    virtual int sign_hash(const uint8_t* hash, size_t hash_size, size_t* sig_size, uint8_t* sig) const override;
+    virtual int sign_hash(
+        const uint8_t* hash,
+        size_t hash_size,
+        size_t* sig_size,
+        uint8_t* sig) const override;
 
     virtual Pem create_csr(
         const std::string& subject_name,
@@ -59,7 +74,8 @@ class KeyPair_OpenSSL : public PublicKey_OpenSSL, public KeyPair
         bool ca = false,
         Signer signer = Signer::SUBJECT) const override;
 
-    virtual std::vector<uint8_t> derive_shared_secret(const PublicKey& peer_key) override;
+    virtual std::vector<uint8_t> derive_shared_secret(
+        const PublicKey& peer_key) override;
 
     virtual CurveID get_curve_id() const override;
 

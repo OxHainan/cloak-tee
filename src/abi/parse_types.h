@@ -17,7 +17,7 @@
 
 namespace abicoder
 {
-BTypePtr parse_types(const nlohmann::json& j)
+inline BTypePtr parse_types(const nlohmann::json& j)
 {
     if (j.is_null() || j.is_string()) {
         return nullptr;
@@ -56,7 +56,7 @@ BTypePtr parse_types(const nlohmann::json& j)
     throw std::logic_error(fmt::format("{} can`t parsing", type));
 }
 
-bool check_dynamic(const nlohmann::json& j)
+inline bool check_dynamic(const nlohmann::json& j)
 {
     auto v = parse_types(j);
     if (v->dynamic) {

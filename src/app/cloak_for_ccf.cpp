@@ -13,12 +13,11 @@
 // limitations under the License.
 
 #include "app/rpc/endpoint_registry.h"
-#include "blit.h"
 namespace ccfapp
 {
 std::unique_ptr<ccf::endpoints::EndpointRegistry> make_user_endpoints(
-    ccfapp::AbstractNodeContext& context)
+    ccfapp::AbstractNodeContext& context, ccf::NetworkState& network)
 {
-    return std::make_unique<cloak4ccf::EVMHandlers>(context);
+    return std::make_unique<cloak4ccf::EVMHandlers>(context, network);
 }
 } // namespace ccfapp

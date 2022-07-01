@@ -4,9 +4,11 @@
 #include "json_utils.h"
 #include "nlohmann/json.hpp"
 
-namespace Ethereum {
+namespace Ethereum
+{
 
-inline void to_json(nlohmann::json& j, const BlockHeader& s) {
+inline void to_json(nlohmann::json& j, const BlockHeader& s)
+{
     j = nlohmann::json::object();
     j["number"] = eevm::to_hex_string(s.number);
     j["difficulty"] = eevm::to_hex_string(s.difficulty);
@@ -17,7 +19,8 @@ inline void to_json(nlohmann::json& j, const BlockHeader& s) {
     j["hash"] = eevm::to_hex_string(s.block_hash);
 }
 
-inline void from_json(const nlohmann::json& j, BlockHeader& s) {
+inline void from_json(const nlohmann::json& j, BlockHeader& s)
+{
     evm4ccf::require_object(j);
 
     s.number = eevm::to_uint64(j["number"]);
@@ -83,7 +86,8 @@ inline void from_json(const nlohmann::json& j, BlockHeader& s) {
 //     s.extraData = eevm::to_bytes(j["extraData"]);
 // }
 
-inline void from_json(const nlohmann::json& j, TxResult& txr) {
+inline void from_json(const nlohmann::json& j, TxResult& txr)
+{
     const auto it = j.find("address");
     if (it != j.end() && !it->is_null()) {
         txr.contract_address = eevm::to_uint256(*it);
@@ -94,7 +98,8 @@ inline void from_json(const nlohmann::json& j, TxResult& txr) {
     txr.logs = j["logs"].get<decltype(TxResult::logs)>();
 }
 
-inline void to_json(nlohmann::json& j, const TxResult& txr) {
+inline void to_json(nlohmann::json& j, const TxResult& txr)
+{
     if (txr.contract_address.has_value()) {
         j["address"] = eevm::to_hex_string(*txr.contract_address);
     } else {
@@ -103,7 +108,8 @@ inline void to_json(nlohmann::json& j, const TxResult& txr) {
     j["logs"] = txr.logs;
 }
 
-inline void to_json(nlohmann::json& j, const ReceiptResponse& s) {
+inline void to_json(nlohmann::json& j, const ReceiptResponse& s)
+{
     if (!s.has_value()) {
         j = nullptr;
     } else {
@@ -122,7 +128,8 @@ inline void to_json(nlohmann::json& j, const ReceiptResponse& s) {
         j["cumulativeGasUsed"] = eevm::to_hex_string(s->cumulative_gas_used);
         j["gasUsed"] = eevm::to_hex_string(s->gas_used);
         if (s->contract_address.has_value()) {
-            j["contractAddress"] = eevm::to_checksum_address(s->contract_address.value());
+            j["contractAddress"] =
+                eevm::to_checksum_address(s->contract_address.value());
         } else {
             j["contractAddress"] = nullptr;
         }
@@ -132,7 +139,8 @@ inline void to_json(nlohmann::json& j, const ReceiptResponse& s) {
     }
 }
 
-inline void from_json(const nlohmann::json& j, ReceiptResponse& s) {
+inline void from_json(const nlohmann::json& j, ReceiptResponse& s)
+{
     if (j.is_null()) {
         s = std::nullopt;
     } else {
@@ -147,14 +155,16 @@ inline void from_json(const nlohmann::json& j, ReceiptResponse& s) {
         evm4ccf::from_optional_hex_str(j, "to", s->to);
         s->cumulative_gas_used = eevm::to_uint256(j["cumulativeGasUsed"]);
         s->gas_used = eevm::to_uint256(j["gasUsed"]);
-        evm4ccf::from_optional_hex_str(j, "contractAddress", s->contract_address);
+        evm4ccf::
+            from_optional_hex_str(j, "contractAddress", s->contract_address);
         s->logs = j["logs"].get<decltype(s->logs)>();
         evm4ccf::array_from_hex_string(s->logs_bloom, j["logsBloom"]);
         s->status = eevm::to_uint256(j["status"]);
     }
 }
 
-inline void to_json(nlohmann::json& j, const MessageCall& s) {
+inline void to_json(nlohmann::json& j, const MessageCall& s)
+{
     j = nlohmann::json::object();
 
     j["from"] = eevm::to_checksum_address(s.from);
@@ -171,7 +181,8 @@ inline void to_json(nlohmann::json& j, const MessageCall& s) {
     j["data"] = s.data;
 }
 
-inline void from_json(const nlohmann::json& j, MessageCall& s) {
+inline void from_json(const nlohmann::json& j, MessageCall& s)
+{
     evm4ccf::require_object(j);
 
     s.from = eevm::to_uint256(j["from"]);
@@ -244,14 +255,16 @@ inline void from_json(const nlohmann::json& j, MessageCall& s) {
 //     s.s = eevm::to_uint256(j["s"]);
 // }
 
-inline void to_json(nlohmann::json& j, const CloakInfo& s) {
+inline void to_json(nlohmann::json& j, const CloakInfo& s)
+{
     j = nlohmann::json::object();
     j["tee_addr"] = eevm::to_checksum_address(s.tee_addr);
     j["cloak_service"] = eevm::to_checksum_address(s.cloak_service);
     j["tee_public_key"] = eevm::to_hex_string(s.tee_public_key);
 }
 
-inline void from_json(const nlohmann::json& j, CloakInfo& s) {
+inline void from_json(const nlohmann::json& j, CloakInfo& s)
+{
     evm4ccf::require_object(j);
     s.tee_addr = eevm::to_uint256(j["tee_addr"]);
     s.cloak_service = eevm::to_uint256(j["cloak_service"]);
@@ -259,70 +272,92 @@ inline void from_json(const nlohmann::json& j, CloakInfo& s) {
 }
 
 //
-inline void to_json(nlohmann::json& j, const AddressWithBlock& s) {
+inline void to_json(nlohmann::json& j, const AddressWithBlock& s)
+{
     j = nlohmann::json::array();
     j.push_back(eevm::to_checksum_address(s.address));
     j.push_back(s.block_id);
 }
 
-inline void from_json(const nlohmann::json& j, AddressWithBlock& s) {
+inline void from_json(const nlohmann::json& j, AddressWithBlock& s)
+{
     evm4ccf::require_array(j);
     s.address = eevm::to_uint256(j[0]);
     s.block_id = j[1];
 }
 
 //
-inline void to_json(nlohmann::json& j, const GetTransactionCount& s) {
+inline void to_json(nlohmann::json& j, const GetTransactionCount& s)
+{
     j = nlohmann::json::array();
     j.push_back(eevm::to_checksum_address(s.address));
     j.push_back(s.block_id);
 }
 
-inline void from_json(const nlohmann::json& j, GetTransactionCount& s) {
+inline void from_json(const nlohmann::json& j, GetTransactionCount& s)
+{
     evm4ccf::require_array(j);
     s.address = eevm::to_uint256(j[0]);
     s.block_id = j[1];
 }
+inline void to_json(nlohmann::json& j, const ContractEscrow& s)
+{
+    j = nlohmann::json::array();
+    j.push_back(eevm::to_checksum_address(s.address));
+}
 
+inline void from_json(const nlohmann::json& j, ContractEscrow& s)
+{
+    evm4ccf::require_array(j);
+    s.address = eevm::to_uint256(j[0]);
+}
 //
-inline void to_json(nlohmann::json& j, const GetTransactionReceipt& s) {
+inline void to_json(nlohmann::json& j, const GetTransactionReceipt& s)
+{
     j = nlohmann::json::array();
     j.push_back(eevm::to_hex_string(s.tx_hash));
 }
 
-inline void from_json(const nlohmann::json& j, GetTransactionReceipt& s) {
+inline void from_json(const nlohmann::json& j, GetTransactionReceipt& s)
+{
     evm4ccf::require_array(j);
     s.tx_hash = eevm::to_uint256(j[0]);
 }
 
-inline void to_json(nlohmann::json& j, const EstimateGas& s) {
+inline void to_json(nlohmann::json& j, const EstimateGas& s)
+{
     j = nlohmann::json::array();
     j.push_back(s.call_data);
 }
 
-inline void from_json(const nlohmann::json& j, EstimateGas& s) {
+inline void from_json(const nlohmann::json& j, EstimateGas& s)
+{
     evm4ccf::require_array(j);
     s.call_data = j[0];
 }
 
 //
-inline void to_json(nlohmann::json& j, const SendRawTransaction& s) {
+inline void to_json(nlohmann::json& j, const SendRawTransaction& s)
+{
     j = nlohmann::json::array();
     j.push_back(s.raw_transaction);
 }
 
-inline void from_json(const nlohmann::json& j, SendRawTransaction& s) {
+inline void from_json(const nlohmann::json& j, SendRawTransaction& s)
+{
     evm4ccf::require_array(j);
     s.raw_transaction = j[0];
 }
 
-inline void to_json(nlohmann::json& j, const SendPop& s) {
+inline void to_json(nlohmann::json& j, const SendPop& s)
+{
     j = nlohmann::json::object();
     j["blocks"] = s.blocks;
     j["transactions"] = s.tx;
 }
 
-inline void from_json(const nlohmann::json& j, SendPop& s) {
+inline void from_json(const nlohmann::json& j, SendPop& s)
+{
     evm4ccf::require_array(j);
     s.blocks = j[0].get<std::vector<std::string>>();
     s.tx = eevm::to_bytes(j[1]);

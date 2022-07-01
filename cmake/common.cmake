@@ -211,6 +211,8 @@ function(add_unit_test name)
                                 openenclave::oehost 
                                 eevm.host                           
                                 ccf_kv.host
+                                web3client.host
+                                uv
   )
   add_san(${name})
 

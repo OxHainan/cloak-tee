@@ -13,32 +13,40 @@
 // limitations under the License.
 
 #pragma once
+#include "blit.h"
 #include "ccf/app_interface.h"
 #include "ccf/common_auth_policies.h"
 #include "ccf/json_handler.h"
-#include "ccf/tx.h"
-#include "ethereum/block_validator.h"
 #include "ethereum/execute_transaction.h"
 #include "ethereum/json_rpc.h"
-#include "ethereum/tables.h"
+#include "ethereum/tee_manager.h"
+#include "ethereum/transaction_sync.h"
 #include "ethereum/types.h"
 #include "ethereum_transaction.h"
+#include "jsonrpc.h"
+#include "node/network_state.h"
+#include "web3client/web3_operation_interface.h"
+
 namespace cloak4ccf
 {
 class AbstractEndpointRegistry : public ccf::UserEndpointRegistry
 {
  public:
-    Ethereum::tables::AccountsState acc_state;
-    Ethereum::tables::Results tx_results;
-    cloak4ccf::TeeManager::tables::Table tee_table;
+    ccf::NetworkState& network;
+    std::shared_ptr<AbstractWeb3Operation> web3;
     const ccf::AuthnPolicies auth_policies =
         {ccf::jwt_auth_policy, ccf::user_cert_auth_policy};
-    explicit AbstractEndpointRegistry(ccfapp::AbstractNodeContext& context) :
+    explicit AbstractEndpointRegistry(
+        ccfapp::AbstractNodeContext& context, ccf::NetworkState& network) :
       ccf::UserEndpointRegistry(context),
-      acc_state(),
-      tx_results("eth.txresults"),
-      tee_table()
+      network(network),
+      web3(context.get_subsystem<AbstractWeb3Operation>())
     {
+        if (web3 == nullptr) {
+            throw std::logic_error(fmt::format(
+                "Cannot create this strategy without access to the web3"));
+        }
+
         openapi_info.title = "Cloak Homestead App";
         openapi_info.description =
             "This Cloak Homestead App implements a simple EVM";
@@ -53,7 +61,7 @@ class EVMHandlers : public AbstractEndpointRegistry
     {
         auto get_chainId = [](ccf::endpoints::EndpointContext&,
                               const nlohmann::json&) {
-            return evm4ccf::current_chain_id;
+            return jsonrpc::result_response(0, evm4ccf::current_chain_id);
         };
 
         auto get_gasPrice = [](ccf::endpoints::EndpointContext&,
@@ -73,9 +81,16 @@ class EVMHandlers : public AbstractEndpointRegistry
             auto es = make_state(ctx.tx);
             const auto account_state = es.get(gb.address);
             const auto balance = account_state.acc.get_balance();
-            return ccf::make_success(eevm::to_hex_string(balance));
+            return ccf::make_success(
+                jsonrpc::result_response(0, eevm::to_hex_string(balance)));
         };
-
+        auto send_contract_escrow = [this](
+                                        ccf::endpoints::EndpointContext& ctx,
+                                        const nlohmann::json& params) {
+            auto ce = params.get<Ethereum::ContractEscrow>();
+            web3->contract_escrow(ce.address);
+            return true;
+        };
         auto get_transaction_count = [this](
                                          ccf::endpoints::EndpointContext& ctx,
                                          const nlohmann::json& params) {
@@ -90,7 +105,8 @@ class EVMHandlers : public AbstractEndpointRegistry
             auto es = make_state(ctx.tx);
             const auto account_state = es.get(gtc.address);
             const auto nonce = account_state.acc.get_nonce();
-            return ccf::make_success(eevm::to_hex_string(nonce));
+            return ccf::make_success(
+                jsonrpc::result_response(0, eevm::to_hex_string(nonce)));
         };
 
         auto send_raw_transaction = [this](
@@ -105,8 +121,8 @@ class EVMHandlers : public AbstractEndpointRegistry
             eth_tx.to_transaction_call(tc);
             auto es = make_state(ctx.tx);
             auto tx_result =
-                Ethereum::EVMC(tc, es, ctx.tx.rw(tx_results)).run();
-            return eevm::to_hex_string(tx_result);
+                Ethereum::EVMC(tc, es, ctx.tx.rw(network.tx_results)).run();
+            return jsonrpc::result_response(0, eevm::to_hex_string(tx_result));
         };
 
         auto get_transaction_receipt =
@@ -117,7 +133,7 @@ class EVMHandlers : public AbstractEndpointRegistry
 
                 const Ethereum::TxHash& tx_hash = gtrp.tx_hash;
 
-                auto results_view = ctx.tx.ro(tx_results);
+                auto results_view = ctx.tx.ro(network.tx_results);
                 const auto r = results_view->get(tx_hash);
 
                 // "or null when no receipt was found"
@@ -135,8 +151,16 @@ class EVMHandlers : public AbstractEndpointRegistry
                     response->logs = tx_result.logs;
                     response->status = 1;
                 }
-                return response;
+                return jsonrpc::result_response(0, response);
             };
+        auto call_prepare = [this](
+                                ccf::endpoints::EndpointContext& ctx,
+                                const nlohmann::json&) {
+            auto tee_acc =
+                TeeManager::State::make_state(ctx.tx, network.tee_table)
+                    .create();
+            return true;
+        };
 
         make_endpoint(
             Ethereum::ethrpc::GetChainId::name,
@@ -178,19 +202,35 @@ class EVMHandlers : public AbstractEndpointRegistry
             ccf::json_read_only_adapter(get_transaction_receipt),
             auth_policies)
             .install();
+
+        make_endpoint(
+            "cloak_prepare",
+            HTTP_POST,
+            ccf::json_adapter(call_prepare),
+            auth_policies)
+            .install();
+
+        make_endpoint(
+            "send_contractEscrow",
+            HTTP_POST,
+            ccf::json_adapter(send_contract_escrow),
+            auth_policies)
+            .install();
     }
 
  protected:
     Ethereum::EthereumState make_state(kv::Tx& tx)
     {
-        return Ethereum::EthereumState::make_state(tx, acc_state);
+        return Ethereum::EthereumState::make_state(tx, network.acc_state);
     }
 
  public:
-    explicit EVMHandlers(ccfapp::AbstractNodeContext& context) :
-      AbstractEndpointRegistry(context)
+    explicit EVMHandlers(
+        ccfapp::AbstractNodeContext& context, ccf::NetworkState& network) :
+      AbstractEndpointRegistry(context, network)
     {
         install_standard_rpcs();
     }
 };
+
 } // namespace cloak4ccf

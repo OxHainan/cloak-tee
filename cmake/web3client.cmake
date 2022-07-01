@@ -1,6 +1,7 @@
 set(WEB3_CLIENT ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/libweb3client)
 find_package(Boost 1.79.0 REQUIRED thread )
 include_directories(${WEB3_CLIENT}/include)
+include_directories(${WEB3_CLIENT}/src)
 set(Boost_USE_STATIC_LIBS ON)
 file(GLOB_RECURSE WEB3_SRC ${WEB3_CLIENT}/src/*.cpp)
 add_host_library(web3client.host STATIC ${WEB3_SRC})

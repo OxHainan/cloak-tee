@@ -21,6 +21,7 @@
 #include "host/snapshots.h"
 #include "host/ticker.h"
 #include "host/time_updater.h"
+#include "web3client/web3_host.h"
 
 #include <CLI11/CLI11.hpp>
 #include <codecvt>
@@ -32,7 +33,6 @@
 #include <thread>
 #include <unistd.h>
 #include <web3client/client.h>
-
 using namespace std::string_literals;
 using namespace std::chrono_literals;
 
@@ -235,6 +235,10 @@ int main(int argc, char** argv)
 
     asynchost::ProcessLauncher process_launcher;
     process_launcher.register_message_handlers(bp.get_dispatcher());
+
+    // cloak web3 host
+    cloak4ccf::Web3Host
+        web3_host(500ms, bp, writer_factory.create_writer_to_inside());
 
     {
         // provide regular ticks to the enclave

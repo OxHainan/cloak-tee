@@ -2,8 +2,6 @@
 // Licensed under the MIT License.
 #pragma once
 
-// EVM-for-CCF
-
 #include "enclave/export_state.h"
 #include "tables.h"
 // eEVM
@@ -17,11 +15,17 @@ struct AccountProxy : public eevm::Account, public eevm::Storage
     eevm::Address address;
     mutable tables::Accounts::Views accounts_views;
     tables::Storage::Handle& storage;
+    tables::PendingStates::Handle& pending;
 
-    AccountProxy(const eevm::Address& a, const tables::Accounts::Views& av, tables::Storage::Handle& st) :
+    AccountProxy(
+        const eevm::Address& a,
+        const tables::Accounts::Views& av,
+        tables::Storage::Handle& st,
+        tables::PendingStates::Handle& ut) :
       address(a),
       accounts_views(av),
-      storage(st)
+      storage(st),
+      pending(ut)
     {}
 
     // Implementation of eevm::Account
@@ -72,6 +76,13 @@ struct AccountProxy : public eevm::Account, public eevm::Storage
     void store(const uint256_t& key, const uint256_t& value) override
     {
         storage.put(translate(key), value);
+        update_pending(key);
+    }
+
+    void update_pending(const uint256_t& key)
+    {
+        LOG_INFO_FMT("update_pending {}", key);
+        pending.insert(translate(key));
     }
     // SNIPPET_END: store_impl
 
