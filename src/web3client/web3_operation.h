@@ -72,41 +72,39 @@ class Web3Operation : public AbstractWeb3Operation
             [this](const uint8_t* data, size_t size) {
                 auto [methods, request, code] = ringbuffer::read_message<
                     Web3Msg::call_response>(data, size);
-                
-                try {
-                    auto tx = store->create_tx();
-                    switch (methods) {
-                        case Methods::GetCode:
-                        {
-                            if (code.empty()) {
-                                throw std::invalid_argument(
-                                    fmt::format("Address [{}] doesn't a "
-                                                "contract on chain"));
-                            }
+                auto tx = store->create_tx();
+                switch (methods) {
+                    case Methods::GetCode:
+                    {
+                        auto contract_address = eevm::
+                            to_uint256(request.data(), request.size(), false);
 
-                            auto es = Ethereum::EthereumState::
-                                make_state(tx, acc_state);
-                            auto contract_address = eevm::to_uint256(
-                                request.data(), request.size(), false);
-
-                            auto account_state = es.get(contract_address);
-                            if (account_state.acc.has_code()) {
-                                throw std::runtime_error(fmt::format(
-                                    "Address [{}] is a contract address",
-                                    eevm::to_hex_string(contract_address)));
-                            }
-
-                            account_state.acc.set_code(std::move(code));
-                            break;
+                        if (code.empty()) {
+                            LOG_INFO_FMT(
+                                "Address [{}] doesn't a "
+                                "contract on chain",
+                                eevm::to_hex_string(contract_address));
+                            return;
                         }
-                        default:
-                            break;
+
+                        auto es =
+                            Ethereum::EthereumState::make_state(tx, acc_state);
+
+                        auto account_state = es.get(contract_address);
+                        if (account_state.acc.has_code()) {
+                            return;
+                            // throw std::runtime_error(fmt::format(
+                            //     "Address [{}] is a contract address",
+                            //     eevm::to_hex_string(contract_address)));
+                        }
+
+                        account_state.acc.set_code(std::move(code));
+                        break;
                     }
-                    tx.commit();
+                    default:
+                        break;
                 }
-                catch (const std::exception& e) {
-                    std::cerr << e.what() << '\n';
-                }
+                tx.commit();
             });
     }
 
@@ -176,7 +174,8 @@ class Web3Operation : public AbstractWeb3Operation
             "keys", "uint256[]", keys, abicoder::make_number_array());
         encoder.add_inputs(
             "values", "uint256[]", vals, abicoder::make_number_array());
-        LOG_INFO_FMT("signature address {}", eevm::to_hex_string(acc->get_address()));
+        LOG_INFO_FMT(
+            "signature address {}", eevm::to_hex_string(acc->get_address()));
         Ethereum::MessageCall mc;
         mc.to = contract_address.value();
         mc.data = eevm::to_hex_string(encoder.encodeWithSignatrue());

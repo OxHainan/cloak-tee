@@ -89,11 +89,11 @@ struct AccountProxy : public eevm::Account, public eevm::Storage
     uint256_t load(const uint256_t& key) override
     {
         auto val = storage.get(translate(key));
-        if (val.has_value())
+        if (val.has_value()) {
             return val.value();
+        }
 
         uint256_t value = enclave::get_export_state(address, key);
-        LOG_INFO_FMT("get states {}", eevm::to_hex_string(value));
         return value;
     }
 

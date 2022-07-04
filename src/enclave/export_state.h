@@ -12,7 +12,7 @@ inline uint256_t get_export_state(uint256_t address, uint256_t key)
 {
     uint256_t val;
 #ifdef CCHOST_SUPPORTS_VIRTUAL
-    if (export_state(address, key, &val)) {
+    if (export_state && export_state(address, key, &val)) {
         return val;
     }
 #endif // CCHOST_SUPPORTS_VIRTUAL

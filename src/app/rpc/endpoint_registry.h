@@ -84,13 +84,27 @@ class EVMHandlers : public AbstractEndpointRegistry
             return ccf::make_success(
                 jsonrpc::result_response(0, eevm::to_hex_string(balance)));
         };
+
         auto send_contract_escrow = [this](
                                         ccf::endpoints::EndpointContext& ctx,
                                         const nlohmann::json& params) {
             auto ce = params.get<Ethereum::ContractEscrow>();
+            auto es = make_state(ctx.tx);
+            if (auto state = es.get(ce.address); state.acc.has_code()) {
+                throw ccf::make_error(
+                    HTTP_STATUS_BAD_REQUEST,
+                    ccf::errors::InvalidQueryParameterValue,
+                    jsonrpc::error_response(
+                        0,
+                        "Address [" + eevm::to_hex_string(ce.address) +
+                            "] has alread be a contract"));
+            }
+
             web3->contract_escrow(ce.address);
-            return true;
+            return ccf::make_success(jsonrpc::result_response(
+                0, "contract escrow alread commited, please wait..."));
         };
+
         auto get_transaction_count = [this](
                                          ccf::endpoints::EndpointContext& ctx,
                                          const nlohmann::json& params) {
