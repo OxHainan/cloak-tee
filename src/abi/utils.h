@@ -14,7 +14,6 @@
 
 #pragma once
 #include "abi/exception.h"
-#include "app/utils.h"
 #include "math.h"
 #include "vector"
 
@@ -113,14 +112,7 @@ inline std::vector<uint8_t> bytes_strip(const std::string& src)
 
 inline std::vector<uint8_t> string_to_bytes(const std::string& _s)
 {
-    auto s = Utils::BinaryToHex(_s);
-    std::vector<uint8_t> h(ceil(s.size() / 2.0));
-    if (s.empty())
-        return h;
-    for (size_t offset = 0, x = 0; x < s.size(); offset++, x += 2) {
-        h.at(offset) = strtol(s.substr(x, 2).c_str(), 0, 16);
-    }
-    return h;
+    return std::vector<uint8_t>(_s.begin(), _s.end());
 }
 
 inline nlohmann::json make_array_type(
