@@ -14,6 +14,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/agent/sandbox.sh ${CMAKE_CURRENT_BINA
 option(BUILD_TESTS "Build tests" OFF)
 if (BUILD_TESTS)
     enable_testing()
+    add_compile_definitions(WEB3_TEST)
     add_compile_definitions(DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN)
     include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/cloak.tests.cmake)
 endif()
