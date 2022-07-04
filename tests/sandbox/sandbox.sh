@@ -48,7 +48,6 @@ START_NETWORK_SCRIPT="${PATH_HERE}"/../agent/start_network.py
 
 if [ -f "${VENV_DIR}/bin/activate" ]; then
     pip install --disable-pip-version-check -q -U -e $CCF_DIR/python/
-    pip install --disable-pip-version-check -q -U -r $BINARY_DIR/../agent/requirements.txt
     pip install --disable-pip-version-check -q -U -r $CCF_DIR/python/requirements.txt
     pip install --disable-pip-version-check -q -U -r $CCF_DIR/tests/requirements.txt
 fi

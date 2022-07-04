@@ -9,7 +9,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/ccf.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/eevm.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/web3client.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/cloak.app.cmake)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/agent/sandbox.sh ${CMAKE_CURRENT_BINARY_DIR}/sandbox.sh COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/tests/sandbox/sandbox.sh ${CMAKE_CURRENT_BINARY_DIR}/sandbox.sh COPYONLY)
 
 option(BUILD_TESTS "Build tests" OFF)
 if (BUILD_TESTS)
