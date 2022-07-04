@@ -21,6 +21,7 @@
 #include <eEVM/state.h>
 namespace State
 {
+
 template <typename T, typename S>
 class EncryptorManager : public eevm::AbstractStateEncryptor
 {
