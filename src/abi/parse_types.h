@@ -47,13 +47,13 @@ inline BTypePtr parse_types(const nlohmann::json& j)
             break;
         }
         case type_value::FOUNDNOT:
-            throw std::logic_error(fmt::format("{} can`t parsing", j["type"]));
+            throw std::logic_error("can`t parsing");
 
         default:
             break;
     }
 
-    throw std::logic_error(fmt::format("{} can`t parsing", type));
+    throw std::logic_error("can`t parsing");
 }
 
 inline bool check_dynamic(const nlohmann::json& j)

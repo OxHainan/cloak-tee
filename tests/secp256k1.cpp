@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "app/blit.h"
+#include "blit.h"
 #include "ccf/crypto/key_pair.h"
 #include "ccf/crypto/pem.h"
 #include "crypto/secp256k1/public_key.h"
