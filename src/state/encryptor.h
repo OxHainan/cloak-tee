@@ -25,23 +25,32 @@ template <typename T, typename S>
 class EncryptorManager : public eevm::AbstractStateEncryptor
 {
  public:
-    EncryptorManager(const std::shared_ptr<T>& shared_ctx_) : shared_ctx(shared_ctx_) {}
+    EncryptorManager(const std::shared_ptr<T>& shared_ctx_) :
+      shared_ctx(shared_ctx_)
+    {}
 
-    bool encrypt(const std::vector<uint8_t>& plain, std::vector<uint8_t>& serial) override
+    bool encrypt(
+        const std::vector<uint8_t>& plain,
+        std::vector<uint8_t>& serial) override
     {
         S st(plain.size());
         set_extra_data(st);
-        shared_ctx->compute_shared_secret()->encrypt(st.hdr.get_iv(), plain, {}, st.cipher, st.hdr.tag);
+        shared_ctx->compute_shared_secret()
+            ->encrypt(st.hdr.get_iv(), plain, {}, st.cipher, st.hdr.tag);
         serial = st.serialise();
         return true;
     }
 
-    bool decrypt(const std::vector<uint8_t>& serial_cipher, std::vector<uint8_t>& plain) override
+    bool decrypt(
+        const std::vector<uint8_t>& serial_cipher,
+        std::vector<uint8_t>& plain) override
     {
         S st;
         st.deserialise(serial_cipher);
         valid_data_owner(st);
-        auto ret = shared_ctx->compute_shared_secret()->decrypt(st.hdr.get_iv(), st.hdr.tag, st.cipher, {}, plain);
+        auto ret =
+            shared_ctx->compute_shared_secret()
+                ->decrypt(st.hdr.get_iv(), st.hdr.tag, st.cipher, {}, plain);
         if (!ret)
             plain.resize(0);
 
@@ -71,12 +80,14 @@ class EncryptorManager : public eevm::AbstractStateEncryptor
 
 using StateEncryptor = EncryptorManager<SecretKey, StateCipher>;
 
-SecretKeyPtr make_secret_key(const crypto::KeyPairPtr& owner, const std::vector<uint8_t>& raw_key)
+SecretKeyPtr make_secret_key(
+    const crypto::KeyPairPtr& owner, const std::vector<uint8_t>& raw_key)
 {
     return std::make_shared<SecretKey>(owner, raw_key);
 }
 
-eevm::EncryptorPtr make_encryptor(const crypto::KeyPairPtr& owner, const std::vector<uint8_t>& raw_key)
+eevm::EncryptorPtr make_encryptor(
+    const crypto::KeyPairPtr& owner, const std::vector<uint8_t>& raw_key)
 {
     auto shared_ctx = make_secret_key(owner, raw_key);
     return std::make_shared<StateEncryptor>(shared_ctx);
