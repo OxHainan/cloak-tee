@@ -172,7 +172,7 @@ struct common_type
             default:
                 break;
         }
-        throw std::logic_error(fmt::format("{} can`t parsing", type));
+        throw std::logic_error("can`t parsing");
     }
 };
 
