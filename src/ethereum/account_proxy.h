@@ -3,6 +3,7 @@
 #pragma once
 
 #include "enclave/export_state.h"
+#include "encryptor.h"
 #include "tables.h"
 // eEVM
 #include <eEVM/account.h>
@@ -13,12 +14,14 @@ namespace Ethereum
 struct AccountProxy : public eevm::Account, public eevm::Storage
 {
     eevm::Address address;
+    eevm::EncryptorPtr encryptor;
     mutable tables::Accounts::Views accounts_views;
     tables::Storage::Handle& storage;
     tables::PendingStates::Handle& pending;
 
     AccountProxy(
         const eevm::Address& a,
+        const std::optional<std::vector<uint8_t>>& encryptKey,
         const tables::Accounts::Views& av,
         tables::Storage::Handle& st,
         tables::PendingStates::Handle& ut) :
@@ -26,7 +29,11 @@ struct AccountProxy : public eevm::Account, public eevm::Storage
       accounts_views(av),
       storage(st),
       pending(ut)
-    {}
+    {
+        if (encryptKey.has_value()) {
+            encryptor = StateEncryptor::make_encryptor(*encryptKey);
+        }
+    }
 
     // Implementation of eevm::Account
     eevm::Address get_address() const override
@@ -75,7 +82,16 @@ struct AccountProxy : public eevm::Account, public eevm::Storage
     // SNIPPET_START: store_impl
     void store(const uint256_t& key, const uint256_t& value) override
     {
-        storage.put(translate(key), value);
+        std::vector<uint8_t> state(32u);
+        if (encryptor) {
+            state.resize(64u);
+            std::vector<uint8_t> plain(32u);
+            encryptor->encrypt(plain, state);
+        } else {
+            eevm::to_big_endian(value, state.data());
+        }
+        LOG_INFO_FMT("storage {}", eevm::to_hex_string(state));
+        storage.put(translate(key), state);
         update_pending(key);
     }
 
@@ -88,9 +104,15 @@ struct AccountProxy : public eevm::Account, public eevm::Storage
 
     uint256_t load(const uint256_t& key) override
     {
-        auto val = storage.get(translate(key));
-        if (val.has_value()) {
-            return val.value();
+        auto state = storage.get(translate(key));
+        if (state.has_value()) {
+            if (encryptor) {
+                std::vector<uint8_t> plain;
+                encryptor->decrypt(*state, plain);
+                return eevm::from_big_endian(plain.data());
+            }
+
+            return eevm::from_big_endian(state->data());
         }
 
         uint256_t value = enclave::get_export_state(address, key);

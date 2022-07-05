@@ -105,6 +105,35 @@ class EVMHandlers : public AbstractEndpointRegistry
                 0, "contract escrow alread commited, please wait..."));
         };
 
+        auto set_contract_key = [this](
+                                    ccf::endpoints::EndpointContext& ctx,
+                                    const nlohmann::json& params) {
+            auto ce = params.get<Ethereum::ContractEscrow>();
+            auto es = make_state(ctx.tx);
+            if (auto state = es.get(ce.address); !state.acc.has_code()) {
+                std::string message = "Address [" +
+                    eevm::to_hex_string(ce.address) + "] not a contract";
+                throw ccf::make_error(
+                    HTTP_STATUS_BAD_REQUEST,
+                    ccf::errors::InvalidQueryParameterValue,
+                    jsonrpc::error_response(0, message));
+            }
+
+            auto ch = ctx.tx.rw(network.acc_state.encrypted);
+            if (ch->get(ce.address).has_value()) {
+                std::string message = "Address [" +
+                    eevm::to_hex_string(ce.address) +
+                    "] has already setting contract key";
+
+                throw ccf::make_error(
+                    HTTP_STATUS_BAD_REQUEST,
+                    ccf::errors::InvalidQueryParameterValue,
+                    jsonrpc::error_response(0, message));
+            }
+            ch->put(ce.address, crypto::create_entropy()->random(32u));
+            return ccf::make_success(jsonrpc::result_response(0, true));
+        };
+
         auto get_transaction_count = [this](
                                          ccf::endpoints::EndpointContext& ctx,
                                          const nlohmann::json& params) {
@@ -228,6 +257,13 @@ class EVMHandlers : public AbstractEndpointRegistry
             "send_contractEscrow",
             HTTP_POST,
             ccf::json_adapter(send_contract_escrow),
+            auth_policies)
+            .install();
+
+        make_endpoint(
+            "set_contractKey",
+            HTTP_POST,
+            ccf::json_adapter(set_contract_key),
             auth_policies)
             .install();
     }

@@ -92,15 +92,16 @@ class Web3Operation : public AbstractWeb3Operation
 
                         auto account_state = es.get(contract_address);
                         if (account_state.acc.has_code()) {
+                            LOG_INFO_FMT(
+                                "Address [{}] is a contract address",
+                                eevm::to_hex_string(contract_address));
                             return;
-                            // throw std::runtime_error(fmt::format(
-                            //     "Address [{}] is a contract address",
-                            //     eevm::to_hex_string(contract_address)));
                         }
 
                         account_state.acc.set_code(std::move(code));
                         break;
                     }
+
                     default:
                         break;
                 }

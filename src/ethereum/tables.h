@@ -28,6 +28,7 @@ namespace tables
     inline constexpr auto TXRESULT = "eth.txresults";
     inline constexpr auto TXSYNC = "eth.txsync";
     inline constexpr auto PENDING_STATES = "eth.pending_states";
+    inline constexpr auto CONTRACT_ENCRYPTED_KEY = "eth.contract_encrypted_key";
 
     struct Accounts
     {
@@ -54,18 +55,19 @@ namespace tables
     };
 
     using StorageKey = std::pair<eevm::Address, uint256_t>;
-    using Storage = kv::Map<StorageKey, uint256_t>;
+    using Storage = kv::Map<StorageKey, std::vector<uint8_t>>;
 
     using Results = kv::Map<TxHash, TxResult>;
     using TxSyncs = kv::Set<StorageKey>;
     using PendingStates = kv::Set<StorageKey>;
-
+    using ContractEncryptedKey = kv::Map<eevm::Address, std::vector<uint8_t>>;
     struct AccountsState
     {
         Accounts accounts;
         Storage storage;
         TxSyncs syncs;
         PendingStates pending_states;
+        ContractEncryptedKey encrypted;
         AccountsState() :
           accounts{
               Accounts::Balances(BALANCES),
@@ -73,7 +75,8 @@ namespace tables
               Accounts::Nonces(NONCES)},
           storage(STORAGE),
           syncs(TXSYNC),
-          pending_states(PENDING_STATES)
+          pending_states(PENDING_STATES),
+          encrypted(CONTRACT_ENCRYPTED_KEY)
         {}
     };
 

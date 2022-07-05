@@ -1,6 +1,7 @@
 #pragma once
 #include "set"
 #include "tables.h"
+
 namespace Ethereum
 {
 class TransactionSync
@@ -25,23 +26,32 @@ class TransactionSync
         syncs.remove(std::make_pair(contract_address, key));
     }
 
+    uint256_t load(const std::pair<uint256_t, uint256_t>& storage_key)
+    {
+        auto state = storage.get(storage_key);
+        if (state.has_value()) {
+            return eevm::from_big_endian(state->data());
+        }
+
+        return 0;
+    }
+
     void sync_states(
         std::multimap<uint256_t, std::pair<uint256_t, uint256_t>>& states)
     {
         size_t total = 20;
         std::set<std::pair<uint256_t, uint256_t>> update_keys;
-        pending.foreach([&states, &total, &update_keys, this](
-                            const auto& storageKey) {
-            if (total++ < 0)
-                return false;
+        pending.foreach(
+            [&states, &total, &update_keys, this](const auto& storageKey) {
+                if (total++ < 0)
+                    return false;
 
-            update_keys.emplace(storageKey);
-            states.emplace(
-                storageKey.first,
-                std::make_pair(
-                    storageKey.second, storage.get(storageKey).value_or(0)));
-            return true;
-        });
+                update_keys.emplace(storageKey);
+                states.emplace(
+                    storageKey.first,
+                    std::make_pair(storageKey.second, load(storageKey)));
+                return true;
+            });
 
         // remove key from pending
         for (auto& key : update_keys) {
