@@ -23,15 +23,19 @@ class EthereumState : public eevm::GlobalState
     tables::Accounts::Views accounts;
     tables::Storage::Handle& tx_storage;
     tables::PendingStates::Handle& pending;
-
+    tables::ContractEncryptedKey::Handle& encryptedKey;
     std::map<eevm::Address, std::unique_ptr<AccountProxy>> cache;
 
     eevm::AccountState add_to_cache(const eevm::Address& address)
     {
         auto ib = cache.insert(std::make_pair(
             address,
-            std::make_unique<
-                AccountProxy>(address, accounts, tx_storage, pending)));
+            std::make_unique<AccountProxy>(
+                address,
+                encryptedKey.get(address),
+                accounts,
+                tx_storage,
+                pending)));
 
         if (!ib.second) {
             throw Exception(fmt::format(
@@ -49,10 +53,12 @@ class EthereumState : public eevm::GlobalState
     EthereumState(
         const tables::Accounts::Views& acc_views,
         tables::Storage::Handle* views,
-        tables::PendingStates::Handle* uh) :
+        tables::PendingStates::Handle* uh,
+        tables::ContractEncryptedKey::Handle* ch) :
       accounts(acc_views),
       tx_storage(*views),
-      pending(*uh)
+      pending(*uh),
+      encryptedKey(*ch)
     {}
 
     void remove(const eevm::Address& addr) override
@@ -141,7 +147,8 @@ class EthereumState : public eevm::GlobalState
         return EthereumState(
             as.accounts.get_views(tx),
             tx.rw(as.storage),
-            tx.rw(as.pending_states));
+            tx.rw(as.pending_states),
+            tx.rw(as.encrypted));
     }
 };
 

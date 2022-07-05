@@ -105,16 +105,6 @@ struct Account : public eevm::Account
 
 using AccountPtr = std::shared_ptr<Account>;
 
-// eevm::Address get_service_addr(tables::CloakService::Handle* view)
-// {
-//     auto it = view->get();
-//     if (!it.has_value()) {
-//         LOG_INFO_FMT("Cloak service contract address not found!");
-//         throw std::logic_error("Cloak service contract address not found!");
-//     }
-//     return it.value();
-// }
-
 class State
 {
  public:
