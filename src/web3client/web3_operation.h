@@ -97,6 +97,15 @@ class Web3Operation : public AbstractWeb3Operation
                                 eevm::to_hex_string(contract_address));
                             return;
                         }
+                        LOG_INFO_FMT(
+                            "sync contract escrow, contract {}",
+                            eevm::to_hex_string(contract_address));
+
+                        if (auto cl = tx.wo(acc_state.levels); cl) {
+                            cl->put(
+                                contract_address,
+                                Ethereum::ContractLevel::SOLIDITY);
+                        }
 
                         account_state.acc.set_code(std::move(code));
                         break;

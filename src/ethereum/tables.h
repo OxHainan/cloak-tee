@@ -29,6 +29,7 @@ namespace tables
     inline constexpr auto TXSYNC = "eth.txsync";
     inline constexpr auto PENDING_STATES = "eth.pending_states";
     inline constexpr auto CONTRACT_ENCRYPTED_KEY = "eth.contract_encrypted_key";
+    inline constexpr auto LEVELS = "eth.contract_levels";
 
     struct Accounts
     {
@@ -61,6 +62,8 @@ namespace tables
     using TxSyncs = kv::Set<StorageKey>;
     using PendingStates = kv::Set<StorageKey>;
     using ContractEncryptedKey = kv::Map<eevm::Address, std::vector<uint8_t>>;
+    using ContractLevels = kv::Map<eevm::Address, ContractLevel>;
+
     struct AccountsState
     {
         Accounts accounts;
@@ -68,6 +71,7 @@ namespace tables
         TxSyncs syncs;
         PendingStates pending_states;
         ContractEncryptedKey encrypted;
+        ContractLevels levels;
         AccountsState() :
           accounts{
               Accounts::Balances(BALANCES),
@@ -76,7 +80,8 @@ namespace tables
           storage(STORAGE),
           syncs(TXSYNC),
           pending_states(PENDING_STATES),
-          encrypted(CONTRACT_ENCRYPTED_KEY)
+          encrypted(CONTRACT_ENCRYPTED_KEY),
+          levels(LEVELS)
         {}
     };
 
