@@ -6,25 +6,11 @@
 #include "types.h"
 
 #include <ccf/kv/map.h>
+#include <ccf/kv/set.h>
 // eEVM
 #include "nljsontypes.h"
 
 #include <eEVM/account.h>
-#include <eEVM/address.h>
-
-// Implement std::hash for uint256, so it can be used as key in kv
-// namespace std
-// {
-// template <unsigned N>
-// struct hash<intx::uint<N>>
-// {
-//     size_t operator()(const intx::uint<N>& n) const
-//     {
-//         const auto words = intx::to_words<size_t>(n);
-//         return hash_container(words);
-//     }
-// };
-// } // namespace std
 
 namespace Ethereum
 {
@@ -40,6 +26,10 @@ namespace tables
     inline constexpr auto NONCES = "eth.account.nonce";
     inline constexpr auto STORAGE = "eth.storage";
     inline constexpr auto TXRESULT = "eth.txresults";
+    inline constexpr auto TXSYNC = "eth.txsync";
+    inline constexpr auto PENDING_STATES = "eth.pending_states";
+    inline constexpr auto CONTRACT_ENCRYPTED_KEY = "eth.contract_encrypted_key";
+    inline constexpr auto LEVELS = "eth.contract_levels";
 
     struct Accounts
     {
@@ -66,18 +56,33 @@ namespace tables
     };
 
     using StorageKey = std::pair<eevm::Address, uint256_t>;
-    using Storage = kv::Map<StorageKey, uint256_t>;
+    using Storage = kv::Map<StorageKey, std::vector<uint8_t>>;
 
     using Results = kv::Map<TxHash, TxResult>;
+    using TxSyncs = kv::Set<StorageKey>;
+    using PendingStates = kv::Set<StorageKey>;
+    using ContractEncryptedKey = kv::Map<eevm::Address, std::vector<uint8_t>>;
+    using ContractLevels = kv::Map<eevm::Address, ContractLevel>;
 
     struct AccountsState
     {
         Accounts accounts;
         Storage storage;
-
+        TxSyncs syncs;
+        PendingStates pending_states;
+        ContractEncryptedKey encrypted;
+        ContractLevels levels;
         AccountsState() :
-          accounts{Accounts::Balances(BALANCES), Accounts::Codes(CODES), Accounts::Nonces(NONCES)},
-          storage(STORAGE)
+          accounts{
+              Accounts::Balances(BALANCES),
+              Accounts::Codes(CODES),
+              Accounts::Nonces(NONCES)},
+          storage(STORAGE),
+          syncs(TXSYNC),
+          pending_states(PENDING_STATES),
+          encrypted(CONTRACT_ENCRYPTED_KEY),
+          levels(LEVELS)
+
         {}
     };
 

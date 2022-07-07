@@ -97,12 +97,12 @@ endif()
 
 add_custom_command(
   COMMAND
-    openenclave::oeedger8r ${CCF_DIR}/edl/ccf.edl --search-path ${OE_INCLUDEDIR}
+    openenclave::oeedger8r ${CMAKE_CURRENT_SOURCE_DIR}/edl/ccf.edl --search-path ${OE_INCLUDEDIR}
     --trusted --trusted-dir ${CCF_GENERATED_DIR} --untrusted --untrusted-dir
     ${CCF_GENERATED_DIR}
   COMMAND mv ${CCF_GENERATED_DIR}/ccf_t.c ${CCF_GENERATED_DIR}/ccf_t.cpp
   COMMAND mv ${CCF_GENERATED_DIR}/ccf_u.c ${CCF_GENERATED_DIR}/ccf_u.cpp
-  DEPENDS ${CCF_DIR}/edl/ccf.edl
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/edl/ccf.edl
   OUTPUT ${CCF_GENERATED_DIR}/ccf_t.cpp ${CCF_GENERATED_DIR}/ccf_u.cpp
   COMMENT "Generating code from EDL, and renaming to .cpp"
 )
@@ -211,6 +211,8 @@ function(add_unit_test name)
                                 openenclave::oehost 
                                 eevm.host                           
                                 ccf_kv.host
+                                web3client.host
+                                uv
   )
   add_san(${name})
 
@@ -246,6 +248,7 @@ else()
 endif()
 
 list(APPEND CCHOST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/host/main.cpp)
+list(APPEND CCHOST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/host/host.cpp)
 
 if("sgx" IN_LIST COMPILE_TARGETS)
   list(APPEND CCHOST_SOURCES ${CCF_GENERATED_DIR}/ccf_u.cpp)
@@ -278,6 +281,8 @@ target_link_libraries(
           ${CMAKE_THREAD_LIBS_INIT}
           ${LINK_LIBCXX}
           ccfcrypto.host
+          web3client.host
+          http_parser.host        
 )
 if("sgx" IN_LIST COMPILE_TARGETS)
   target_link_libraries(cchost PRIVATE openenclave::oehost)

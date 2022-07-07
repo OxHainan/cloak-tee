@@ -41,20 +41,23 @@ CurveID PublicKey_k1Bitcoin::get_curve_id() const
 {
     int nid = get_secp256k1_group_id();
     if (nid != NID_secp256k1)
-        throw std::runtime_error(fmt::format("Unknown SECP256K1 curve, get {}", nid));
+        throw std::runtime_error(
+            fmt::format("Unknown SECP256K1 curve, get {}", nid));
     return CurveID::SECP256K1;
 }
 
 int PublicKey_k1Bitcoin::get_secp256k1_group_id(CurveID gid) const
 {
     if (gid != CurveID::SECP256K1)
-        throw std::runtime_error(fmt::format("unsupported SECP256K1 CurveID {}", gid));
+        throw std::runtime_error(
+            fmt::format("unsupported SECP256K1 CurveID {}", gid));
     return NID_secp256k1;
 }
 
 int PublicKey_k1Bitcoin::get_secp256k1_group_id() const
 {
-    return EC_GROUP_get_curve_name(EC_KEY_get0_group(EVP_PKEY_get0_EC_KEY(key)));
+    return EC_GROUP_get_curve_name(
+        EC_KEY_get0_group(EVP_PKEY_get0_EC_KEY(key)));
 }
 
 bool PublicKey_k1Bitcoin::verify(
@@ -75,7 +78,11 @@ bool PublicKey_k1Bitcoin::verify(
 }
 
 bool PublicKey_k1Bitcoin::verify_hash(
-    const uint8_t* hash, size_t hash_size, const uint8_t* sig, size_t sig_size, MDType md_type)
+    const uint8_t* hash,
+    size_t hash_size,
+    const uint8_t* sig,
+    size_t sig_size,
+    MDType md_type)
 {
     if (md_type == MDType::NONE) {
         md_type = get_md_for_ec(get_curve_id());
@@ -84,32 +91,39 @@ bool PublicKey_k1Bitcoin::verify_hash(
     OpenSSL::Unique_EVP_PKEY_CTX pctx(key);
     OpenSSL::CHECK1(EVP_PKEY_verify_init(pctx));
     if (md_type != MDType::NONE) {
-        OpenSSL::CHECK1(EVP_PKEY_CTX_set_signature_md(pctx, OpenSSL::get_md_type(md_type)));
+        OpenSSL::CHECK1(
+            EVP_PKEY_CTX_set_signature_md(pctx, OpenSSL::get_md_type(md_type)));
     }
     int rc = EVP_PKEY_verify(pctx, sig, sig_size, hash, hash_size);
 
     bool ok = rc == 1;
     if (!ok) {
         int ec = ERR_get_error();
-        LOG_DEBUG_FMT("OpenSSL signature verification failure: {}", OpenSSL::error_string(ec));
+        LOG_DEBUG_FMT(
+            "OpenSSL signature verification failure: {}",
+            OpenSSL::error_string(ec));
     }
 
     return ok;
 }
 
-PublicKey_k1Bitcoin PublicKey_k1Bitcoin::recover_key(const RecoverableSignature& rs, std::span<const uint8_t> hashed)
+PublicKey_k1Bitcoin PublicKey_k1Bitcoin::recover_key(
+    const RecoverableSignature& rs, std::span<const uint8_t> hashed)
 {
     int rc;
     static size_t buf_len = 65;
     std::vector<uint8_t> buf(buf_len);
     if (hashed.size() != 32)
-        throw std::runtime_error(fmt::format("Expected {} bytes in hash, got {}", 32, hashed.size()));
+        throw std::runtime_error(
+            fmt::
+                format("Expected {} bytes in hash, got {}", 32, hashed.size()));
 
     // recover with secp256k1
     {
         auto ctx = secp256k1::make_bc_context(SECP256K1_CONTEXT_VERIFY);
         secp256k1_ecdsa_recoverable_signature sig;
-        rc = secp256k1_ecdsa_recoverable_signature_parse_compact(ctx->p, &sig, rs.raw.data(), rs.recovery_id);
+        rc = secp256k1_ecdsa_recoverable_signature_parse_compact(
+            ctx->p, &sig, rs.raw.data(), rs.recovery_id);
         if (rc != 1)
             throw std::runtime_error("secp256k1 recoverable signature failed");
 
@@ -118,7 +132,8 @@ PublicKey_k1Bitcoin PublicKey_k1Bitcoin::recover_key(const RecoverableSignature&
         if (rc != 1)
             throw std::runtime_error("secp256k1 recover failed");
 
-        rc = secp256k1_ec_pubkey_serialize(ctx->p, buf.data(), &buf_len, &pubk, SECP256K1_EC_UNCOMPRESSED);
+        rc = secp256k1_ec_pubkey_serialize(
+            ctx->p, buf.data(), &buf_len, &pubk, SECP256K1_EC_UNCOMPRESSED);
         if (rc != 1)
             throw std::runtime_error("secp256k1 pubkey serialization failed");
     }
@@ -166,5 +181,9 @@ std::vector<uint8_t> PublicKey_k1Bitcoin::public_key_raw() const
     free(p);
     return r;
 }
-
+PublicKey::Coordinates PublicKey_k1Bitcoin::coordinates() const
+{
+    Coordinates r;
+    return r;
+}
 }

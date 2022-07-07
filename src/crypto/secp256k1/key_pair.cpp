@@ -14,7 +14,8 @@ KeyPair_k1Bitcoin::KeyPair_k1Bitcoin(CurveID curve_id)
     int curve_nid = get_secp256k1_group_id(curve_id);
     key = EVP_PKEY_new();
     OpenSSL::Unique_EVP_PKEY_CTX pkctx;
-    if (EVP_PKEY_paramgen_init(pkctx) < 0 || EVP_PKEY_CTX_set_ec_paramgen_curve_nid(pkctx, curve_nid) < 0 ||
+    if (EVP_PKEY_paramgen_init(pkctx) < 0 ||
+        EVP_PKEY_CTX_set_ec_paramgen_curve_nid(pkctx, curve_nid) < 0 ||
         EVP_PKEY_CTX_set_ec_param_enc(pkctx, OPENSSL_EC_NAMED_CURVE) < 0)
         throw std::runtime_error("could not initialize PK context");
     if (EVP_PKEY_keygen_init(pkctx) < 0 || EVP_PKEY_keygen(pkctx, &key) < 0)
@@ -32,7 +33,8 @@ KeyPair_k1Bitcoin::KeyPair_k1Bitcoin(const Pem& pem)
 Pem KeyPair_k1Bitcoin::private_key_pem() const
 {
     OpenSSL::Unique_BIO buf;
-    OpenSSL::CHECK1(PEM_write_bio_PrivateKey(buf, key, NULL, NULL, 0, NULL, NULL));
+    OpenSSL::CHECK1(
+        PEM_write_bio_PrivateKey(buf, key, NULL, NULL, 0, NULL, NULL));
 
     BUF_MEM* bptr;
     BIO_get_mem_ptr(buf, &bptr);
@@ -73,16 +75,21 @@ std::vector<uint8_t> KeyPair_k1Bitcoin::public_key_der() const
     return PublicKey_k1Bitcoin::public_key_der();
 }
 
-bool KeyPair_k1Bitcoin::verify(const std::vector<uint8_t>& contents, const std::vector<uint8_t>& signature)
+bool KeyPair_k1Bitcoin::verify(
+    const std::vector<uint8_t>& contents, const std::vector<uint8_t>& signature)
 {
     // return PublicKey_k1Bitcoin::verify(contents, signature);
     return true;
 }
 
 bool KeyPair_k1Bitcoin::verify(
-    const uint8_t* contents, size_t contents_size, const uint8_t* signature, size_t signature_size)
+    const uint8_t* contents,
+    size_t contents_size,
+    const uint8_t* signature,
+    size_t signature_size)
 {
-    // return PublicKey_k1Bitcoin::verify(contents, contents_size, signature, signature_size);
+    // return PublicKey_k1Bitcoin::verify(contents, contents_size, signature,
+    // signature_size);
     return true;
 }
 
@@ -96,42 +103,55 @@ CurveID KeyPair_k1Bitcoin::get_curve_id() const
     return PublicKey_k1Bitcoin::get_curve_id();
 }
 
-std::vector<uint8_t> KeyPair_k1Bitcoin::sign(std::span<const uint8_t> d, MDType md_type) const
+std::vector<uint8_t> KeyPair_k1Bitcoin::sign(
+    std::span<const uint8_t> d, MDType md_type) const
 {
     return {};
 }
-int KeyPair_k1Bitcoin::sign(std::span<const uint8_t> d, size_t* sig_size, uint8_t* sig, MDType md_type) const
+int KeyPair_k1Bitcoin::sign(
+    std::span<const uint8_t> d,
+    size_t* sig_size,
+    uint8_t* sig,
+    MDType md_type) const
 {
     return 0;
 }
 
-std::vector<uint8_t> KeyPair_k1Bitcoin::sign_hash(const uint8_t* hash, size_t hash_size) const
+std::vector<uint8_t> KeyPair_k1Bitcoin::sign_hash(
+    const uint8_t* hash, size_t hash_size) const
 {
     if (hash_size != 32)
-        throw std::runtime_error(fmt::format("Expected {} bytes in hash, got {}", 32, hash_size));
-    std::cout << "sign_hash " << hash_size << std::endl;
+        throw std::runtime_error(
+            fmt::format("Expected {} bytes in hash, got {}", 32, hash_size));
 
-    auto bc_ctx = secp256k1::make_bc_context(SECP256K1_CONTEXT_VERIFY | SECP256K1_CONTEXT_SIGN);
+    auto bc_ctx = secp256k1::make_bc_context(
+        SECP256K1_CONTEXT_VERIFY | SECP256K1_CONTEXT_SIGN);
     secp256k1_ecdsa_recoverable_signature ret;
-    int rc = secp256k1_ecdsa_sign_recoverable(bc_ctx->p, &ret, hash, private_key_raw().data(), nullptr, nullptr);
+    int rc = secp256k1_ecdsa_sign_recoverable(
+        bc_ctx->p, &ret, hash, private_key_raw().data(), nullptr, nullptr);
     if (rc != 1) {
         throw std::runtime_error("secp256k1_ecdsa_sign_recoverable failed");
     }
 
     RecoverableSignature rs;
-    rc = secp256k1_ecdsa_recoverable_signature_serialize_compact(bc_ctx->p, rs.raw.data(), &rs.recovery_id, &ret);
+    rc = secp256k1_ecdsa_recoverable_signature_serialize_compact(
+        bc_ctx->p, rs.raw.data(), &rs.recovery_id, &ret);
     if (rc != 1) {
-        throw std::runtime_error("secp256k1_ecdsa_recoverable_signature_serialize_compact failed");
+        throw std::runtime_error(
+            "secp256k1_ecdsa_recoverable_signature_serialize_compact failed");
     }
 
     return rs.serialise();
 }
 
-int KeyPair_k1Bitcoin::sign_hash(const uint8_t* hash, size_t hash_size, size_t* sig_size, uint8_t* sig) const
+int KeyPair_k1Bitcoin::sign_hash(
+    const uint8_t* hash, size_t hash_size, size_t* sig_size, uint8_t* sig) const
 {
-    auto bc_ctx = secp256k1::make_bc_context(SECP256K1_CONTEXT_VERIFY | SECP256K1_CONTEXT_SIGN);
+    auto bc_ctx = secp256k1::make_bc_context(
+        SECP256K1_CONTEXT_VERIFY | SECP256K1_CONTEXT_SIGN);
     secp256k1_ecdsa_recoverable_signature ret;
-    int rc = secp256k1_ecdsa_sign_recoverable(bc_ctx->p, &ret, hash, private_key_raw().data(), nullptr, nullptr);
+    int rc = secp256k1_ecdsa_sign_recoverable(
+        bc_ctx->p, &ret, hash, private_key_raw().data(), nullptr, nullptr);
     if (rc != 1) {
         throw std::runtime_error("secp256k1_ecdsa_sign_recoverable failed");
     }
@@ -140,7 +160,8 @@ int KeyPair_k1Bitcoin::sign_hash(const uint8_t* hash, size_t hash_size, size_t* 
     return 0;
 }
 
-std::vector<uint8_t> KeyPair_k1Bitcoin::derive_shared_secret(const PublicKey& peer_key)
+std::vector<uint8_t> KeyPair_k1Bitcoin::derive_shared_secret(
+    const PublicKey& peer_key)
 {
     auto cid = peer_key.get_curve_id();
     int nid = PublicKey_k1Bitcoin::get_secp256k1_group_id(cid);
@@ -153,9 +174,14 @@ std::vector<uint8_t> KeyPair_k1Bitcoin::derive_shared_secret(const PublicKey& pe
     OpenSSL::CHECK1(EVP_PKEY_derive_set_peer(ctx, pk));
     OpenSSL::CHECK1(EVP_PKEY_derive(ctx, NULL, &shared_secret_length));
     shared_secret.resize(shared_secret_length);
-    OpenSSL::CHECK1(EVP_PKEY_derive(ctx, shared_secret.data(), &shared_secret_length));
+    OpenSSL::CHECK1(
+        EVP_PKEY_derive(ctx, shared_secret.data(), &shared_secret_length));
 
     EVP_PKEY_free(pk);
     return shared_secret;
+}
+PublicKey::Coordinates KeyPair_k1Bitcoin::coordinates() const
+{
+    return KeyPair_k1Bitcoin::coordinates();
 }
 }

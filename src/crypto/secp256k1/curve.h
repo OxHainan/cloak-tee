@@ -19,7 +19,8 @@ inline bool verify_secp256k1_bc(
     if (hash_size != 32)
         return false;
     secp256k1_ecdsa_signature sig;
-    if (secp256k1_ecdsa_signature_parse_der(ctx, &sig, signature, signature_size) != 1)
+    if (secp256k1_ecdsa_signature_parse_der(
+            ctx, &sig, signature, signature_size) != 1)
         return false;
     secp256k1_ecdsa_signature norm_sig;
     if (secp256k1_ecdsa_signature_normalize(ctx, &norm_sig, &sig) == 1) {
@@ -31,7 +32,8 @@ inline bool verify_secp256k1_bc(
 
 static void secp256k1_illegal_callback(const char* str, void*)
 {
-    throw std::logic_error(fmt::format("[libsecp256k1] illegal argument: {}", str));
+    throw std::logic_error(
+        fmt::format("[libsecp256k1] illegal argument: {}", str));
 }
 class BCk1Context
 {
@@ -42,7 +44,8 @@ class BCk1Context
     {
         p = secp256k1_context_create(flags);
 
-        secp256k1_context_set_illegal_callback(p, secp256k1_illegal_callback, nullptr);
+        secp256k1_context_set_illegal_callback(
+            p, secp256k1_illegal_callback, nullptr);
     }
 
     ~BCk1Context()

@@ -19,7 +19,8 @@
 // eEVM
 #include <eEVM/bigint.h>
 #include <eEVM/util.h>
-
+#define FMT_HEADER_ONLY
+#include <fmt/format.h>
 namespace abicoder
 {
 using uint256 = intx::uint256;
@@ -33,7 +34,8 @@ inline constexpr auto BYTES = "bytes";
 inline constexpr auto FIXED = "fixed";
 inline constexpr auto UFIXED = "ufixed";
 
-inline constexpr auto ZERO_HEX_STR = "0x0000000000000000000000000000000000000000000000000000000000000000";
+inline constexpr auto ZERO_HEX_STR =
+    "0x0000000000000000000000000000000000000000000000000000000000000000";
 
 struct PackParams
 {
@@ -77,7 +79,11 @@ struct base_type
     bool dynamic;
     type_value type;
 
-    base_type(const type_value& t, const nlohmann::json& j, const size_t& len, bool dynamic_) :
+    base_type(
+        const type_value& t,
+        const nlohmann::json& j,
+        const size_t& len,
+        bool dynamic_) :
       name(j),
       length(len),
       dynamic(dynamic_),
@@ -102,7 +108,8 @@ struct number_type
 
     BTypePtr get_value() const
     {
-        return std::make_shared<base_type>(type, Signed ? "int" : "uint", bit_size, false);
+        return std::make_shared<
+            base_type>(type, Signed ? "int" : "uint", bit_size, false);
     }
 };
 
@@ -112,17 +119,25 @@ struct array_type
     std::optional<size_t> len = std::nullopt;
     nlohmann::json next;
     array_type() {}
-    array_type(const nlohmann::json& j, const size_t& col) : type(type_value::ARRAY), len(col), next(j) {}
+    array_type(const nlohmann::json& j, const size_t& col) :
+      type(type_value::ARRAY),
+      len(col),
+      next(j)
+    {}
 
     BTypePtr get_value() const
     {
-        return std::make_shared<base_type>(type, next, len.value_or(0), !len.has_value());
+        return std::make_shared<
+            base_type>(type, next, len.value_or(0), !len.has_value());
     }
 
     friend void from_json(const nlohmann::json& j, array_type& s);
     friend void to_json(nlohmann::json& j, const array_type& s);
 
-    static nlohmann::json make_array_type(const nlohmann::json& j, const std::vector<size_t>& num, const size_t& i = 0)
+    static nlohmann::json make_array_type(
+        const nlohmann::json& j,
+        const std::vector<size_t>& num,
+        const size_t& i = 0)
     {
         if (i == num.size())
             return j;
@@ -137,7 +152,10 @@ struct common_type
     bool dynamic;
     std::optional<size_t> len = std::nullopt;
     common_type() = default;
-    common_type(const nlohmann::json& type_, const size_t& len_ = 0) : type(type_), len(len_) {}
+    common_type(const nlohmann::json& type_, const size_t& len_ = 0) :
+      type(type_),
+      len(len_)
+    {}
 
     BTypePtr get_value() const
     {
@@ -148,12 +166,13 @@ struct common_type
                 break;
             case type_value::BYTES:
             case type_value::STRING:
-                return std::make_shared<base_type>(type, type, len.value_or(0), true);
+                return std::make_shared<
+                    base_type>(type, type, len.value_or(0), true);
                 break;
             default:
                 break;
         }
-        throw std::logic_error(fmt::format("{} can`t parsing", type));
+        throw std::logic_error("can`t parsing");
     }
 };
 

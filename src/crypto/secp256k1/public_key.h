@@ -38,5 +38,6 @@ class PublicKey_k1Bitcoin : public PublicKey
     std::vector<uint8_t> public_key_raw() const override;
 
     static PublicKey_k1Bitcoin recover_key(const RecoverableSignature& rs, std::span<const uint8_t> hashed);
+    virtual Coordinates coordinates() const override;
 };
 }

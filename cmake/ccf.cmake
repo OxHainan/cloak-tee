@@ -34,7 +34,7 @@ endif()
 # Build common library for CCF enclaves
 add_custom_target(ccf ALL)
 set(CCF_IMPL_SOURCE
-    ${CCF_DIR}/src/enclave/main.cpp 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/enclave/main.cpp 
     ${CCF_DIR}/src/enclave/enclave_time.cpp
     ${CCF_DIR}/src/enclave/thread_local.cpp 
     ${CCF_DIR}/src/js/wrap.cpp
@@ -46,6 +46,7 @@ if("sgx" IN_LIST COMPILE_TARGETS)
   add_enclave_library(
     ccf.enclave ${CCF_IMPL_SOURCE} ${CCF_GENERATED_DIR}/ccf_t.cpp
   )
+  target_compile_definitions(ccf.enclave PUBLIC CCHOST_SUPPORTS_SGX)
 
   add_warning_checks(ccf.enclave)
 
@@ -85,7 +86,7 @@ endif()
 if("virtual" IN_LIST COMPILE_TARGETS)
   # virtual version
   add_library(ccf.virtual STATIC ${CCF_IMPL_SOURCE})
-
+  target_compile_definitions(ccf.virtual PUBLIC CCHOST_SUPPORTS_VIRTUAL)
   target_compile_definitions(
     ccf.virtual PUBLIC INSIDE_ENCLAVE VIRTUAL_ENCLAVE
                        _LIBCPP_HAS_THREAD_API_PTHREAD

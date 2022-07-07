@@ -31,7 +31,9 @@ static std::map<std::string, std::string> parse_name(const std::string& name)
     const auto ns = nonstd::split(name, ",");
     for (const auto& n : ns) {
         const auto& [key, value] = nonstd::split_1(n, "=");
-        result.emplace(std::string(key.data(), key.size()), std::string(value.data(), value.size()));
+        result.emplace(
+            std::string(key.data(), key.size()),
+            std::string(value.data(), value.size()));
     }
     return result;
 }
@@ -41,11 +43,14 @@ KeyPair_OpenSSL::KeyPair_OpenSSL(CurveID curve_id)
     int curve_nid = get_openssl_group_id(curve_id);
     key = EVP_PKEY_new();
     Unique_EVP_PKEY_CTX pkctx;
-    if (EVP_PKEY_paramgen_init(pkctx) < 0 || EVP_PKEY_CTX_set_ec_paramgen_curve_nid(pkctx, curve_nid) < 0 ||
-        EVP_PKEY_CTX_set_ec_param_enc(pkctx, OPENSSL_EC_NAMED_CURVE) < 0)
+    if (EVP_PKEY_paramgen_init(pkctx) < 0 ||
+        EVP_PKEY_CTX_set_ec_paramgen_curve_nid(pkctx, curve_nid) < 0 ||
+        EVP_PKEY_CTX_set_ec_param_enc(pkctx, OPENSSL_EC_NAMED_CURVE) < 0) {
         throw std::runtime_error("could not initialize PK context");
-    if (EVP_PKEY_keygen_init(pkctx) < 0 || EVP_PKEY_keygen(pkctx, &key) < 0)
+    }
+    if (EVP_PKEY_keygen_init(pkctx) < 0 || EVP_PKEY_keygen(pkctx, &key) < 0) {
         throw std::runtime_error("could not generate new EC key");
+    }
 }
 
 KeyPair_OpenSSL::KeyPair_OpenSSL(const Pem& pem)
@@ -60,7 +65,8 @@ Pem KeyPair_OpenSSL::private_key_pem() const
 {
     Unique_BIO buf;
 
-    OpenSSL::CHECK1(PEM_write_bio_PrivateKey(buf, key, NULL, NULL, 0, NULL, NULL));
+    OpenSSL::CHECK1(
+        PEM_write_bio_PrivateKey(buf, key, NULL, NULL, 0, NULL, NULL));
 
     BUF_MEM* bptr;
     BIO_get_mem_ptr(buf, &bptr);
@@ -88,18 +94,24 @@ std::vector<uint8_t> KeyPair_OpenSSL::private_key_der() const
     return {bptr->data, bptr->data + bptr->length};
 }
 
-bool KeyPair_OpenSSL::verify(const std::vector<uint8_t>& contents, const std::vector<uint8_t>& signature)
+bool KeyPair_OpenSSL::verify(
+    const std::vector<uint8_t>& contents, const std::vector<uint8_t>& signature)
 {
     return PublicKey_OpenSSL::verify(contents, signature);
 }
 
 bool KeyPair_OpenSSL::verify(
-    const uint8_t* contents, size_t contents_size, const uint8_t* signature, size_t signature_size)
+    const uint8_t* contents,
+    size_t contents_size,
+    const uint8_t* signature,
+    size_t signature_size)
 {
-    return PublicKey_OpenSSL::verify(contents, contents_size, signature, signature_size);
+    return PublicKey_OpenSSL::
+        verify(contents, contents_size, signature, signature_size);
 }
 
-std::vector<uint8_t> KeyPair_OpenSSL::sign(std::span<const uint8_t> d, MDType md_type) const
+std::vector<uint8_t> KeyPair_OpenSSL::sign(
+    std::span<const uint8_t> d, MDType md_type) const
 {
     if (md_type == MDType::NONE) {
         md_type = get_md_for_ec(get_curve_id());
@@ -109,7 +121,11 @@ std::vector<uint8_t> KeyPair_OpenSSL::sign(std::span<const uint8_t> d, MDType md
     return sign_hash(hash.data(), hash.size());
 }
 
-int KeyPair_OpenSSL::sign(std::span<const uint8_t> d, size_t* sig_size, uint8_t* sig, MDType md_type) const
+int KeyPair_OpenSSL::sign(
+    std::span<const uint8_t> d,
+    size_t* sig_size,
+    uint8_t* sig,
+    MDType md_type) const
 {
     if (md_type == MDType::NONE) {
         md_type = get_md_for_ec(get_curve_id());
@@ -119,7 +135,8 @@ int KeyPair_OpenSSL::sign(std::span<const uint8_t> d, size_t* sig_size, uint8_t*
     return sign_hash(hash.data(), hash.size(), sig_size, sig);
 }
 
-std::vector<uint8_t> KeyPair_OpenSSL::sign_hash(const uint8_t* hash, size_t hash_size) const
+std::vector<uint8_t> KeyPair_OpenSSL::sign_hash(
+    const uint8_t* hash, size_t hash_size) const
 {
     std::vector<uint8_t> sig(EVP_PKEY_size(key));
     size_t written = sig.size();
@@ -132,7 +149,8 @@ std::vector<uint8_t> KeyPair_OpenSSL::sign_hash(const uint8_t* hash, size_t hash
     return sig;
 }
 
-int KeyPair_OpenSSL::sign_hash(const uint8_t* hash, size_t hash_size, size_t* sig_size, uint8_t* sig) const
+int KeyPair_OpenSSL::sign_hash(
+    const uint8_t* hash, size_t hash_size, size_t* sig_size, uint8_t* sig) const
 {
     Unique_EVP_PKEY_CTX pctx(key);
     OpenSSL::CHECK1(EVP_PKEY_sign_init(pctx));
@@ -140,12 +158,13 @@ int KeyPair_OpenSSL::sign_hash(const uint8_t* hash, size_t hash_size, size_t* si
     return 0;
 }
 
-Pem KeyPair_OpenSSL::create_csr(
+Unique_X509_REQ KeyPair_OpenSSL::create_req(
     const std::string& subject_name,
     const std::vector<SubjectAltName>& subject_alt_names,
     const std::optional<Pem>& public_key) const
 {
     Unique_X509_REQ req;
+
     if (public_key) {
         Unique_BIO mem(*public_key);
         Unique_PKEY pubkey(mem);
@@ -158,8 +177,14 @@ Pem KeyPair_OpenSSL::create_csr(
     OpenSSL::CHECKNULL(subj_name = X509_NAME_new());
 
     for (const auto& [k, v] : parse_name(subject_name)) {
-        OpenSSL::CHECK1(
-            X509_NAME_add_entry_by_txt(subj_name, k.data(), MBSTRING_ASC, (const unsigned char*)v.data(), -1, -1, 0));
+        OpenSSL::CHECK1(X509_NAME_add_entry_by_txt(
+            subj_name,
+            k.data(),
+            MBSTRING_ASC,
+            (const unsigned char*)v.data(),
+            -1,
+            -1,
+            0));
     }
 
     OpenSSL::CHECK1(X509_REQ_set_subject_name(req, subj_name));
@@ -171,13 +196,27 @@ Pem KeyPair_OpenSSL::create_csr(
         X509_EXTENSION* ext = NULL;
         OpenSSL::CHECKNULL(
             ext = X509V3_EXT_conf_nid(
-                NULL, NULL, NID_subject_alt_name, fmt::format("{}", fmt::join(subject_alt_names, ", ")).c_str()));
+                NULL,
+                NULL,
+                NID_subject_alt_name,
+                fmt::format("{}", fmt::join(subject_alt_names, ", ")).c_str()));
         sk_X509_EXTENSION_push(exts, ext);
         X509_REQ_add_extensions(req, exts);
     }
 
     if (key)
         OpenSSL::CHECK1(X509_REQ_sign(req, key, EVP_sha512()));
+
+    return req;
+}
+
+Pem KeyPair_OpenSSL::create_csr(
+    const std::string& subject_name,
+    const std::vector<SubjectAltName>& subject_alt_names,
+    const std::optional<Pem>& public_key) const
+{
+    Unique_X509_REQ req =
+        create_req(subject_name, subject_alt_names, public_key);
 
     Unique_BIO mem;
     OpenSSL::CHECK1(PEM_write_bio_X509_REQ(mem, req));
@@ -189,8 +228,27 @@ Pem KeyPair_OpenSSL::create_csr(
     return result;
 }
 
-Pem KeyPair_OpenSSL::sign_csr(
-    const Pem& issuer_cert,
+std::vector<uint8_t> KeyPair_OpenSSL::create_csr_der(
+    const std::string& subject_name,
+    const std::vector<SubjectAltName>& subject_alt_names,
+    const std::optional<Pem>& public_key) const
+{
+    Unique_X509_REQ req =
+        create_req(subject_name, subject_alt_names, public_key);
+
+    Unique_BIO mem;
+    CHECK1(i2d_X509_REQ_bio(mem, req));
+
+    BUF_MEM* bptr;
+    BIO_get_mem_ptr(mem, &bptr);
+    std::vector<uint8_t>
+        result((uint8_t*)bptr->data, (uint8_t*)bptr->data + bptr->length);
+
+    return result;
+}
+
+Pem KeyPair_OpenSSL::sign_csr_impl(
+    const std::optional<Pem>& issuer_cert,
     const Pem& signing_request,
     const std::string& valid_from,
     const std::string& valid_to,
@@ -225,8 +283,8 @@ Pem KeyPair_OpenSSL::sign_csr(
     BN_free(bn);
 
     // Add issuer name
-    if (!issuer_cert.empty()) {
-        Unique_BIO imem(issuer_cert);
+    if (issuer_cert.has_value()) {
+        Unique_BIO imem(*issuer_cert);
         OpenSSL::CHECKNULL(icrt = PEM_read_bio_X509(imem, NULL, NULL, NULL));
         OpenSSL::CHECK1(X509_set_issuer_name(crt, X509_get_subject_name(icrt)));
 
@@ -237,7 +295,8 @@ Pem KeyPair_OpenSSL::sign_csr(
             OpenSSL::CHECK1(X509_REQ_verify(csr, issuer_pubkey));
         }
     } else {
-        OpenSSL::CHECK1(X509_set_issuer_name(crt, X509_REQ_get_subject_name(csr)));
+        OpenSSL::CHECK1(
+            X509_set_issuer_name(crt, X509_REQ_get_subject_name(csr)));
     }
 
     Unique_X509_TIME not_before(valid_from);
@@ -263,17 +322,23 @@ Pem KeyPair_OpenSSL::sign_csr(
 
     // Add basic constraints
     X509_EXTENSION* ext = NULL;
-    OpenSSL::CHECKNULL(ext = X509V3_EXT_conf_nid(NULL, &v3ctx, NID_basic_constraints, ca ? "CA:TRUE" : "CA:FALSE"));
+    OpenSSL::CHECKNULL(
+        ext = X509V3_EXT_conf_nid(
+            NULL, &v3ctx, NID_basic_constraints, ca ? "CA:TRUE" : "CA:FALSE"));
     OpenSSL::CHECK1(X509_add_ext(crt, ext, -1));
     X509_EXTENSION_free(ext);
 
     // Add subject key identifier
-    OpenSSL::CHECKNULL(ext = X509V3_EXT_conf_nid(NULL, &v3ctx, NID_subject_key_identifier, "hash"));
+    OpenSSL::CHECKNULL(
+        ext = X509V3_EXT_conf_nid(
+            NULL, &v3ctx, NID_subject_key_identifier, "hash"));
     OpenSSL::CHECK1(X509_add_ext(crt, ext, -1));
     X509_EXTENSION_free(ext);
 
     // Add authority key identifier
-    OpenSSL::CHECKNULL(ext = X509V3_EXT_conf_nid(NULL, &v3ctx, NID_authority_key_identifier, "keyid:always"));
+    OpenSSL::CHECKNULL(
+        ext = X509V3_EXT_conf_nid(
+            NULL, &v3ctx, NID_authority_key_identifier, "keyid:always"));
     OpenSSL::CHECK1(X509_add_ext(crt, ext, -1));
     X509_EXTENSION_free(ext);
 
@@ -321,7 +386,8 @@ std::vector<uint8_t> KeyPair_OpenSSL::public_key_raw() const
     return PublicKey_OpenSSL::public_key_raw();
 }
 
-std::vector<uint8_t> KeyPair_OpenSSL::derive_shared_secret(const PublicKey& peer_key)
+std::vector<uint8_t> KeyPair_OpenSSL::derive_shared_secret(
+    const PublicKey& peer_key)
 {
     crypto::CurveID cid = peer_key.get_curve_id();
     int nid = crypto::PublicKey_OpenSSL::get_openssl_group_id(cid);
@@ -339,5 +405,10 @@ std::vector<uint8_t> KeyPair_OpenSSL::derive_shared_secret(const PublicKey& peer
     EVP_PKEY_free(pk);
 
     return shared_secret;
+}
+
+PublicKey::Coordinates KeyPair_OpenSSL::coordinates() const
+{
+    return PublicKey_OpenSSL::coordinates();
 }
 }
