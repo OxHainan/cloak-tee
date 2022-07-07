@@ -235,15 +235,6 @@ class EVMHandlers : public AbstractEndpointRegistry
                 return jsonrpc::result_response(0, response);
             };
 
-        auto call_prepare = [this](
-                                ccf::endpoints::EndpointContext& ctx,
-                                const nlohmann::json&) {
-            auto tee_acc =
-                TeeManager::State::make_state(ctx.tx, network.tee_table)
-                    .create();
-            return true;
-        };
-
         make_endpoint(
             Ethereum::ethrpc::GetChainId::name,
             HTTP_POST,
@@ -287,13 +278,6 @@ class EVMHandlers : public AbstractEndpointRegistry
 
         make_endpoint(
             "eth_call", HTTP_POST, ccf::json_adapter(call), auth_policies)
-            .install();
-
-        make_endpoint(
-            "cloak_prepare",
-            HTTP_POST,
-            ccf::json_adapter(call_prepare),
-            auth_policies)
             .install();
 
         make_endpoint(

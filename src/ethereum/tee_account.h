@@ -21,63 +21,60 @@
 
 namespace cloak4ccf::TeeManager::tables
 {
-    inline constexpr auto PRIVATEKEY = "tee.account.privateKey";
-    inline constexpr auto PUBLICADDR = "tee.account.publicAddr";
-    inline constexpr auto BALANCES = "tee.account.balance";
-    inline constexpr auto NONCES = "tee.account.nonce";
-    inline constexpr auto SERVICE = "tee.account.service";
+inline constexpr auto PRIVATEKEY = "tee.account.privateKey";
+inline constexpr auto PUBLICADDR = "tee.account.publicAddr";
+inline constexpr auto BALANCES = "tee.account.balance";
+inline constexpr auto NONCES = "tee.account.nonce";
 
-    struct KeyPair
+struct KeyPair
+{
+    using PrivateKey = kv::RawCopySerialisedMap<eevm::Address, crypto::Pem>;
+    PrivateKey privateKey;
+
+    using PublicAddr = ccf::ServiceValue<eevm::Address>;
+    PublicAddr publicAddr;
+
+    struct Views
     {
-        using PrivateKey = kv::RawCopySerialisedMap<eevm::Address, crypto::Pem>;
-        PrivateKey privateKey;
-
-        using PublicAddr = ccf::ServiceValue<eevm::Address>;
-        PublicAddr publicAddr;
-
-        struct Views
-        {
-            PrivateKey::Handle* privateKey;
-            PublicAddr::Handle* publicAddr;
-        };
-
-        Views get_views(kv::Tx& tx)
-        {
-            return {tx.rw(privateKey), tx.rw(publicAddr)};
-        }
-
-        KeyPair() : privateKey(PRIVATEKEY), publicAddr(PUBLICADDR) {}
+        PrivateKey::Handle* privateKey;
+        PublicAddr::Handle* publicAddr;
     };
 
-    struct Accounts
+    Views get_views(kv::Tx& tx)
     {
-        using Balances = kv::Map<eevm::Address, uint256_t>;
-        Balances balances;
-        using Nonces = kv::Map<eevm::Address, eevm::Account::Nonce>;
-        Nonces nonces;
+        return {tx.rw(privateKey), tx.rw(publicAddr)};
+    }
 
-        struct Views
-        {
-            Balances::Handle* balances;
-            Nonces::Handle* nonces;
-        };
+    KeyPair() : privateKey(PRIVATEKEY), publicAddr(PUBLICADDR) {}
+};
 
-        Views get_views(kv::Tx& tx)
-        {
-            return {tx.rw(balances), tx.rw(nonces)};
-        }
+struct Accounts
+{
+    using Balances = kv::Map<eevm::Address, uint256_t>;
+    Balances balances;
+    using Nonces = kv::Map<eevm::Address, eevm::Account::Nonce>;
+    Nonces nonces;
 
-        Accounts() : balances(BALANCES), nonces(NONCES) {}
-    };
-    using CloakService = ccf::ServiceValue<eevm::Address>;
-
-    struct Table
+    struct Views
     {
-        tables::Accounts acc;
-        tables::KeyPair key_pair;
-        tables::CloakService service;
-
-        Table() : acc(), key_pair(), service(tables::SERVICE) {}
+        Balances::Handle* balances;
+        Nonces::Handle* nonces;
     };
+
+    Views get_views(kv::Tx& tx)
+    {
+        return {tx.rw(balances), tx.rw(nonces)};
+    }
+
+    Accounts() : balances(BALANCES), nonces(NONCES) {}
+};
+
+struct Table
+{
+    tables::Accounts acc;
+    tables::KeyPair key_pair;
+
+    Table() : acc(), key_pair() {}
+};
 
 } // namespace cloak4ccf::TeeManager::tables
