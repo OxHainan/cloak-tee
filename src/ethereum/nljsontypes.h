@@ -224,6 +224,7 @@ inline void from_json(const nlohmann::json& j, Call& s)
     s.call_data = j[0];
     s.block_id = j[1];
 }
+
 //
 inline void to_json(nlohmann::json& j, const SendRawTransaction& s)
 {
@@ -236,5 +237,6 @@ inline void from_json(const nlohmann::json& j, SendRawTransaction& s)
     evm4ccf::require_array(j);
     s.raw_transaction = j[0];
 }
+
 
 } // namespace Ethereum

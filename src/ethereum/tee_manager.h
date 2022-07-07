@@ -92,6 +92,7 @@ struct Account : public eevm::Account
 };
 
 using AccountPtr = std::shared_ptr<Account>;
+
 class State
 {
  public:

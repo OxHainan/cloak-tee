@@ -36,6 +36,7 @@ using ByteString = std::vector<uint8_t>;
 using ContractParticipants = std::set<eevm::Address>;
 
 constexpr auto DefaultBlockID = "latest";
+
 enum class ContractLevel
 {
     BASIC,
@@ -43,6 +44,7 @@ enum class ContractLevel
     SOLIDITY_ENHANCE,
     CLOAK
 };
+
 
 struct MessageCall
 {

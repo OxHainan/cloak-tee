@@ -111,7 +111,9 @@ class EVMHandlers : public AbstractEndpointRegistry
             auto ce = params.get<Ethereum::ContractEscrow>();
             auto es = make_state(ctx.tx);
             if (auto state = es.get(ce.address); !state.acc.has_code()) {
+
                 nlohmann::json message = "Address [" +
+
                     eevm::to_hex_string(ce.address) + "] not a contract";
                 throw ccf::make_error(
                     HTTP_STATUS_BAD_REQUEST,

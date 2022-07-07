@@ -82,6 +82,7 @@ namespace tables
           pending_states(PENDING_STATES),
           encrypted(CONTRACT_ENCRYPTED_KEY),
           levels(LEVELS)
+
         {}
     };
 
