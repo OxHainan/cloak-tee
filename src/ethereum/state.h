@@ -24,6 +24,8 @@ class EthereumState : public eevm::GlobalState
     tables::Storage::Handle& tx_storage;
     tables::PendingStates::Handle& pending;
     tables::ContractEncryptedKey::Handle& encryptedKey;
+    tables::ContractLevels::Handle& contractLevels;
+
     std::map<eevm::Address, std::unique_ptr<AccountProxy>> cache;
 
     eevm::AccountState add_to_cache(const eevm::Address& address)
@@ -32,6 +34,7 @@ class EthereumState : public eevm::GlobalState
             address,
             std::make_unique<AccountProxy>(
                 address,
+                contractLevels.get(address),
                 encryptedKey.get(address),
                 accounts,
                 tx_storage,
@@ -54,11 +57,13 @@ class EthereumState : public eevm::GlobalState
         const tables::Accounts::Views& acc_views,
         tables::Storage::Handle* views,
         tables::PendingStates::Handle* uh,
-        tables::ContractEncryptedKey::Handle* ch) :
+        tables::ContractEncryptedKey::Handle* ch,
+        tables::ContractLevels::Handle* contractLevels) :
       accounts(acc_views),
       tx_storage(*views),
       pending(*uh),
-      encryptedKey(*ch)
+      encryptedKey(*ch),
+      contractLevels(*contractLevels)
     {}
 
     void remove(const eevm::Address& addr) override
@@ -148,7 +153,9 @@ class EthereumState : public eevm::GlobalState
             as.accounts.get_views(tx),
             tx.rw(as.storage),
             tx.rw(as.pending_states),
-            tx.rw(as.encrypted));
+            tx.rw(as.encrypted),
+            tx.rw(as.levels));
+
     }
 };
 

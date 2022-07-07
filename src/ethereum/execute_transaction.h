@@ -48,6 +48,7 @@ class AbstractEVM
             const auto from_state = es.get(call_data.from);
             to = eevm::generate_address(
                 from_state.acc.get_address(), from_state.acc.get_nonce());
+            LOG_INFO_FMT("contract address {}", eevm::to_hex_string(to));
             es.create(to, call_data.gas, eevm::to_bytes(call_data.data));
         }
 
@@ -113,7 +114,6 @@ class AbstractEVM
 class EVMC : public AbstractEVM
 {
  private:
-    // kv::Tx tx;
     tables::Results::Handle* results_view;
 
  public:
@@ -124,6 +124,11 @@ class EVMC : public AbstractEVM
       AbstractEVM(call_data, es, vlh),
       results_view(views)
     {}
+
+    EVMC(const MessageCall& call_data, EthereumState& es) :
+      AbstractEVM(call_data, es, vlh)
+    {}
+
     eevm::VectorLogHandler vlh;
     Ethereum::TxHash run()
     {

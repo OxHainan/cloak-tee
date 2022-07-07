@@ -17,49 +17,41 @@
 #include "eEVM/keccak256.h"
 namespace cloak4ccf
 {
-    struct TeePrepare
-    {
-        std::string manager;
-        std::string cloakServiceContract;
-    };
 
-    DECLARE_JSON_TYPE(TeePrepare)
-    DECLARE_JSON_REQUIRED_FIELDS(TeePrepare, manager, cloakServiceContract)
+struct SyncStates
+{
+    std::string data;
+    eevm::Keccak256 tx_hash;
+};
 
-    struct SyncStates
-    {
-        std::string data;
-        eevm::Keccak256 tx_hash;
-    };
+DECLARE_JSON_TYPE(SyncStates)
+DECLARE_JSON_REQUIRED_FIELDS(SyncStates, data, tx_hash)
 
-    DECLARE_JSON_TYPE(SyncStates)
-    DECLARE_JSON_REQUIRED_FIELDS(SyncStates, data, tx_hash)
+struct SyncReport
+{
+    eevm::Keccak256 id;
+    std::string result;
+};
 
-    struct SyncReport
-    {
-        eevm::Keccak256 id;
-        std::string result;
-    };
+DECLARE_JSON_TYPE(SyncReport)
+DECLARE_JSON_REQUIRED_FIELDS(SyncReport, id, result)
 
-    DECLARE_JSON_TYPE(SyncReport)
-    DECLARE_JSON_REQUIRED_FIELDS(SyncReport, id, result)
+struct SyncPropose
+{
+    eevm::Keccak256 id;
+    bool success;
+};
 
-    struct SyncPropose
-    {
-        eevm::Keccak256 id;
-        bool success;
-    };
+DECLARE_JSON_TYPE(SyncPropose)
+DECLARE_JSON_REQUIRED_FIELDS(SyncPropose, id, success)
 
-    DECLARE_JSON_TYPE(SyncPropose)
-    DECLARE_JSON_REQUIRED_FIELDS(SyncPropose, id, success)
+struct SyncKeys
+{
+    eevm::Keccak256 tx_hash;
+    std::string data;
+};
 
-    struct SyncKeys
-    {
-        eevm::Keccak256 tx_hash;
-        std::string data;
-    };
-
-    DECLARE_JSON_TYPE(SyncKeys)
-    DECLARE_JSON_REQUIRED_FIELDS(SyncKeys, data, tx_hash)
+DECLARE_JSON_TYPE(SyncKeys)
+DECLARE_JSON_REQUIRED_FIELDS(SyncKeys, data, tx_hash)
 
 } // namespace cloak4ccf

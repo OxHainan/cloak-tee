@@ -111,7 +111,9 @@ class EVMHandlers : public AbstractEndpointRegistry
             auto ce = params.get<Ethereum::ContractEscrow>();
             auto es = make_state(ctx.tx);
             if (auto state = es.get(ce.address); !state.acc.has_code()) {
-                std::string message = "Address [" +
+
+                nlohmann::json message = "Address [" +
+
                     eevm::to_hex_string(ce.address) + "] not a contract";
                 throw ccf::make_error(
                     HTTP_STATUS_BAD_REQUEST,
@@ -119,18 +121,37 @@ class EVMHandlers : public AbstractEndpointRegistry
                     jsonrpc::error_response(0, message));
             }
 
-            auto ch = ctx.tx.rw(network.acc_state.encrypted);
-            if (ch->get(ce.address).has_value()) {
-                std::string message = "Address [" +
-                    eevm::to_hex_string(ce.address) +
-                    "] has already setting contract key";
+            if (auto ch = ctx.tx.rw(network.acc_state.encrypted); ch) {
+                if (ch->get(ce.address).has_value()) {
+                    nlohmann::json message = "Address [" +
+                        eevm::to_hex_string(ce.address) +
+                        "] has already setting contract key";
 
-                throw ccf::make_error(
-                    HTTP_STATUS_BAD_REQUEST,
-                    ccf::errors::InvalidQueryParameterValue,
-                    jsonrpc::error_response(0, message));
+                    throw ccf::make_error(
+                        HTTP_STATUS_BAD_REQUEST,
+                        ccf::errors::InvalidQueryParameterValue,
+                        jsonrpc::error_response(0, message));
+                }
+
+                ch->put(ce.address, crypto::create_entropy()->random(32u));
             }
-            ch->put(ce.address, crypto::create_entropy()->random(32u));
+
+            if (auto cl = ctx.tx.rw(network.acc_state.levels); cl) {
+                if (auto level = cl->get(ce.address); level.has_value() &&
+                    *level != Ethereum::ContractLevel::SOLIDITY) {
+                    nlohmann::json message = "Address [" +
+                        eevm::to_hex_string(ce.address) +
+                        "] cannt match with level";
+
+                    throw ccf::make_error(
+                        HTTP_STATUS_BAD_REQUEST,
+                        ccf::errors::InvalidQueryParameterValue,
+                        jsonrpc::error_response(0, message));
+                }
+
+                cl->put(ce.address, Ethereum::ContractLevel::SOLIDITY_ENHANCE);
+            }
+
             return ccf::make_success(jsonrpc::result_response(0, true));
         };
 
@@ -150,6 +171,25 @@ class EVMHandlers : public AbstractEndpointRegistry
             const auto nonce = account_state.acc.get_nonce();
             return ccf::make_success(
                 jsonrpc::result_response(0, eevm::to_hex_string(nonce)));
+        };
+
+        auto call = [this](
+                        ccf::endpoints::EndpointContext& ctx,
+                        const nlohmann::json& params) {
+            auto cl = params.get<Ethereum::Call>();
+            if (!cl.call_data.to.has_value()) {
+                return ccf::make_error(
+                    HTTP_STATUS_BAD_REQUEST,
+                    ccf::errors::InvalidQueryParameterValue,
+                    "Missing 'to' field");
+            }
+
+            auto es = make_state(ctx.tx);
+            auto exec_result =
+                Ethereum::EVMC(cl.call_data, es).run_with_result();
+
+            return ccf::make_success(jsonrpc::result_response(
+                0, eevm::to_hex_string(exec_result.output)));
         };
 
         auto send_raw_transaction = [this](
@@ -196,14 +236,6 @@ class EVMHandlers : public AbstractEndpointRegistry
                 }
                 return jsonrpc::result_response(0, response);
             };
-        auto call_prepare = [this](
-                                ccf::endpoints::EndpointContext& ctx,
-                                const nlohmann::json&) {
-            auto tee_acc =
-                TeeManager::State::make_state(ctx.tx, network.tee_table)
-                    .create();
-            return true;
-        };
 
         make_endpoint(
             Ethereum::ethrpc::GetChainId::name,
@@ -247,10 +279,7 @@ class EVMHandlers : public AbstractEndpointRegistry
             .install();
 
         make_endpoint(
-            "cloak_prepare",
-            HTTP_POST,
-            ccf::json_adapter(call_prepare),
-            auth_policies)
+            "eth_call", HTTP_POST, ccf::json_adapter(call), auth_policies)
             .install();
 
         make_endpoint(

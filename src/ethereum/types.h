@@ -37,6 +37,15 @@ using ContractParticipants = std::set<eevm::Address>;
 
 constexpr auto DefaultBlockID = "latest";
 
+enum class ContractLevel
+{
+    BASIC,
+    SOLIDITY,
+    SOLIDITY_ENHANCE,
+    CLOAK
+};
+
+
 struct MessageCall
 {
     eevm::Address from = {};
@@ -139,6 +148,12 @@ struct SendRawTransaction
 struct EstimateGas
 {
     MessageCall call_data = {};
+};
+
+struct Call
+{
+    MessageCall call_data = {};
+    BlockID block_id = DefaultBlockID;
 };
 
 } // namespace Ethereum

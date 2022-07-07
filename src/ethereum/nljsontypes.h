@@ -130,8 +130,7 @@ inline void to_json(nlohmann::json& j, const MessageCall& s)
 inline void from_json(const nlohmann::json& j, MessageCall& s)
 {
     evm4ccf::require_object(j);
-
-    s.from = eevm::to_uint256(j["from"]);
+    evm4ccf::from_optional_hex_str(j, "from", s.from);
     evm4ccf::from_optional_hex_str(j, "to", s.to);
     evm4ccf::from_optional_hex_str(j, "gas", s.gas);
     evm4ccf::from_optional_hex_str(j, "gasPrice", s.gas_price);
@@ -212,6 +211,20 @@ inline void from_json(const nlohmann::json& j, EstimateGas& s)
     s.call_data = j[0];
 }
 
+inline void to_json(nlohmann::json& j, const Call& s)
+{
+    j = nlohmann::json::array();
+    j.push_back(s.call_data);
+    j.push_back(s.block_id);
+}
+
+inline void from_json(const nlohmann::json& j, Call& s)
+{
+    evm4ccf::require_array(j);
+    s.call_data = j[0];
+    s.block_id = j[1];
+}
+
 //
 inline void to_json(nlohmann::json& j, const SendRawTransaction& s)
 {
@@ -224,5 +237,6 @@ inline void from_json(const nlohmann::json& j, SendRawTransaction& s)
     evm4ccf::require_array(j);
     s.raw_transaction = j[0];
 }
+
 
 } // namespace Ethereum

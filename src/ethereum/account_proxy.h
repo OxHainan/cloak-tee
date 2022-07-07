@@ -15,17 +15,22 @@ struct AccountProxy : public eevm::Account, public eevm::Storage
 {
     eevm::Address address;
     eevm::EncryptorPtr encryptor;
+    ContractLevel level;
+
     mutable tables::Accounts::Views accounts_views;
     tables::Storage::Handle& storage;
     tables::PendingStates::Handle& pending;
 
     AccountProxy(
         const eevm::Address& a,
+        const std::optional<ContractLevel> level,
+
         const std::optional<std::vector<uint8_t>>& encryptKey,
         const tables::Accounts::Views& av,
         tables::Storage::Handle& st,
         tables::PendingStates::Handle& ut) :
       address(a),
+      level(level.value_or(ContractLevel::BASIC)),
       accounts_views(av),
       storage(st),
       pending(ut)
@@ -86,18 +91,22 @@ struct AccountProxy : public eevm::Account, public eevm::Storage
         if (encryptor) {
             state.resize(64u);
             std::vector<uint8_t> plain(32u);
+            eevm::to_big_endian(value, plain.data());
             encryptor->encrypt(plain, state);
         } else {
             eevm::to_big_endian(value, state.data());
         }
-        LOG_INFO_FMT("storage {}", eevm::to_hex_string(state));
+
+        LOG_DEBUG_FMT("storage {}", eevm::to_hex_string(state));
         storage.put(translate(key), state);
-        update_pending(key);
+        if (level > ContractLevel::BASIC)
+            update_pending(key);
+
     }
 
     void update_pending(const uint256_t& key)
     {
-        LOG_INFO_FMT("update_pending {}", key);
+        LOG_DEBUG_FMT("update_pending {}", key);
         pending.insert(translate(key));
     }
     // SNIPPET_END: store_impl
@@ -106,17 +115,33 @@ struct AccountProxy : public eevm::Account, public eevm::Storage
     {
         auto state = storage.get(translate(key));
         if (state.has_value()) {
-            if (encryptor) {
+            if (level > ContractLevel::SOLIDITY && state->size() > 32) {
                 std::vector<uint8_t> plain;
-                encryptor->decrypt(*state, plain);
-                return eevm::from_big_endian(plain.data());
+                if (encryptor->decrypt(*state, plain)) {
+                    return eevm::from_big_endian(plain.data());
+                }
+
+                throw std::runtime_error(fmt::format(
+                    "contract state decrypt failed, get key {}",
+                    eevm::to_hex_string(key)));
             }
 
             return eevm::from_big_endian(state->data());
         }
 
+        if (level == ContractLevel::BASIC) {
+            return 0;
+        }
+
         uint256_t value = enclave::get_export_state(address, key);
-        return value;
+        if (level == ContractLevel::SOLIDITY) {
+            return value;
+        }
+
+        throw std::runtime_error(fmt::format(
+            "Contract privacy enhancements are not yet "
+            "supported, get contract {}",
+            eevm::to_hex_string(address)));
     }
 
     bool remove(const uint256_t& key) override
