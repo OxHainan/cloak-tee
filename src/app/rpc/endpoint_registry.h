@@ -204,7 +204,7 @@ class EVMHandlers : public AbstractEndpointRegistry
             auto es = make_state(ctx.tx);
             auto tx_result = Ethereum::EVMC(tc, es).run();
             if (auto it = ctx.tx.wo(network.tx_results); it) {
-                it->put(eevm::to_uint256(hash.data(), hash.size()), tx_result);
+                it->put(eevm::to_uint256(hash.hex_str()), tx_result);
             }
             return jsonrpc::result_response(0, hash.hex_str());
         };
