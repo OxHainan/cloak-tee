@@ -45,7 +45,6 @@ enum class ContractLevel
     CLOAK
 };
 
-
 struct MessageCall
 {
     eevm::Address from = {};

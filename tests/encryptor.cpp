@@ -4,11 +4,9 @@
 #include "ethereum/encryptor.h"
 
 #include "eEVM/util.h"
-
 #include "ethereum/types.h"
 //
 #include "ethereum/nljsontypes.h"
-
 
 #include <doctest/doctest.h>
 

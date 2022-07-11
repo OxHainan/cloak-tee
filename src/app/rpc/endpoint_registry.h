@@ -111,9 +111,7 @@ class EVMHandlers : public AbstractEndpointRegistry
             auto ce = params.get<Ethereum::ContractEscrow>();
             auto es = make_state(ctx.tx);
             if (auto state = es.get(ce.address); !state.acc.has_code()) {
-
                 nlohmann::json message = "Address [" +
-
                     eevm::to_hex_string(ce.address) + "] not a contract";
                 throw ccf::make_error(
                     HTTP_STATUS_BAD_REQUEST,
@@ -191,7 +189,7 @@ class EVMHandlers : public AbstractEndpointRegistry
             return ccf::make_success(jsonrpc::result_response(
                 0, eevm::to_hex_string(exec_result.output)));
         };
-
+        
         auto send_raw_transaction = [this](
                                         ccf::endpoints::EndpointContext& ctx,
                                         const nlohmann::json& params) {
@@ -202,10 +200,13 @@ class EVMHandlers : public AbstractEndpointRegistry
 
             Ethereum::MessageCall tc;
             eth_tx.to_transaction_call(tc);
+            auto hash = eth_tx.to_be_signed(true);
             auto es = make_state(ctx.tx);
-            auto tx_result =
-                Ethereum::EVMC(tc, es, ctx.tx.rw(network.tx_results)).run();
-            return jsonrpc::result_response(0, eevm::to_hex_string(tx_result));
+            auto tx_result = Ethereum::EVMC(tc, es).run();
+            if (auto it = ctx.tx.wo(network.tx_results); it) {
+                it->put(eevm::to_uint256(hash.data(), hash.size()), tx_result);
+            }
+            return jsonrpc::result_response(0, hash.hex_str());
         };
 
         auto get_transaction_receipt =

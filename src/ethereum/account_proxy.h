@@ -16,7 +16,6 @@ struct AccountProxy : public eevm::Account, public eevm::Storage
     eevm::Address address;
     eevm::EncryptorPtr encryptor;
     ContractLevel level;
-
     mutable tables::Accounts::Views accounts_views;
     tables::Storage::Handle& storage;
     tables::PendingStates::Handle& pending;
@@ -24,7 +23,6 @@ struct AccountProxy : public eevm::Account, public eevm::Storage
     AccountProxy(
         const eevm::Address& a,
         const std::optional<ContractLevel> level,
-
         const std::optional<std::vector<uint8_t>>& encryptKey,
         const tables::Accounts::Views& av,
         tables::Storage::Handle& st,
@@ -96,12 +94,10 @@ struct AccountProxy : public eevm::Account, public eevm::Storage
         } else {
             eevm::to_big_endian(value, state.data());
         }
-
         LOG_DEBUG_FMT("storage {}", eevm::to_hex_string(state));
         storage.put(translate(key), state);
         if (level > ContractLevel::BASIC)
             update_pending(key);
-
     }
 
     void update_pending(const uint256_t& key)
@@ -138,6 +134,7 @@ struct AccountProxy : public eevm::Account, public eevm::Storage
             return value;
         }
 
+        // 转到solidity enhance情况
         throw std::runtime_error(fmt::format(
             "Contract privacy enhancements are not yet "
             "supported, get contract {}",

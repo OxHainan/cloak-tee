@@ -225,7 +225,6 @@ inline void from_json(const nlohmann::json& j, Call& s)
     s.block_id = j[1];
 }
 
-//
 inline void to_json(nlohmann::json& j, const SendRawTransaction& s)
 {
     j = nlohmann::json::array();

@@ -37,7 +37,7 @@ class AbstractEVM
       log_handler(_log_handler)
     {}
 
-    std::tuple<eevm::ExecResult, TxHash, Address> run_in_evm()
+    std::tuple<eevm::ExecResult, Address> run_in_evm()
     {
         Address to;
         if (call_data.to.has_value()) {
@@ -54,7 +54,7 @@ class AbstractEVM
 
         auto [exec_result, account_state] = run(to);
         if (exec_result.er == eevm::ExitReason::threw) {
-            return std::make_tuple(exec_result, 0, 0);
+            return std::make_tuple(exec_result, 0);
         }
 
         if (!call_data.to.has_value()) {
@@ -65,11 +65,7 @@ class AbstractEVM
         auto tx_nonce = from_state.acc.get_nonce();
         from_state.acc.increment_nonce();
 
-        evm4ccf::EthereumTransaction eth_tx(tx_nonce, call_data);
-        const auto tx_hash = eth_tx.to_be_signed();
-        const auto hash = eevm::from_big_endian(tx_hash.data());
-        return std::
-            make_tuple(exec_result, hash, account_state.acc.get_address());
+        return std::make_tuple(exec_result, account_state.acc.get_address());
     }
 
     const MessageCall& call_data;
@@ -113,26 +109,15 @@ class AbstractEVM
 
 class EVMC : public AbstractEVM
 {
- private:
-    tables::Results::Handle* results_view;
-
  public:
-    EVMC(
-        const MessageCall& call_data,
-        EthereumState& es,
-        tables::Results::Handle* views) :
-      AbstractEVM(call_data, es, vlh),
-      results_view(views)
-    {}
-
     EVMC(const MessageCall& call_data, EthereumState& es) :
       AbstractEVM(call_data, es, vlh)
     {}
 
     eevm::VectorLogHandler vlh;
-    Ethereum::TxHash run()
+    Ethereum::TxResult run()
     {
-        const auto [exec_result, tx_hash, to_address] = run_in_evm();
+        const auto [exec_result, to_address] = run_in_evm();
         if (exec_result.er == eevm::ExitReason::threw) {
             throw std::logic_error(exec_result.exmsg);
         }
@@ -144,13 +129,12 @@ class EVMC : public AbstractEVM
 
         tx_result.logs = vlh.logs;
 
-        results_view->put(tx_hash, tx_result);
-        return tx_hash;
+        return tx_result;
     }
 
     eevm::ExecResult run_with_result()
     {
-        const auto [exec_result, tx_hash, to_address] = run_in_evm();
+        const auto [exec_result, _] = run_in_evm();
 
         if (exec_result.er == eevm::ExitReason::threw) {
             throw std::logic_error(exec_result.exmsg);

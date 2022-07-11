@@ -25,7 +25,6 @@ class EthereumState : public eevm::GlobalState
     tables::PendingStates::Handle& pending;
     tables::ContractEncryptedKey::Handle& encryptedKey;
     tables::ContractLevels::Handle& contractLevels;
-
     std::map<eevm::Address, std::unique_ptr<AccountProxy>> cache;
 
     eevm::AccountState add_to_cache(const eevm::Address& address)
@@ -155,7 +154,6 @@ class EthereumState : public eevm::GlobalState
             tx.rw(as.pending_states),
             tx.rw(as.encrypted),
             tx.rw(as.levels));
-
     }
 };
 
