@@ -189,7 +189,7 @@ class EVMHandlers : public AbstractEndpointRegistry
             return ccf::make_success(jsonrpc::result_response(
                 0, eevm::to_hex_string(exec_result.output)));
         };
-
+        
         auto send_raw_transaction = [this](
                                         ccf::endpoints::EndpointContext& ctx,
                                         const nlohmann::json& params) {

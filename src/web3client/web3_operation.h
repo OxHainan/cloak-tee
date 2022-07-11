@@ -97,6 +97,7 @@ class Web3Operation : public AbstractWeb3Operation
                                 eevm::to_hex_string(contract_address));
                             return;
                         }
+
                         LOG_INFO_FMT(
                             "sync contract escrow, contract {}",
                             eevm::to_hex_string(contract_address));
