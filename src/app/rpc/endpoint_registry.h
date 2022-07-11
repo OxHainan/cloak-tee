@@ -200,10 +200,13 @@ class EVMHandlers : public AbstractEndpointRegistry
 
             Ethereum::MessageCall tc;
             eth_tx.to_transaction_call(tc);
+            auto hash = eth_tx.to_be_signed(true);
             auto es = make_state(ctx.tx);
-            auto tx_result =
-                Ethereum::EVMC(tc, es, ctx.tx.rw(network.tx_results)).run();
-            return jsonrpc::result_response(0, eevm::to_hex_string(tx_result));
+            auto tx_result = Ethereum::EVMC(tc, es).run();
+            if (auto it = ctx.tx.wo(network.tx_results); it) {
+                it->put(eevm::to_uint256(hash.data(), hash.size()), tx_result);
+            }
+            return jsonrpc::result_response(0, hash.hex_str());
         };
 
         auto get_transaction_receipt =

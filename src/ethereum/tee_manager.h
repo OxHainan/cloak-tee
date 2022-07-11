@@ -152,6 +152,7 @@ class State
             accounts.nonces->put(addr, initial_nonce);
         }
 
+        LOG_INFO_FMT("generated tee manager: {}", eevm::to_hex_string(addr));
         return std::make_shared<Account>(accounts, key_pair);
     }
 
