@@ -1,3 +1,4 @@
+#include <eEVM/bigint.h>
 #include <web3client/client.h>
 #ifdef CCHOST_SUPPORTS_SGX
 #    include <ccf_u.h>
