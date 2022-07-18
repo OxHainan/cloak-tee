@@ -20,7 +20,6 @@
 // Include order matters. virtual_enclave.h uses the OE definitions if
 // available, else creates its own stubs
 #    include "enclave/virtual_enclave.h"
-#    include "enclave/virtual_host.h"
 #endif
 
 extern "C"
@@ -39,12 +38,11 @@ extern "C"
 
 #ifdef CCHOST_SUPPORTS_VIRTUAL
     using export_state_func_t = bool (*)(uint256_t, uint256_t, uint256_t*);
-    inline oe_result_t register_export_state(
-        void* virtual_enclave_handle, bool* _retval, export_state_func_t pf)
+    inline oe_result_t register_export_state(void* virtual_enclave_handle, bool* _retval, export_state_func_t pf)
     {
         using register_func_t = bool (*)(export_state_func_t);
-        static register_func_t register_func = get_enclave_exported_function<
-            register_func_t>(virtual_enclave_handle, "register_export_state");
+        static register_func_t register_func =
+            get_enclave_exported_function<register_func_t>(virtual_enclave_handle, "register_export_state");
         *_retval = register_func(pf);
         return *_retval ? OE_OK : OE_FAILURE;
     }
@@ -53,17 +51,13 @@ extern "C"
 
 namespace host
 {
-void expect_enclave_file_suffix(
-    const std::string& file,
-    char const* expected_suffix,
-    host::EnclaveType type)
+void expect_enclave_file_suffix(const std::string& file, char const* expected_suffix, host::EnclaveType type)
 {
     if (!nonstd::ends_with(file, expected_suffix)) {
         // Remove possible suffixes to try and get root of filename, to build
         // suggested filename
         auto basename = file;
-        for (const char* suffix :
-             {".signed", ".debuggable", ".so", ".enclave", ".virtual"}) {
+        for (const char* suffix : {".signed", ".debuggable", ".so", ".enclave", ".virtual"}) {
             if (nonstd::ends_with(basename, suffix)) {
                 basename = basename.substr(0, basename.size() - strlen(suffix));
             }
@@ -105,8 +99,7 @@ class Enclave
     Enclave(const std::string& path, EnclaveType type)
     {
         if (!std::filesystem::exists(path)) {
-            throw std::logic_error(
-                fmt::format("No enclave file found at {}", path));
+            throw std::logic_error(fmt::format("No enclave file found at {}", path));
         }
 
         switch (type) {
@@ -116,33 +109,23 @@ class Enclave
 #ifdef CCHOST_SUPPORTS_SGX
                 uint32_t oe_flags = 0;
                 if (type == host::EnclaveType::SGX_DEBUG) {
-                    expect_enclave_file_suffix(
-                        path, ".enclave.so.debuggable", type);
+                    expect_enclave_file_suffix(path, ".enclave.so.debuggable", type);
                     oe_flags |= OE_ENCLAVE_FLAG_DEBUG;
                 } else {
-                    expect_enclave_file_suffix(
-                        path, ".enclave.so.signed", type);
+                    expect_enclave_file_suffix(path, ".enclave.so.signed", type);
                 }
 
 #    ifndef VERBOSE_LOGGING
                 oe_log_set_callback(nullptr, nop_oe_logger);
 #    endif
 
-                auto err = oe_create_ccf_enclave(
-                    path.c_str(),
-                    OE_ENCLAVE_TYPE_SGX,
-                    oe_flags,
-                    nullptr,
-                    0,
-                    &sgx_handle);
+                auto err = oe_create_ccf_enclave(path.c_str(), OE_ENCLAVE_TYPE_SGX, oe_flags, nullptr, 0, &sgx_handle);
 
                 if (err != OE_OK) {
-                    throw std::logic_error(fmt::format(
-                        "Could not create enclave: {}", oe_result_str(err)));
+                    throw std::logic_error(fmt::format("Could not create enclave: {}", oe_result_str(err)));
                 }
 #else
-                throw std::logic_error(
-                    "SGX enclaves are not supported in current build");
+                throw std::logic_error("SGX enclaves are not supported in current build");
 #endif // CCHOST_SUPPORTS_SGX
                 break;
             }
@@ -153,17 +136,14 @@ class Enclave
                 expect_enclave_file_suffix(path, ".virtual.so", type);
                 virtual_handle = load_virtual_enclave(path.c_str());
 #else
-                throw std::logic_error(
-                    "Virtual enclaves not supported in current build");
+                throw std::logic_error("Virtual enclaves not supported in current build");
 #endif // CCHOST_SUPPORTS_VIRTUAL
                 break;
             }
 
             default:
             {
-                throw std::logic_error(fmt::format(
-                    "Unsupported enclave type: {}",
-                    nlohmann::json(type).dump()));
+                throw std::logic_error(fmt::format("Unsupported enclave type: {}", nlohmann::json(type).dump()));
             }
         }
     }
@@ -188,11 +168,9 @@ class Enclave
         auto config = nlohmann::json(ccf_config).dump();
 
 #define CREATE_NODE_ARGS \
-    &status, (void*)&enclave_config, config.data(), config.size(), \
-        node_cert.data(), node_cert.size(), &node_cert_len, \
-        service_cert.data(), service_cert.size(), &service_cert_len, \
-        enclave_version_buf.data(), enclave_version_buf.size(), \
-        &enclave_version_len, start_type, num_worker_thread, time_location
+    &status, (void*)&enclave_config, config.data(), config.size(), node_cert.data(), node_cert.size(), &node_cert_len, \
+        service_cert.data(), service_cert.size(), &service_cert_len, enclave_version_buf.data(), \
+        enclave_version_buf.size(), &enclave_version_len, start_type, num_worker_thread, time_location
 
         oe_result_t err = OE_FAILURE;
 
@@ -215,16 +193,12 @@ class Enclave
             return status;
         }
 
-        // Host and enclave versions must match. Otherwise the node may crash
-        // much later (e.g. unhandled ring buffer message on either end)
-        auto enclave_version = std::string(
-            enclave_version_buf.begin(),
-            enclave_version_buf.begin() + enclave_version_len);
+        // Host and enclave versions must match. Otherwise the node may crash much
+        // later (e.g. unhandled ring buffer message on either end)
+        auto enclave_version =
+            std::string(enclave_version_buf.begin(), enclave_version_buf.begin() + enclave_version_len);
         if (ccf::ccf_version != enclave_version) {
-            LOG_FAIL_FMT(
-                "Host/Enclave versions mismatch: {} != {}",
-                ccf::ccf_version,
-                enclave_version);
+            LOG_FAIL_FMT("Host/Enclave versions mismatch: {} != {}", ccf::ccf_version, enclave_version);
             return CreateNodeStatus::VersionMismatch;
         }
 
@@ -254,8 +228,7 @@ class Enclave
 #endif
 
         if (err != OE_OK) {
-            throw std::logic_error(fmt::format(
-                "Failed to call in enclave_run: {}", oe_result_str(err)));
+            throw std::logic_error(fmt::format("Failed to call in enclave_run: {}", oe_result_str(err)));
         }
 
         return ret;
