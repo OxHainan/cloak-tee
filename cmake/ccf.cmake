@@ -31,6 +31,8 @@ else()
   set(CONSENSUS_FILTER cft)
 endif()
 
+add_compile_definitions(CCF_LOGGER_NO_DEPRECATE)
+
 # Build common library for CCF enclaves
 add_custom_target(ccf ALL)
 set(CCF_IMPL_SOURCE
@@ -66,9 +68,7 @@ if("sgx" IN_LIST COMPILE_TARGETS)
                        sss.enclave ccf_endpoints.enclave ccf_kv.enclave
   )
 
-  if(ENABLE_HTTP2)
-    target_link_libraries(ccf.enclave PUBLIC nghttp2.enclave)
-  endif()
+  target_link_libraries(ccf.enclave PUBLIC nghttp2.enclave)
 
   enable_quote_code(ccf.enclave)
 
@@ -120,9 +120,7 @@ if("virtual" IN_LIST COMPILE_TARGETS)
            ${CMAKE_THREAD_LIBS_INIT}
   )
 
-  if(ENABLE_HTTP2)
-    target_link_libraries(ccf.virtual PUBLIC nghttp2.host)
-  endif()
+  target_link_libraries(ccf.virtual PUBLIC nghttp2.host)
 
   set_property(TARGET ccf.virtual PROPERTY POSITION_INDEPENDENT_CODE ON)
 
