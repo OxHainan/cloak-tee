@@ -20,7 +20,6 @@
 // Include order matters. virtual_enclave.h uses the OE definitions if
 // available, else creates its own stubs
 #    include "enclave/virtual_enclave.h"
-#    include "enclave/virtual_host.h"
 #endif
 
 extern "C"
