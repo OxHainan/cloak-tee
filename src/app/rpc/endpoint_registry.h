@@ -88,7 +88,7 @@ class EVMHandlers : public AbstractEndpointRegistry
         auto send_contract_escrow = [this](
                                         ccf::endpoints::EndpointContext& ctx,
                                         const nlohmann::json& params) {
-            auto ce = params.get<Ethereum::ContractEscrow>();
+            auto ce = params.get<Ethereum::EscrowRequest>();
             auto es = make_state(ctx.tx);
             if (auto state = es.get(ce.address); state.acc.has_code()) {
                 throw ccf::make_error(
@@ -108,7 +108,7 @@ class EVMHandlers : public AbstractEndpointRegistry
         auto set_contract_key = [this](
                                     ccf::endpoints::EndpointContext& ctx,
                                     const nlohmann::json& params) {
-            auto ce = params.get<Ethereum::ContractEscrow>();
+            auto ce = params.get<Ethereum::EscrowRequest>();
             auto es = make_state(ctx.tx);
             if (auto state = es.get(ce.address); !state.acc.has_code()) {
                 nlohmann::json message = "Address [" +
@@ -189,7 +189,7 @@ class EVMHandlers : public AbstractEndpointRegistry
             return ccf::make_success(jsonrpc::result_response(
                 0, eevm::to_hex_string(exec_result.output)));
         };
-        
+
         auto send_raw_transaction = [this](
                                         ccf::endpoints::EndpointContext& ctx,
                                         const nlohmann::json& params) {
@@ -236,6 +236,15 @@ class EVMHandlers : public AbstractEndpointRegistry
                     response->status = 1;
                 }
                 return jsonrpc::result_response(0, response);
+            };
+
+        auto set_ethereum_configuration =
+            [this](
+                ccf::endpoints::EndpointContext& ctx,
+                const nlohmann::json& params) {
+                LOG_INFO_FMT("sss {}", params.dump());
+                web3->set_ethereum_configuration(params);
+                return jsonrpc::result_response(0, true);
             };
 
         make_endpoint(
@@ -294,6 +303,13 @@ class EVMHandlers : public AbstractEndpointRegistry
             "set_contractKey",
             HTTP_POST,
             ccf::json_adapter(set_contract_key),
+            auth_policies)
+            .install();
+
+        make_endpoint(
+            "set_ethereumConfiguration",
+            HTTP_POST,
+            ccf::json_adapter(set_ethereum_configuration),
             auth_policies)
             .install();
     }

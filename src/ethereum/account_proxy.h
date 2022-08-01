@@ -18,6 +18,7 @@ struct AccountProxy : public eevm::Account, public eevm::Storage
     ContractLevel level;
     mutable tables::Accounts::Views accounts_views;
     tables::Storage::Handle& storage;
+    tables::PendingStorage::Handle& pending_storage;
     tables::PendingStates::Handle& pending;
 
     AccountProxy(
@@ -26,11 +27,13 @@ struct AccountProxy : public eevm::Account, public eevm::Storage
         const std::optional<std::vector<uint8_t>>& encryptKey,
         const tables::Accounts::Views& av,
         tables::Storage::Handle& st,
+        tables::PendingStorage::Handle& ps,
         tables::PendingStates::Handle& ut) :
       address(a),
       level(level.value_or(ContractLevel::BASIC)),
       accounts_views(av),
       storage(st),
+      pending_storage(ps),
       pending(ut)
     {
         if (encryptKey.has_value()) {
@@ -94,6 +97,7 @@ struct AccountProxy : public eevm::Account, public eevm::Storage
         } else {
             eevm::to_big_endian(value, state.data());
         }
+
         LOG_DEBUG_FMT("storage {}", eevm::to_hex_string(state));
         storage.put(translate(key), state);
         if (level > ContractLevel::BASIC)
@@ -111,6 +115,14 @@ struct AccountProxy : public eevm::Account, public eevm::Storage
     {
         auto state = storage.get(translate(key));
         if (state.has_value()) {
+            // save old state
+            if (!pending_storage.get(translate(key)).has_value() &&
+                level > ContractLevel::BASIC) {
+                LOG_DEBUG_FMT(
+                    "record old state {}", eevm::to_hex_string(*state));
+                pending_storage.put(translate(key), *state);
+            }
+
             if (level > ContractLevel::SOLIDITY && state->size() > 32) {
                 std::vector<uint8_t> plain;
                 if (encryptor->decrypt(*state, plain)) {
@@ -130,11 +142,16 @@ struct AccountProxy : public eevm::Account, public eevm::Storage
         }
 
         uint256_t value = enclave::get_export_state(address, key);
+        LOG_DEBUG_FMT("record old state {}", eevm::to_hex_string(value));
+        // save old state
+        std::vector<uint8_t> plain(32u);
+        eevm::to_big_endian(value, plain.data());
+        pending_storage.put(translate(key), plain);
+
         if (level == ContractLevel::SOLIDITY) {
             return value;
         }
 
-        // 转到solidity enhance情况
         throw std::runtime_error(fmt::format(
             "Contract privacy enhancements are not yet "
             "supported, get contract {}",

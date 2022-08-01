@@ -1,8 +1,10 @@
 #pragma once
 #include "ds/messaging.h"
 #include "eEVM/keccak256.h"
+#include "eEVM/rlp.h"
 #include "eEVM/util.h"
 #include "host/timer.h"
+#include "types.h"
 #include "web3_operation_interface.h"
 #include "web3_ringbuffer_types.h"
 #include "web3client/client.h"
@@ -116,6 +118,35 @@ class Web3HostImpl
                         throw std::runtime_error(
                             fmt::format("Unexpected method {}", method));
                 }
+            });
+
+        DISPATCHER_SET_MESSAGE_HANDLER(
+            bp, Web3Msg::escrow, [&](const uint8_t* data, size_t size) {
+                auto [status_, contract_address_, params_] =
+                    ringbuffer::read_message<Web3Msg::escrow>(data, size);
+                auto contract_address = contract_address_;
+                auto addr = eevm::from_big_endian(contract_address.data(), 20u);
+                auto params = eevm::from_big_endian(params_.data(), 0x20);
+                auto status = status_;
+                client->jsonrpc()->send<jsonrpc::ws::EthGetStorageAt>(
+                    {addr, params},
+                    [&, status, contract_address](
+                        jsonrpc::ws::Error::Ptr err,
+                        std::shared_ptr<std::vector<uint8_t>> _result) {
+                        if (err && err->errorCode() != 0) {
+                            return;
+                        }
+
+                        auto result = jsonrpc::ws::EthGetStorageAt::
+                            ResultSerialiser::from_serialised(*_result);
+
+                        RINGBUFFER_WRITE_MESSAGE(
+                            Web3Msg::escrow,
+                            to_enclave,
+                            status,
+                            contract_address,
+                            eevm::rlp::encode_details::to_byte_string(result));
+                    });
             });
     }
 
