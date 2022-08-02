@@ -31,6 +31,8 @@ else()
   set(CONSENSUS_FILTER cft)
 endif()
 
+# Allow framework code to use LOG_*_FMT macros. These will be removed from
+# public headers in future
 add_compile_definitions(CCF_LOGGER_NO_DEPRECATE)
 
 # Build common library for CCF enclaves

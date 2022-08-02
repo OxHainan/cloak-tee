@@ -33,10 +33,10 @@ class UserRpcFrontend : public RpcFrontend
     }
 
  private:
-    ccf::Mutex manager_lock;
+    ccf::Pal::Mutex manager_lock;
     void register_tee_manager(kv::Tx& tx)
     {
-        std::lock_guard<ccf::Mutex> mguard(manager_lock);
+        std::lock_guard<ccf::Pal::Mutex> mguard(manager_lock);
         // TODO: When the node is started in recovery mode
         cloak4ccf::TeeManager::tables::Table tee_table;
         cloak4ccf::TeeManager::State::make_state(tx, tee_table).create();
