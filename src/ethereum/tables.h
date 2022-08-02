@@ -28,8 +28,10 @@ namespace tables
     inline constexpr auto TXRESULT = "eth.txresults";
     inline constexpr auto TXSYNC = "eth.txsync";
     inline constexpr auto PENDING_STATES = "eth.pending_states";
+    inline constexpr auto PENDING_STORAGE = "eth.pending_storage";
     inline constexpr auto CONTRACT_ENCRYPTED_KEY = "eth.contract_encrypted_key";
     inline constexpr auto LEVELS = "eth.contract_levels";
+    inline constexpr auto PROOF = "eth.contract_proof";
 
     struct Accounts
     {
@@ -57,12 +59,13 @@ namespace tables
 
     using StorageKey = std::pair<eevm::Address, uint256_t>;
     using Storage = kv::Map<StorageKey, std::vector<uint8_t>>;
-
+    using PendingStorage = kv::Map<StorageKey, std::vector<uint8_t>>;
     using Results = kv::Map<TxHash, TxResult>;
     using TxSyncs = kv::Set<StorageKey>;
     using PendingStates = kv::Set<StorageKey>;
     using ContractEncryptedKey = kv::Map<eevm::Address, std::vector<uint8_t>>;
     using ContractLevels = kv::Map<eevm::Address, ContractLevel>;
+    using Proof = kv::Map<eevm::Address, uint256_t>;
 
     struct AccountsState
     {
@@ -70,8 +73,10 @@ namespace tables
         Storage storage;
         TxSyncs syncs;
         PendingStates pending_states;
+        PendingStorage pending_storage;
         ContractEncryptedKey encrypted;
         ContractLevels levels;
+        Proof proof;
         AccountsState() :
           accounts{
               Accounts::Balances(BALANCES),
@@ -80,8 +85,10 @@ namespace tables
           storage(STORAGE),
           syncs(TXSYNC),
           pending_states(PENDING_STATES),
+          pending_storage(PENDING_STORAGE),
           encrypted(CONTRACT_ENCRYPTED_KEY),
-          levels(LEVELS)
+          levels(LEVELS),
+          proof(PROOF)
         {}
     };
 

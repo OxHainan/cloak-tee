@@ -22,6 +22,7 @@ class EthereumState : public eevm::GlobalState
 
     tables::Accounts::Views accounts;
     tables::Storage::Handle& tx_storage;
+    tables::PendingStorage::Handle& pending_storage;
     tables::PendingStates::Handle& pending;
     tables::ContractEncryptedKey::Handle& encryptedKey;
     tables::ContractLevels::Handle& contractLevels;
@@ -37,6 +38,7 @@ class EthereumState : public eevm::GlobalState
                 encryptedKey.get(address),
                 accounts,
                 tx_storage,
+                pending_storage,
                 pending)));
 
         if (!ib.second) {
@@ -56,10 +58,12 @@ class EthereumState : public eevm::GlobalState
         const tables::Accounts::Views& acc_views,
         tables::Storage::Handle* views,
         tables::PendingStates::Handle* uh,
+        tables::PendingStorage::Handle* ps,
         tables::ContractEncryptedKey::Handle* ch,
         tables::ContractLevels::Handle* contractLevels) :
       accounts(acc_views),
       tx_storage(*views),
+      pending_storage(*ps),
       pending(*uh),
       encryptedKey(*ch),
       contractLevels(*contractLevels)
@@ -152,6 +156,7 @@ class EthereumState : public eevm::GlobalState
             as.accounts.get_views(tx),
             tx.rw(as.storage),
             tx.rw(as.pending_states),
+            tx.rw(as.pending_storage),
             tx.rw(as.encrypted),
             tx.rw(as.levels));
     }

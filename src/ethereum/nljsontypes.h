@@ -175,13 +175,14 @@ inline void from_json(const nlohmann::json& j, GetTransactionCount& s)
     s.address = eevm::to_uint256(j[0]);
     s.block_id = j[1];
 }
-inline void to_json(nlohmann::json& j, const ContractEscrow& s)
+
+inline void to_json(nlohmann::json& j, const EscrowRequest& s)
 {
     j = nlohmann::json::array();
     j.push_back(eevm::to_checksum_address(s.address));
 }
 
-inline void from_json(const nlohmann::json& j, ContractEscrow& s)
+inline void from_json(const nlohmann::json& j, EscrowRequest& s)
 {
     evm4ccf::require_array(j);
     s.address = eevm::to_uint256(j[0]);
@@ -236,6 +237,5 @@ inline void from_json(const nlohmann::json& j, SendRawTransaction& s)
     evm4ccf::require_array(j);
     s.raw_transaction = j[0];
 }
-
 
 } // namespace Ethereum

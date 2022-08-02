@@ -129,7 +129,7 @@ struct GetTransactionCount
     BlockID block_id = DefaultBlockID;
 };
 
-struct ContractEscrow
+struct EscrowRequest
 {
     eevm::Address address = {};
 };
