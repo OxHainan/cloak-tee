@@ -34,7 +34,7 @@ enclave {
         bool export_state(
             uint256_t contract_address,
             uint256_t key,
-            [out, count = 32] uint256_t* value 
+            [out] uint256_t* value 
         );
 
     };
