@@ -1,8 +1,7 @@
 #pragma once
-#ifdef CCHOST_SUPPORTS_VIRTUAL
+#if !defined(INSIDE_ENCLAVE) || defined(VIRTUAL_ENCLAVE)
 #    include "enclave/virtual_host.h"
-#endif
-#ifdef CCHOST_SUPPORTS_SGX
+#else
 #    include "ccf_t.h"
 #endif
 
@@ -11,13 +10,11 @@ namespace enclave
 inline uint256_t get_export_state(uint256_t address, uint256_t key)
 {
     uint256_t val;
-#ifdef CCHOST_SUPPORTS_VIRTUAL
+#if !defined(INSIDE_ENCLAVE) || defined(VIRTUAL_ENCLAVE)
     if (export_state && export_state(address, key, &val)) {
         return val;
     }
-#endif // CCHOST_SUPPORTS_VIRTUAL
-
-#ifdef CCHOST_SUPPORTS_SGX
+#else
     bool ret;
     auto err = export_state(&ret, address, key, &val);
     if (err != OE_OK) {
@@ -28,7 +25,7 @@ inline uint256_t get_export_state(uint256_t address, uint256_t key)
         return val;
     }
 
-#endif // CCHOST_SUPPORTS_SGX
+#endif
     throw std::runtime_error("Web3 Client get export_state failed!!");
 }
 } // namespace enclave
