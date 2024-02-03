@@ -20,7 +20,7 @@ DECLARE_RINGBUFFER_MESSAGE_PAYLOAD(
     cloak4ccf::Web3Msg::send,
     cloak4ccf::RequestData,
     std::string,
-    std::vector<uint8_t>);
+    std::vector<uint8_t>, uint64_t);
 
 DECLARE_RINGBUFFER_MESSAGE_PAYLOAD(cloak4ccf::Web3Msg::heartbeat, bool);
 DECLARE_RINGBUFFER_MESSAGE_PAYLOAD(

@@ -238,7 +238,7 @@ int main(int argc, char** argv)
 
     // cloak web3 host
     cloak4ccf::Web3Host
-        web3_host(500ms, bp, writer_factory.create_writer_to_inside());
+        web3_host(30s, bp, writer_factory.create_writer_to_inside());
 
     {
         // provide regular ticks to the enclave

@@ -4,6 +4,7 @@
 
 #include "enclave/export_state.h"
 #include "encryptor.h"
+#include "enclave/enclave_time.h"
 #include "tables.h"
 // eEVM
 #include <eEVM/account.h>
@@ -141,8 +142,10 @@ struct AccountProxy : public eevm::Account, public eevm::Storage
             return 0;
         }
 
+        auto start_time = ccf::get_enclave_time();
         uint256_t value = enclave::get_export_state(address, key);
-        LOG_DEBUG_FMT("record old state {}", eevm::to_hex_string(value));
+        auto end_time = ccf::get_enclave_time();
+        LOG_INFO_FMT("send: get_export_state; address: {}, value: {}, start_time: {}, end_time: {}", eevm::to_hex_string(get_address()), eevm::to_hex_string(value), start_time.count(), end_time.count());
         // save old state
         std::vector<uint8_t> plain(32u);
         eevm::to_big_endian(value, plain.data());

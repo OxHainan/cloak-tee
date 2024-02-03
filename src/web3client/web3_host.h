@@ -28,17 +28,24 @@ class Web3HostImpl
         register_message_handlers();
     }
 
+    uint64_t now_time() {
+        auto now = std::chrono::system_clock::now();
+        auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+        return timestamp;
+    }
+
     void register_message_handlers()
     {
         DISPATCHER_SET_MESSAGE_HANDLER(
             bp, Web3Msg::send, [&](const uint8_t* data, size_t size) {
-                auto [request, target_contract, keys] =
+                auto [request, target_contract, keys, start_time] =
                     ringbuffer::read_message<Web3Msg::send>(data, size);
 
                 auto tx_hash = eevm::Keccak256(request).hex_str();
 
                 pending.emplace(tx_hash, target_contract);
                 pendingKeys.emplace(tx_hash, keys);
+                LOG_INFO_FMT("send: tx; {}, start_time: {}, end_time: {}", tx_hash, start_time, now_time());
 
                 try {
                     client->jsonrpc()->send<jsonrpc::ws::SendRawTransaction>(
@@ -53,7 +60,6 @@ class Web3HostImpl
                             auto tx_hash = jsonrpc::ws::SendRawTransaction::
                                 ResultSerialiser::from_serialised(*_result);
 
-                            LOG_INFO_FMT("send: {}", tx_hash);
                             auto target_contract = pending[tx_hash];
                             auto keys = pendingKeys[tx_hash];
 

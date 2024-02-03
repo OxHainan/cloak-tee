@@ -88,6 +88,7 @@ class EVMHandlers : public AbstractEndpointRegistry
         auto send_contract_escrow = [this](
                                         ccf::endpoints::EndpointContext& ctx,
                                         const nlohmann::json& params) {
+            const auto time_now = ccf::get_enclave_time();
             auto ce = params.get<Ethereum::EscrowRequest>();
             auto es = make_state(ctx.tx);
             if (auto state = es.get(ce.address); state.acc.has_code()) {
@@ -101,6 +102,11 @@ class EVMHandlers : public AbstractEndpointRegistry
             }
 
             web3->contract_escrow(ce.address);
+            LOG_INFO_FMT(
+                "send: sync_contract_escrow; contract: {}, start_time: {}",
+                eevm::to_hex_string(ce.address),
+                time_now.count()
+            );
             return ccf::make_success(jsonrpc::result_response(
                 0, "contract escrow alread commited, please wait..."));
         };
@@ -202,6 +208,7 @@ class EVMHandlers : public AbstractEndpointRegistry
             eth_tx.to_transaction_call(tc);
             auto hash = eth_tx.to_be_signed(true);
             auto es = make_state(ctx.tx);
+            LOG_INFO_FMT("tx details: from: {}", eevm::to_hex_string(tc.from));
             auto tx_result = Ethereum::EVMC(tc, es).run();
             if (auto it = ctx.tx.wo(network.tx_results); it) {
                 it->put(eevm::to_uint256(hash.hex_str()), tx_result);

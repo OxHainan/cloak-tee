@@ -11,6 +11,7 @@
 #include "ethereum/transaction_sync.h"
 #include "kv/store.h"
 #include "web3_operation_interface.h"
+#include "enclave/enclave_time.h"
 #include "web3_ringbuffer_types.h"
 namespace cloak4ccf
 {
@@ -185,10 +186,14 @@ class Web3Operation : public AbstractWeb3Operation
                                 eevm::to_hex_string(addr));
                             return;
                         }
+                        
+                        auto end_time = ccf::get_enclave_time();
 
                         LOG_INFO_FMT(
-                            "sync contract escrow, contract {}",
-                            eevm::to_hex_string(addr));
+                            "send: sync_contract_escrow; contract: {}, end_time: {}",
+                            eevm::to_hex_string(addr),
+                           end_time.count()
+                        );
 
                         if (auto cl = tx.wo(acc_state.levels); cl) {
                             cl->put(addr, Ethereum::ContractLevel::SOLIDITY);
@@ -211,17 +216,18 @@ class Web3Operation : public AbstractWeb3Operation
     void send(
         const RequestData& data,
         const uint256_t& addr,
-        const std::vector<uint8_t>& keys)
+        const std::vector<uint8_t>& keys,
+        uint64_t us)
     {
         RINGBUFFER_WRITE_MESSAGE(
-            Web3Msg::send, to_host, data, eevm::to_hex_string(addr), keys);
+            Web3Msg::send, to_host, data, eevm::to_hex_string(addr), keys, us);
     }
 
     void contract_escrow(const uint256_t& contract_address) override
     {
         auto logic_slot = eevm::to_uint256(
-            "0x2a7ee7a990a244bda6b8218d6cc50c824030ffcca1203a6c59bdca9cb30f9e5"
-            "8");
+            "0x2a7ee7a990a244bda6b8218d6cc50c824030ffcca1203a6c59bdca9cb30f9e58"
+            );
 
         RINGBUFFER_WRITE_MESSAGE(
             Web3Msg::escrow,
@@ -245,6 +251,7 @@ class Web3Operation : public AbstractWeb3Operation
  private:
     void on_heart_beat()
     {
+        const auto time_now = ccf::get_enclave_time();
         auto tx = store->create_tx();
         auto sync = Ethereum::TransactionSync(
             tx.rw(acc_state.syncs),
@@ -326,7 +333,7 @@ class Web3Operation : public AbstractWeb3Operation
         send(
             sig,
             contract_address.value(),
-            std::vector<uint8_t>(key_j.begin(), key_j.end()));
+            std::vector<uint8_t>(key_j.begin(), key_j.end()), time_now.count());
     }
 };
 } // namespace cloak4ccf
